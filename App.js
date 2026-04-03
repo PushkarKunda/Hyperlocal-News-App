@@ -53,7 +53,7 @@ export default function App() {
       {/* Top Header */}
       <View style={styles.header}>
         <Ionicons name="menu-outline" size={32} color="#1a1a1a" />
-        <Text style={styles.headerTitle}>Hyper Local News App</Text>
+        <Text style={styles.headerTitle}>News App</Text>
         <View style={styles.headerRight}>
           <Ionicons name="search-outline" size={26} color="#1a1a1a" style={{ marginRight: 16 }} />
           <Ionicons name="notifications" size={24} color="#4A5568" />
@@ -68,7 +68,7 @@ export default function App() {
         {containerHeight > 0 && loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#5A5AF5" />
-            <Text style={styles.loadingText}>Fetching Latest News...</Text>
+            <Text style={styles.loadingText}>Fetching Latest ...</Text>
           </View>
         ) : containerHeight > 0 && (
           <FlatList
