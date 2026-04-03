@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Modal, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AppIcon from './common/AppIcon';
+import * as Icons from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -23,8 +25,8 @@ export default function NewsCard({ item, containerHeight }) {
 
     const ActionButton = ({ icon, count, label }) => (
         <View style={styles.actionButtonContainer}>
-            <TouchableOpacity style={styles.actionRound}>
-                <Ionicons name={icon} size={22} color="#013432" />
+            <TouchableOpacity style={styles.actionRound} activeOpacity={0.7}>
+                <AppIcon icon={icon} size={20} color="#013432" />
             </TouchableOpacity>
             {count && <Text style={styles.actionText}>{count}</Text>}
             {label && <Text style={styles.actionText}>{label}</Text>}
@@ -41,9 +43,9 @@ export default function NewsCard({ item, containerHeight }) {
 
                 {/* Floating Action Column */}
                 <View style={styles.floatingActions}>
-                    <ActionButton icon="heart" count="1.2k" />
-                    <ActionButton icon="share-social" count="450" />
-                    <ActionButton icon="bookmark" label="Save" />
+                    <ActionButton icon={Icons.Like} count="1.2k" />
+                    <ActionButton icon={Icons.Share} count="450" />
+                    <ActionButton icon={Icons.Bookmark} label="Save" />
                 </View>
 
                 {/* Top Meta Info (Category + Timestamp) */}
