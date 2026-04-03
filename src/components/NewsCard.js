@@ -7,8 +7,8 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function NewsCard({ item, containerHeight }) {
     const [modalVisible, setModalVisible] = useState(false);
 
-    // Map API fields, providing fallbacks for missing data
-    const imageUrl = item.image_url || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&q=80';
+
+    const imageUrl = item.image_url;
     const headline = item.title || 'No Title Available';
     const source = item.source_id || 'NewsWire Global';
     const timestamp = item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '2h ago';
