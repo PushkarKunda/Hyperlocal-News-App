@@ -68,7 +68,7 @@ export default function App() {
         {containerHeight > 0 && loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#5A5AF5" />
-            <Text style={styles.loadingText}>Fetching Latest News...</Text>
+            <Text style={styles.loadingText}>Fetching Latest ...</Text>
           </View>
         ) : containerHeight > 0 && (
           <FlatList
