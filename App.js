@@ -92,7 +92,7 @@ export default function App() {
 
       {/* Bottom Tab Bar */}
       <View style={styles.tabBar}>
-        <TabItem icon="home" label="Feed" active={true} onPress={handleRefresh} />
+        <TabItem icon="home-sharp" label="Feed" active={true} onPress={handleRefresh} />
         <TabItem icon="compass-outline" label="Discover" />
         <TabItem icon="bookmark-outline" label="Saved" />
         <TabItem icon="person-outline" label="Profile" />
