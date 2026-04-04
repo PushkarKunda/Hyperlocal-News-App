@@ -66,7 +66,7 @@ export default function App() {
       {/* Top Header */}
       <View style={styles.header}>
         <Ionicons name="menu-outline" size={32} color="#1a1a1a" />
-        <Text style={styles.headerTitle}>News App</Text>
+        <Text style={styles.headerTitle}>News Detail App</Text>
         <View style={styles.headerRight}>
           <TabItem icon={Icons.Search} color="#1a1a1a" size={26} style={{ marginRight: 18 }} />
           <TabItem icon={Icons.Bell} color="#4A5568" size={24} />
