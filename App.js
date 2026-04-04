@@ -2,7 +2,8 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, FlatList, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import NewsCard from './src/components/NewsCard';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from './src/components/common/AppIcon';
+import * as Icons from './src/assets/icons';
 
 export default function App() {
   const [containerHeight, setContainerHeight] = useState(0);
@@ -39,10 +40,22 @@ export default function App() {
     fetchNews(true);
   };
 
-  const TabItem = ({ icon, label, active, onPress }) => (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress}>
-      <Ionicons name={icon} size={24} color={active ? '#5A5AF5' : '#8A92A6'} />
-      <Text style={[styles.tabLabel, active && { color: '#5A5AF5', fontWeight: 'bold' }]}>{label}</Text>
+  const TabItem = ({ icon, label, active, onPress, color, style, size = 24 }) => (
+    <TouchableOpacity
+      style={[styles.tabItem, style]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <AppIcon
+        icon={icon}
+        size={size}
+        color={color || (active ? '#5A5AF5' : '#8A92A6')}
+      />
+      {label ? (
+        <Text style={[styles.tabLabel, active && { color: '#5A5AF5', fontWeight: 'bold' }]}>
+          {label}
+        </Text>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -55,8 +68,8 @@ export default function App() {
         <Ionicons name="menu-outline" size={32} color="#1a1a1a" />
         <Text style={styles.headerTitle}>News App</Text>
         <View style={styles.headerRight}>
-          <Ionicons name="search-outline" size={26} color="#1a1a1a" style={{ marginRight: 16 }} />
-          <Ionicons name="notifications" size={24} color="#4A5568" />
+          <TabItem icon={Icons.Search} color="#1a1a1a" size={26} style={{ marginRight: 18 }} />
+          <TabItem icon={Icons.Bell} color="#4A5568" size={24} />
         </View>
       </View>
 
@@ -92,10 +105,10 @@ export default function App() {
 
       {/* Bottom Tab Bar */}
       <View style={styles.tabBar}>
-        <TabItem icon="home" label="Feed" active={true} onPress={handleRefresh} />
-        <TabItem icon="compass-outline" label="Discover" />
-        <TabItem icon="bookmark-outline" label="Saved" />
-        <TabItem icon="person-outline" label="Profile" />
+        <TabItem icon={Icons.Home} label="Feed" active={true} onPress={handleRefresh} />
+        <TabItem icon={Icons.Compass} label="Discover" />
+        <TabItem icon={Icons.Bookmark} label="Saved" />
+        <TabItem icon={Icons.Person} label="Profile" />
       </View>
     </View>
   );
@@ -105,7 +118,7 @@ const styles = StyleSheet.create({
   mainWrapper: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 45, // Add padding to dodge system status bar
+    paddingTop: 40, // Add padding to dodge system status bar
   },
   header: {
     flexDirection: 'row',
@@ -136,7 +149,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: '#fff',
-    paddingBottom: 25, // Bottom inset padding
+    paddingBottom: 10, // Bottom inset padding
   },
   tabItem: {
     alignItems: 'center',

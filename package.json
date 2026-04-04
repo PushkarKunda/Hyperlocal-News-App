@@ -18,11 +18,13 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.9",
+    "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.13"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "cross-env": "^10.1.0"
+    "cross-env": "^10.1.0",
+    "react-native-svg-transformer": "^1.5.3"
   },
   "private": true
 }
