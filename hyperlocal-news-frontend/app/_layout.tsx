@@ -1,5 +1,13 @@
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { 
+  Newsreader_400Regular, 
+  Newsreader_500Medium, 
+  Newsreader_600SemiBold, 
+  Newsreader_700Bold,
+  Newsreader_400Regular_Italic
+} from '@expo-google-fonts/newsreader';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -27,6 +35,11 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+    Newsreader_700Bold,
+    Newsreader_400Regular_Italic,
   });
 
   useEffect(() => {
@@ -42,6 +55,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar style="auto" translucent backgroundColor="transparent" />
         <Stack
           screenOptions={{
             headerShown: false,

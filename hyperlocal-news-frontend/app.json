@@ -22,7 +22,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FF6B35"
       },
-      "package": "com.hyperlocalnews.app"
+      "package": "com.hyperlocalnews.app",
+      "navigationBar": {
+        "barStyle": "dark-content",
+        "backgroundColor": "#00000000"
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
