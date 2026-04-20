@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "scheme": "hyperlocalnews",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#FF6B35"
     },
