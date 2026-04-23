@@ -14,6 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAuthStore } from '@/store/authStore';
 
 const OTP_LENGTH = 4;
 
@@ -28,6 +29,8 @@ export default function VerifyOTPScreen() {
   const [timer, setTimer] = useState(28);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  
+  const { verifyOtp } = useAuthStore();
 
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -79,17 +82,18 @@ export default function VerifyOTPScreen() {
     }).start();
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpValue = otp.join('');
     if (otpValue.length !== OTP_LENGTH) return;
 
     setIsLoading(true);
     
-    // Simulate verification
-    setTimeout(() => {
-      setIsLoading(false);
-      router.replace('/(onboarding)/language');
-    }, 1000);
+    const success = await verifyOtp(phoneNumber, otpValue);
+    setIsLoading(false);
+
+    if (success) {
+      router.replace('/(tabs)');
+    }
   };
 
   const handleResend = () => {

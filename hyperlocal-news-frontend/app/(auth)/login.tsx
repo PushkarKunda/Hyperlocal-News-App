@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAuthStore } from '@/store/authStore';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN' },
@@ -30,6 +31,7 @@ export default function LoginScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
+  const { sendOtp, loginAsGuest } = useAuthStore();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
@@ -52,28 +54,29 @@ export default function LoginScreen() {
     }).start();
   };
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (phoneNumber.length < 10) {
       // Show error - we'll add proper validation later
       return;
     }
 
     setIsLoading(true);
+    const fullPhone = `${selectedCountry.code}${phoneNumber}`;
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    const success = await sendOtp(fullPhone);
+    setIsLoading(false);
+
+    if (success) {
       router.push({
         pathname: '/(auth)/verify-otp',
-        params: { phone: `${selectedCountry.code}${phoneNumber}` },
+        params: { phone: fullPhone },
       });
-    }, 1000);
+    }
   };
 
   const handleGuestLogin = () => {
+    loginAsGuest();
     router.replace('/(tabs)');
-    // Guest skips OTP but still needs to select preferences
-    //router.replace('/(onboarding)/language');
   };
 
   return (

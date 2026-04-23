@@ -5,11 +5,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAuthStore } from '@/store/authStore';
 
 export default function SplashScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  
+  // Use getState() inside the timeout to ensure we have the fully hydrated state
   
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -40,7 +43,12 @@ export default function SplashScreen() {
 
     // Navigate after delay
     const timer = setTimeout(() => {
-      router.replace('/(auth)/login');
+      const isAuthenticated = useAuthStore.getState().isAuthenticated;
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/login');
+      }
     }, 2500);
 
     return () => clearTimeout(timer);
