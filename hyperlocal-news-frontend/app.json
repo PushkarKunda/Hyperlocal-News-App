@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Hyperlocal News",
-    "slug": "hyperlocal-news-frontend",
+    "slug": "hyperlocal-news",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FF6B35"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hyperlocalnews.app"
@@ -22,7 +24,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FF6B35"
       },
-      "package": "com.hyperlocalnews.app"
+      "package": "com.hyperlocalnews.app",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -41,6 +47,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "9292b114-029a-4b11-b115-2e81734aa98e"
+      }
+    },
+    "owner": "22mh1a0529"
   }
 }
