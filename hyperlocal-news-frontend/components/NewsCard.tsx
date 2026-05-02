@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Modal, ScrollView, SafeAreaView } from 'react-native';
+import React from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTimeAgo } from '@/utils/formatters';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export function NewsCard({ item, containerHeight }: any) {
-    const [modalVisible, setModalVisible] = useState(false);
 
     const imageUrl = item.imageUrl;
     const headline = item.headline || 'No Title Available';
@@ -67,10 +66,6 @@ export function NewsCard({ item, containerHeight }: any) {
                     <Text style={styles.sourcePrefix}>
                         source: <Text style={styles.sourceName}>{source}</Text>
                     </Text>
-                    <TouchableOpacity style={styles.readMoreBtn} onPress={() => setModalVisible(true)}>
-                        <Text style={styles.readMoreText}>Read more</Text>
-                        <Ionicons name="chevron-forward" size={14} color="#5A5AF5" />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Swipe Indicator */}
@@ -80,26 +75,6 @@ export function NewsCard({ item, containerHeight }: any) {
                 </View>
             </View>
 
-            {/* Detailed View Modal */}
-            <Modal
-                animationType="slide"
-                transparent={false}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <SafeAreaView style={styles.modalContainer}>
-                    <ScrollView contentContainerStyle={styles.modalScroll}>
-                        <Image source={{ uri: imageUrl }} style={styles.modalImage} resizeMode="cover" />
-                        <Text style={styles.modalSource}>{source} • {timestamp}</Text>
-                        <Text style={styles.modalHeadline}>{headline}</Text>
-                        <Text style={styles.modalContent}>{content}</Text>
-
-                        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                            <Text style={styles.closeButtonText}>Close</Text>
-                        </TouchableOpacity>
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
         </View>
     );
 }
@@ -202,16 +177,7 @@ const styles = StyleSheet.create({
         color: '#1A202C',
         fontWeight: '800',
     },
-    readMoreBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    readMoreText: {
-        color: '#5A5AF5',
-        fontWeight: '700',
-        fontSize: 15,
-        marginRight: 2,
-    },
+
     swipeIndicatorRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -224,12 +190,4 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         marginRight: 6,
     },
-    modalContainer: { flex: 1, backgroundColor: '#fff' },
-    modalScroll: { paddingBottom: 40 },
-    modalImage: { width: '100%', height: 300 },
-    modalSource: { fontSize: 14, color: '#666', marginTop: 20, marginHorizontal: 20, fontWeight: '600' },
-    modalHeadline: { fontSize: 24, fontWeight: 'bold', color: '#1a1a1a', marginHorizontal: 20, marginTop: 10, marginBottom: 20, lineHeight: 32 },
-    modalContent: { fontSize: 16, color: '#333', lineHeight: 24, marginHorizontal: 20, marginBottom: 30 },
-    closeButton: { backgroundColor: '#e5e5ea', paddingVertical: 12, marginHorizontal: 20, borderRadius: 8, alignItems: 'center' },
-    closeButtonText: { color: '#000', fontSize: 16, fontWeight: '600' },
 });
