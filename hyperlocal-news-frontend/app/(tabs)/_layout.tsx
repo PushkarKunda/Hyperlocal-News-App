@@ -68,6 +68,12 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="create-article"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

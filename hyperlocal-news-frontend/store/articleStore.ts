@@ -13,6 +13,10 @@ export interface ArticleItem {
   likes: string;
   readingTime: string;
   imageUrl: string;
+  content?: string;
+  language?: string;
+  location?: string;
+  tags?: string[];
 }
 
 export const INITIAL_ARTICLES: ArticleItem[] = [

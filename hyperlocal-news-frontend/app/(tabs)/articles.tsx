@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useArticleStore, ArticleItem } from '@/store/articleStore';
-import { CreateArticleModal } from '@/components/CreateArticleModal';
+
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -22,7 +22,6 @@ export default function ArticlesScreen() {
   const { articles, addArticle, deleteArticle, resetArticles } = useArticleStore();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>({
     '1': { count: 1200, liked: false },
     '2': { count: 820, liked: false },
@@ -69,17 +68,6 @@ export default function ArticlesScreen() {
       return (count / 1000).toFixed(1) + 'k';
     }
     return count.toString();
-  };
-
-  const handleCreateArticle = (articleData: {
-    headline: string;
-    summary: string;
-    category: string;
-    sourceName: string;
-    readingTime: string;
-    imageUrl: string;
-  }) => {
-    addArticle(articleData);
   };
 
   // Render Figma Empty State
@@ -153,7 +141,7 @@ export default function ArticlesScreen() {
         <View style={[styles.bottomActionEmpty, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
           <TouchableOpacity
             style={[styles.ctaButtonEmpty, { backgroundColor: colors.primary }]}
-            onPress={() => setIsCreateModalVisible(true)}
+            onPress={() => router.push('/create-article')}
             activeOpacity={0.9}
           >
             <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -164,18 +152,8 @@ export default function ArticlesScreen() {
     );
   };
 
-  // If no articles are present, render the empty state
   if (articles.length === 0) {
-    return (
-      <View style={{ flex: 1 }}>
-        {renderEmptyState()}
-        <CreateArticleModal
-          isVisible={isCreateModalVisible}
-          onClose={() => setIsCreateModalVisible(false)}
-          onSubmit={handleCreateArticle}
-        />
-      </View>
-    );
+    return renderEmptyState();
   }
 
   return (
@@ -375,18 +353,11 @@ export default function ArticlesScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => setIsCreateModalVisible(true)}
+        onPress={() => router.push('/create-article')}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
-
-      {/* Creation Modal Component */}
-      <CreateArticleModal
-        isVisible={isCreateModalVisible}
-        onClose={() => setIsCreateModalVisible(false)}
-        onSubmit={handleCreateArticle}
-      />
     </View>
   );
 }
