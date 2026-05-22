@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, FlatList, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
+import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { IMMERSIVE_NEWS } from '@/data/mockImmersiveNews';
+import { MOCK_NEWS } from '@/data/mockNews';
 import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
+import MenuOptions from '@/components/MenuOptions';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { newsId } = useLocalSearchParams<{ newsId?: string }>();
+  const flatListRef = useRef<FlatList>(null);
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
-  const [categoryBookmarked, setCategoryBookmarked] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
-  // Load Figma header icon assets (PNG is fully supported, SVGs migrated to vector icons)
-  const userPhoto = require('@/assets/immersive_feed/f8a7444eb4e0445e94186837bf33bd7f2f8b5681.png');
+  useEffect(() => {
+    if (newsId) {
+      const index = MOCK_NEWS.findIndex(item => item.id === newsId);
+      if (index !== -1 && scrollHeight > 0) {
+        const timer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true });
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [newsId, scrollHeight]);
 
   return (
     <View 
@@ -30,7 +40,8 @@ export default function HomeScreen() {
 
       {/* Main Snap Scrolling Feed */}
       <FlatList
-        data={IMMERSIVE_NEWS}
+        ref={flatListRef}
+        data={MOCK_NEWS}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ImmersiveNewsCard 
@@ -44,6 +55,17 @@ export default function HomeScreen() {
         snapToAlignment="start"
         decelerationRate="fast"
         bounces={false}
+        getItemLayout={(data, index) => ({
+          length: scrollHeight,
+          offset: scrollHeight * index,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          const wait = new Promise(resolve => setTimeout(resolve, 50));
+          wait.then(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          });
+        }}
       />
 
       {/* Overlay Header */}
@@ -59,38 +81,19 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={styles.circleButton} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(tabs)/menu' as any)}
+              onPress={() => setIsMenuVisible(true)}
             >
               <Ionicons name="menu" size={22} color="#FFFFFF" />
             </TouchableOpacity>
-
-            {/* Header Title */}
-            <Text style={styles.headerTitle}>TECH INSIDER</Text>
-
-            {/* User Profile */}
-            <TouchableOpacity 
-              style={styles.profileBorder}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(tabs)/profile' as any)}
-            >
-              <Image source={userPhoto} style={styles.profileImage} contentFit="cover" />
-            </TouchableOpacity>
           </View>
-
-          {/* Right Save Action */}
-          <TouchableOpacity 
-            style={styles.circleButton} 
-            activeOpacity={0.7}
-            onPress={() => setCategoryBookmarked(!categoryBookmarked)}
-          >
-            <Ionicons 
-              name={categoryBookmarked ? "bookmark" : "bookmark-outline"} 
-              size={20} 
-              color={categoryBookmarked ? "#FFAC33" : "#FFFFFF"} 
-            />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      {/* Reusable Menu Drawer Overlay Component */}
+      <MenuOptions 
+        isVisible={isMenuVisible} 
+        onClose={() => setIsMenuVisible(false)} 
+      />
     </View>
   );
 }

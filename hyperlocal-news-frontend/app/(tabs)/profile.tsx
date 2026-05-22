@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileMenuItem } from '@/components/ui/ProfileMenuItem';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
+import MenuOptions from '@/components/MenuOptions';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -15,6 +16,7 @@ export default function ProfileScreen() {
   
   const { user, logout } = useAuthStore();
   const [isDarkMode, setIsDarkMode] = useState(colorScheme === 'dark');
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const handleSignOut = () => {
     logout();
@@ -36,8 +38,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
         </View>
-        <TouchableOpacity style={styles.headerIconButton}>
-          <MaterialIcons name="more-vert" size={20} color={colors.text} />
+        <TouchableOpacity style={styles.headerIconButton} onPress={() => setIsMenuVisible(true)}>
+          <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -125,6 +127,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

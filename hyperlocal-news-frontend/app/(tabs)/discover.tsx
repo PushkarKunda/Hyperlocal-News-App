@@ -5,6 +5,7 @@ import { MaterialIcons, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
+import MenuOptions from '@/components/MenuOptions';
 
 // Data definitions
 const TRENDING = [
@@ -41,6 +42,7 @@ export default function DiscoverScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const renderIcon = (library: string, name: string, color: string, size: number) => {
     switch (library) {
@@ -54,8 +56,8 @@ export default function DiscoverScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Search Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.background, flex: 1 }]}>
           <MaterialIcons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -65,6 +67,13 @@ export default function DiscoverScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
+        <TouchableOpacity 
+          style={{ padding: 8 }} 
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={26} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -151,6 +160,7 @@ export default function DiscoverScreen() {
         </View>
 
       </ScrollView>
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

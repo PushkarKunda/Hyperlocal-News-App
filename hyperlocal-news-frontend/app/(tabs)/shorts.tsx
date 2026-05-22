@@ -7,6 +7,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { Typography } from '@/constants/Typography';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { MOCK_SHORTS, ShortVideo } from '@/data/mockShorts';
+import MenuOptions from '@/components/MenuOptions';
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,6 +117,7 @@ export default function ShortsScreen() {
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
@@ -166,11 +168,13 @@ export default function ShortsScreen() {
               {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
             </TouchableOpacity>
           </View>
-          <TouchableOpacity>
-            <MaterialIcons name="search" size={24} color="white" />
+          <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
+            <Ionicons name="menu" size={28} color="white" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

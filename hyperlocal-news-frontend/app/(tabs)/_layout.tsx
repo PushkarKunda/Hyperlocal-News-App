@@ -13,14 +13,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 64,
-          paddingBottom: Spacing.sm,
-          paddingTop: Spacing.sm,
-        },
+        tabBarStyle: { display: 'none' },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',

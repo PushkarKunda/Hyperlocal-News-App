@@ -2,32 +2,43 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { ImmersiveArticle } from '@/data/mockImmersiveNews';
+import { NewsArticle } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 interface ImmersiveNewsCardProps {
-  item: ImmersiveArticle;
+  item: NewsArticle;
   containerHeight: number;
 }
 
 export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardProps) {
   // Local interaction states
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [liked, setLiked] = useState(item.isBookmarked ?? false);
+  const [bookmarked, setBookmarked] = useState(item.isBookmarked ?? false);
   
-  // Dynamic category bullet icon
-  const getBulletIcon = (category: string) => {
-    switch (category.toUpperCase()) {
-      case 'TECH':
-        return <Ionicons name="flash" size={16} color="#4648D4" style={styles.bulletIcon} />;
-      case 'DESIGN':
-        return <Ionicons name="color-palette" size={16} color="#006A61" style={styles.bulletIcon} />;
-      case 'SCIENCE':
-        return <Ionicons name="leaf" size={16} color="#B90538" style={styles.bulletIcon} />;
+  // Split the summary into sentences for bullet points
+  const points = item.summary
+    .split('. ')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => s.endsWith('.') ? s : s + '.');
+  
+  // Dynamic category bullet icon with corresponding colors
+  const getBulletIcon = (categoryName: string, color: string) => {
+    switch (categoryName.toUpperCase()) {
+      case 'TECHNOLOGY':
+        return <Ionicons name="flash" size={16} color={color} style={styles.bulletIcon} />;
+      case 'BUSINESS':
+        return <Ionicons name="trending-up" size={16} color={color} style={styles.bulletIcon} />;
+      case 'LOCAL':
+        return <Ionicons name="location" size={16} color={color} style={styles.bulletIcon} />;
+      case 'SPORTS':
+        return <Ionicons name="football" size={16} color={color} style={styles.bulletIcon} />;
+      case 'HEALTH':
+        return <Ionicons name="heart" size={16} color={color} style={styles.bulletIcon} />;
       default:
-        return <Ionicons name="ellipse" size={8} color="#767586" style={styles.bulletIcon} />;
+        return <Ionicons name="ellipse" size={8} color={color} style={styles.bulletIcon} />;
     }
   };
 
@@ -43,14 +54,14 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
       {/* Top 45% Image Section */}
       <View style={styles.imageContainer}>
         <Image
-          source={item.image}
+          source={{ uri: item.imageUrl }}
           style={styles.image}
           contentFit="cover"
           transition={400}
         />
         {/* Category Tag */}
-        <View style={[styles.categoryTag, { backgroundColor: item.categoryColor }]}>
-          <Text style={styles.categoryText}>{item.category}</Text>
+        <View style={[styles.categoryTag, { backgroundColor: item.category.color || '#4648D4' }]}>
+          <Text style={styles.categoryText}>{item.category.name}</Text>
         </View>
       </View>
 
@@ -62,9 +73,9 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
 
           {/* Bullet Points List */}
           <View style={styles.pointsList}>
-            {item.points.map((point, index) => (
+            {points.map((point, index) => (
               <View key={index} style={styles.pointRow}>
-                {getBulletIcon(item.category)}
+                {getBulletIcon(item.category.name, item.category.color || '#4648D4')}
                 <Text style={styles.pointText}>{point}</Text>
               </View>
             ))}

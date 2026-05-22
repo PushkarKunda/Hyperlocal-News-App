@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { LocalNewsCard, LocalNewsItem } from '@/components/LocalNewsCard';
 import { LocalEventCard, LocalEventItem } from '@/components/LocalEventCard';
+import MenuOptions from '@/components/MenuOptions';
 
 const FILTERS = ['All Time', 'Today', 'This Week', 'Newest', 'Nearest'];
 
@@ -54,7 +56,9 @@ export default function LocalScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All Time');
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -63,8 +67,12 @@ export default function LocalScreen() {
       <View style={styles.headerContainer}>
         <View style={styles.headerTop}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Local News</Text>
-          <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.border }]}>
-            <MaterialIcons name="settings" size={20} color={colors.textSecondary} />
+          <TouchableOpacity 
+            style={[styles.headerButton, { backgroundColor: colors.border }]}
+            onPress={() => setIsMenuVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
         
@@ -121,7 +129,11 @@ export default function LocalScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>TODAY</Text>
             <View style={styles.cardsContainer}>
               {TODAY_NEWS.map(item => (
-                <LocalNewsCard key={item.id} item={item} />
+                <LocalNewsCard 
+                  key={item.id} 
+                  item={item} 
+                  onPress={() => router.push({ pathname: '/(tabs)', params: { newsId: item.id } })}
+                />
               ))}
             </View>
           </View>
@@ -131,7 +143,11 @@ export default function LocalScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>YESTERDAY</Text>
             <View style={styles.cardsContainer}>
               {YESTERDAY_NEWS.map(item => (
-                <LocalNewsCard key={item.id} item={item} />
+                <LocalNewsCard 
+                  key={item.id} 
+                  item={item} 
+                  onPress={() => router.push({ pathname: '/(tabs)', params: { newsId: item.id } })}
+                />
               ))}
               <LocalEventCard item={YESTERDAY_EVENT} />
             </View>
@@ -139,6 +155,7 @@ export default function LocalScreen() {
 
         </View>
       </ScrollView>
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

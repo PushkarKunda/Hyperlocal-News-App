@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { CreateEventModal } from '@/components/CreateEventModal';
 
 interface CustomEventItem {
   id: string;
@@ -64,9 +65,50 @@ export default function EventsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const [eventsList, setEventsList] = useState<CustomEventItem[]>(EVENTS_DATA);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'week'>('all');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [interested, setInterested] = useState<Record<string, boolean>>({});
+
+  const handleAddEvent = (eventData: {
+    title: string;
+    description: string;
+    category: string;
+    locationName: string;
+    imageUrl: string;
+    date: string;
+    time: string;
+    neighborhood: string;
+  }) => {
+    let dateMonth = 'MAY';
+    let dateDay = '28';
+    
+    // Parse month and day from inputs like "Sat, May 25"
+    const match = eventData.date.match(/(?:[a-zA-Z]{3})?,?\s*([a-zA-Z]{3,})\s+(\d+)/i);
+    if (match) {
+      dateMonth = match[1].substring(0, 3).toUpperCase();
+      dateDay = match[2];
+    } else {
+      const dayMatch = eventData.date.match(/\d+/);
+      if (dayMatch) dateDay = dayMatch[0];
+    }
+
+    const newEvent: CustomEventItem = {
+      id: Date.now().toString(),
+      category: eventData.category,
+      title: eventData.title,
+      description: eventData.description,
+      distance: '0.1 km away',
+      schedule: `${eventData.date} • ${eventData.time}`,
+      locationName: `${eventData.locationName}, ${eventData.neighborhood}`,
+      imageUrl: eventData.imageUrl,
+      dateMonth,
+      dateDay,
+    };
+
+    setEventsList((prev) => [newEvent, ...prev]);
+  };
 
   const toggleReminder = (id: string) => {
     setReminders((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -76,12 +118,12 @@ export default function EventsScreen() {
     setInterested((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredEvents = EVENTS_DATA.filter((event) => {
+  const filteredEvents = eventsList.filter((event) => {
     if (activeTab === 'today') {
-      return event.id === '1'; // Mocking first event as today
+      return event.id === '1' || Number(event.id) > 1700000000000;
     }
     if (activeTab === 'week') {
-      return event.id === '1' || event.id === '2'; // Mocking first two as this week
+      return event.id === '1' || event.id === '2' || Number(event.id) > 1700000000000;
     }
     return true;
   });
@@ -101,6 +143,7 @@ export default function EventsScreen() {
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.primaryLight }]}
           activeOpacity={0.7}
+          onPress={() => setIsCreateModalVisible(true)}
         >
           <Ionicons name="add" size={22} color={colors.primary} />
         </TouchableOpacity>
@@ -251,6 +294,13 @@ export default function EventsScreen() {
             </View>
           );
         }}
+      />
+
+      {/* Create Event Modal Form */}
+      <CreateEventModal
+        isVisible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onSubmit={handleAddEvent}
       />
     </View>
   );
