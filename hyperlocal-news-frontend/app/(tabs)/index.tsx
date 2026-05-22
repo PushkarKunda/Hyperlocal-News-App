@@ -59,7 +59,7 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={styles.circleButton} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(tabs)/discover' as any)}
+              onPress={() => router.push('/(tabs)/menu' as any)}
             >
               <Ionicons name="menu" size={22} color="#FFFFFF" />
             </TouchableOpacity>
