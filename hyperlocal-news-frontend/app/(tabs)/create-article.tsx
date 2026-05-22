@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     width: 256,
     height: 256,
     borderRadius: 128,
-    backgroundColor: 'rgba(101, 103, 241, 0.04)',
+    backgroundColor: 'rgba(70, 72, 212, 0.04)',
     zIndex: 1,
   },
   bottomLeftBlur: {
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     width: 384,
     height: 384,
     borderRadius: 192,
-    backgroundColor: 'rgba(101, 103, 241, 0.04)',
+    backgroundColor: 'rgba(70, 72, 212, 0.04)',
     zIndex: 2,
   },
   header: {
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(101, 103, 241, 0.1)',
+    backgroundColor: 'rgba(70, 72, 212, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   presetItemActive: {
-    borderColor: '#6567F1',
+    borderColor: '#4648D4',
   },
   presetImg: {
     width: '100%',
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6567F1',
+    shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,

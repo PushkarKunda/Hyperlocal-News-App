@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
@@ -55,6 +55,7 @@ export default function BookmarksScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
 
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'events' | 'shorts'>('all');
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(INITIAL_BOOKMARKS);
@@ -121,7 +122,13 @@ export default function BookmarksScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (from === 'profile') {
+              router.push('/(tabs)/profile');
+            } else {
+              router.back();
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={20} color={colors.text} />

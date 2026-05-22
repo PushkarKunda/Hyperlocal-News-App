@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#6464F2',
+    backgroundColor: '#4648D4',
     borderWidth: 2,
     borderColor: '#FFF',
     alignItems: 'center',
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -8,
     alignSelf: 'center',
-    backgroundColor: '#6464F2',
+    backgroundColor: '#4648D4',
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -311,15 +311,15 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   liveBadge: {
-    backgroundColor: 'rgba(100, 100, 242, 0.2)',
-    borderColor: 'rgba(100, 100, 242, 0.3)',
+    backgroundColor: 'rgba(70, 72, 212, 0.2)',
+    borderColor: 'rgba(70, 72, 212, 0.3)',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
   },
   liveText: {
-    color: '#6464F2',
+    color: '#4648D4',
     fontSize: 10,
     fontFamily: Typography.fonts.bold,
     letterSpacing: 0.5,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   hashtag: {
-    color: '#6464F2',
+    color: '#4648D4',
     fontSize: Typography.sizes.sm,
     fontFamily: Typography.fonts.semiBold,
   },
@@ -376,6 +376,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#6464F2',
+    backgroundColor: '#4648D4',
   },
 });

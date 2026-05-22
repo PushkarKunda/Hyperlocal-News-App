@@ -29,20 +29,21 @@ interface Topic {
   iconType: 'feather' | 'ionicons';
   iconColor: string;
   iconBg: string;
+  selectedBg: string;
   description?: string;
   span?: boolean;
 }
 
 const TOPICS: Topic[] = [
-  { id: 'tech', name: 'Tech', iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.1)' },
-  { id: 'design', name: 'Design', iconName: 'palette', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(134, 242, 228, 0.2)' },
-  { id: 'sports', name: 'Sports', iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.1)' },
-  { id: 'music', name: 'Music', iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: '#ffdadb' },
-  { id: 'art', name: 'Art', iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.1)' },
-  { id: 'travel', name: 'Travel', iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(134, 242, 228, 0.2)' },
-  { id: 'wellness', name: 'Health & Wellness', iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: '#ffdadb', description: 'Mindfulness and healthy living', span: true },
-  { id: 'food', name: 'Food', iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.1)' },
-  { id: 'gaming', name: 'Gaming', iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(134, 242, 228, 0.2)' },
+  { id: 'tech', name: 'Tech', iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  { id: 'design', name: 'Design', iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  { id: 'sports', name: 'Sports', iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  { id: 'music', name: 'Music', iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
+  { id: 'art', name: 'Art', iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  { id: 'travel', name: 'Travel', iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  { id: 'wellness', name: 'Health & Wellness', iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE', description: 'Mindfulness and healthy living', span: true },
+  { id: 'food', name: 'Food', iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  { id: 'gaming', name: 'Gaming', iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
 ];
 
 const MIN_SELECTIONS = 3;
@@ -66,22 +67,25 @@ export default function InterestsScreen() {
     }
   });
 
-  const toggleTopic = (topicId: string) => {
-    // Taptic feedback scale effect
-    Animated.sequence([
-      Animated.timing(cardScaleAnims[topicId], {
-        toValue: 0.95,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.spring(cardScaleAnims[topicId], {
-        toValue: 1,
-        friction: 5,
-        tension: 150,
-        useNativeDriver: true,
-      })
-    ]).start();
+  const handleCardPressIn = (topicId: string) => {
+    Animated.spring(cardScaleAnims[topicId], {
+      toValue: 0.94,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
 
+  const handleCardPressOut = (topicId: string) => {
+    Animated.spring(cardScaleAnims[topicId], {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const toggleTopic = (topicId: string) => {
     setSelectedTopics((prev) => {
       if (prev.includes(topicId)) {
         return prev.filter((id) => id !== topicId);
@@ -148,26 +152,35 @@ export default function InterestsScreen() {
             const scale = cardScaleAnims[topic.id];
 
             return (
-              <Animated.View
+              <Pressable
                 key={topic.id}
-                style={[
-                  topic.span ? styles.bentoCardSpan : styles.bentoCardSingle,
-                  { transform: [{ scale }] }
-                ]}
+                onPressIn={() => handleCardPressIn(topic.id)}
+                onPressOut={() => handleCardPressOut(topic.id)}
+                onPress={() => toggleTopic(topic.id)}
+                style={topic.span ? styles.bentoCardSpan : styles.bentoCardSingle}
               >
-                <Pressable
+                <Animated.View
                   style={[
                     styles.cardInner,
-                    isSelected ? styles.cardSelected : styles.cardUnselected,
+                    isSelected 
+                      ? [
+                          styles.cardSelected,
+                          {
+                            backgroundColor: topic.selectedBg,
+                            borderColor: topic.iconColor,
+                            shadowColor: topic.iconColor,
+                          }
+                        ]
+                      : styles.cardUnselected,
+                    { transform: [{ scale }] }
                   ]}
-                  onPress={() => toggleTopic(topic.id)}
                 >
                   {topic.span ? (
                     // Wellness Spanning Layout
                     <View style={styles.spanRow}>
                       <View style={[
                         styles.iconContainer,
-                        isSelected ? styles.iconContainerSelected : { backgroundColor: topic.iconBg }
+                        isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
                       ]}>
                         {topic.iconType === 'feather' ? (
                           <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
@@ -180,7 +193,7 @@ export default function InterestsScreen() {
                         <View style={styles.spanTitleRow}>
                           <Text style={styles.cardTitle}>{topic.name}</Text>
                           {isSelected && (
-                            <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+                            <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
                           )}
                         </View>
                         <Text style={styles.cardDesc}>{topic.description}</Text>
@@ -192,7 +205,7 @@ export default function InterestsScreen() {
                       <View style={styles.singleTopRow}>
                         <View style={[
                           styles.iconContainer,
-                          isSelected ? styles.iconContainerSelected : { backgroundColor: topic.iconBg }
+                          isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
                         ]}>
                           {topic.iconType === 'feather' ? (
                             <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
@@ -205,13 +218,13 @@ export default function InterestsScreen() {
                       <View style={styles.singleTitleRow}>
                         <Text style={styles.cardTitle}>{topic.name}</Text>
                         {isSelected && (
-                          <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+                          <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
                         )}
                       </View>
                     </View>
                   )}
-                </Pressable>
-              </Animated.View>
+                </Animated.View>
+              </Pressable>
             );
           })}
         </View>
@@ -324,18 +337,16 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
-    padding: 24,
+    padding: 20,
   },
   cardUnselected: {
-    backgroundColor: '#EFF4FF',
-    borderColor: 'transparent',
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
   },
   cardSelected: {
-    backgroundColor: '#E1E0FF',
-    borderColor: '#4648D4',
-    shadowColor: '#4648D4',
+    borderWidth: 2,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 10,

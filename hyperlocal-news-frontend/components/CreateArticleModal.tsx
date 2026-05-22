@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   presetCardActive: {
-    borderColor: '#6567F1',
+    borderColor: '#4648D4',
   },
   presetImage: {
     width: '100%',

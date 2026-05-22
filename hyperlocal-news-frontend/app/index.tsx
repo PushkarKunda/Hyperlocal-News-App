@@ -77,9 +77,11 @@ export default function SplashScreen() {
 
     // 4. Authentication state check and routing after delay
     const timer = setTimeout(() => {
-      const isAuthenticated = useAuthStore.getState().isAuthenticated;
-      if (isAuthenticated) {
+      const { isAuthenticated, isOnboarded } = useAuthStore.getState();
+      if (isAuthenticated && isOnboarded) {
         router.replace('/(tabs)');
+      } else if (isAuthenticated) {
+        router.replace('/(onboarding)/complete');
       } else {
         router.replace('/(onboarding)/language');
       }

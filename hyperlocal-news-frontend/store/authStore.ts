@@ -13,12 +13,14 @@ export interface User {
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  isOnboarded: boolean;
   isLoading: boolean;
   sendOtp: (phoneNumber: string) => Promise<boolean>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => void;
   updateProfile: (name: string, avatar?: string) => void;
+  completeOnboarding: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -26,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      isOnboarded: false,
       isLoading: false,
 
       sendOtp: async (phoneNumber: string) => {
@@ -63,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
             isGuest: true,
           },
           isAuthenticated: true,
+          isOnboarded: true,
         });
       },
 
@@ -70,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: null,
           isAuthenticated: false,
+          isOnboarded: false,
         });
       },
 
@@ -84,6 +89,10 @@ export const useAuthStore = create<AuthState>()(
             },
           };
         });
+      },
+
+      completeOnboarding: () => {
+        set({ isOnboarded: true });
       },
     }),
     {

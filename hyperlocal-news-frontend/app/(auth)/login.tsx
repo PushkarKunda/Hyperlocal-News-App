@@ -16,21 +16,22 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
 const COUNTRY_CODES = [
-  { code: '+1', country: 'US', flag: '🇺🇸' },
   { code: '+91', country: 'IN', flag: '🇮🇳' },
+  { code: '+1', country: 'US', flag: '🇺🇸' },
   { code: '+44', country: 'UK', flag: '🇬🇧' },
   { code: '+61', country: 'AU', flag: '🇦🇺' },
 ];
 
 export default function LoginScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { sendOtp, loginAsGuest } = useAuthStore();
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -44,7 +45,7 @@ export default function LoginScreen() {
   const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
 
   // Handles phone number input and formats to (555) 000-0000
-  const handlePhoneChange = (text: string) => {
+  const handlePhoneChange = (text: string, country = selectedCountry) => {
     const cleaned = text.replace(/\D/g, '');
     
     if (cleaned.length === 0) {
@@ -53,12 +54,24 @@ export default function LoginScreen() {
     }
     
     let formatted = '';
-    if (cleaned.length <= 3) {
-      formatted = `(${cleaned}`;
-    } else if (cleaned.length <= 6) {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    if (country.code === '+91') {
+      // Indian format: XXXXX XXXXX (10 digits)
+      const limited = cleaned.slice(0, 10);
+      if (limited.length <= 5) {
+        formatted = limited;
+      } else {
+        formatted = `${limited.slice(0, 5)} ${limited.slice(5)}`;
+      }
     } else {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+      // US and other formats: (XXX) XXX-XXXX (10 digits)
+      const limited = cleaned.slice(0, 10);
+      if (limited.length <= 3) {
+        formatted = `(${limited}`;
+      } else if (limited.length <= 6) {
+        formatted = `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+      } else {
+        formatted = `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+      }
     }
     
     setPhoneNumber(formatted);
@@ -121,7 +134,10 @@ export default function LoginScreen() {
 
   const handleGuestLogin = () => {
     loginAsGuest();
-    router.replace('/(tabs)');
+    (navigation as any).reset({
+      index: 0,
+      routes: [{ name: '(tabs)' }],
+    });
   };
 
   const handleBack = () => {
@@ -222,12 +238,12 @@ export default function LoginScreen() {
                 <View style={styles.phoneInputContainer}>
                   <TextInput
                     style={styles.phoneInput}
-                    placeholder="(555) 000-0000"
+                    placeholder={selectedCountry.code === '+91' ? '98765 43210' : '(555) 000-0000'}
                     placeholderTextColor="#C7C4D7"
                     keyboardType="phone-pad"
-                    maxLength={14} // (XXX) XXX-XXXX is 14 characters
+                    maxLength={selectedCountry.code === '+91' ? 11 : 14}
                     value={phoneNumber}
-                    onChangeText={handlePhoneChange}
+                    onChangeText={(text) => handlePhoneChange(text)}
                   />
                 </View>
               </View>
@@ -250,6 +266,7 @@ export default function LoginScreen() {
                       onPress={() => {
                         setSelectedCountry(country);
                         toggleDropdown(false);
+                        handlePhoneChange(phoneNumber, country);
                       }}
                     >
                       <Text style={styles.countryOptionText}>

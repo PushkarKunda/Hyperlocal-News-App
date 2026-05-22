@@ -7,6 +7,7 @@ import {
   Dimensions,
   Easing,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -39,6 +40,13 @@ export default function FeedSetupLoaderScreen() {
   const skeletonPulse = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
+    const onBackPress = () => {
+      // Prevent user from going back during the critical feed setup loading process
+      return true;
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
     // 1. Progress Bar filling animation (3.5 seconds)
     Animated.timing(progressAnim, {
       toValue: 1,
@@ -160,7 +168,7 @@ export default function FeedSetupLoaderScreen() {
         }),
       ])
     ).start();
-
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
   }, []);
 
   // Interpolations
@@ -259,7 +267,7 @@ export default function FeedSetupLoaderScreen() {
           </View>
 
           <View style={styles.indicatorSubRow}>
-            <Text style={styles.finalizingText}>FINALIZING YOUR AURA</Text>
+            <Text style={styles.finalizingText}>FINALIZING YOUR HYPERLOCAL</Text>
             <View style={styles.dotRow}>
               <Animated.View style={[styles.loadingDot, { opacity: dot1Opacity }]} />
               <Animated.View style={[styles.loadingDot, { opacity: dot2Opacity }]} />

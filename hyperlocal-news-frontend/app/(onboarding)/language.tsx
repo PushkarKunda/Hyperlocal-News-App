@@ -43,10 +43,10 @@ function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.96,
+      toValue: 0.94,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -54,35 +54,36 @@ function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+    >
+      <Animated.View
         style={[
           styles.languageCard,
           isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
+          { transform: [{ scale }] },
         ]}
       >
-        <Text style={styles.languageName}>{name}</Text>
-        
+        <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>{name}</Text>
+
         <View
           style={[
             styles.radioOuter,
             isSelected ? styles.radioOuterSelected : styles.radioOuterUnselected,
           ]}
         >
-          {isSelected && <View style={styles.radioInner} />}
+          {isSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -96,10 +97,10 @@ export default function LanguageScreen() {
 
   const handleContinuePressIn = () => {
     Animated.spring(buttonScale, {
-      toValue: 0.96,
+      toValue: 0.95,
       useNativeDriver: true,
-      tension: 100,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -107,8 +108,8 @@ export default function LanguageScreen() {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 100,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -134,8 +135,8 @@ export default function LanguageScreen() {
           <Ionicons name="arrow-back" size={24} color="#0B1C30" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Aura News</Text>
-        
+        <Text style={styles.headerTitle}>HyperLocal</Text>
+
         <View style={styles.headerSpacer} />
       </View>
 
@@ -272,28 +273,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 20,
     paddingHorizontal: 26,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
-    shadowColor: '#3F3F46',
+    shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 2,
   },
   languageCardSelected: {
-    backgroundColor: 'rgba(70, 72, 212, 0.04)',
-    borderColor: 'rgba(70, 72, 212, 0.20)',
+    backgroundColor: '#EAEBFE',
+    borderColor: '#4648D4',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
   },
   languageCardUnselected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.70)',
-    borderColor: 'transparent',
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
   },
   languageName: {
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#0B1C30',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_500Medium',
     lineHeight: 28,
+  },
+  languageNameSelected: {
+    color: '#4648D4',
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   radioOuter: {
     width: 24,
@@ -309,12 +320,6 @@ const styles = StyleSheet.create({
   },
   radioOuterUnselected: {
     borderColor: '#C7C4D7',
-  },
-  radioInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
   },
   footer: {
     paddingHorizontal: 20,

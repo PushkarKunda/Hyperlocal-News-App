@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dateMonth: {
-    color: '#6567F1',
+    color: '#4648D4',
     fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Inter_700Bold',

@@ -76,7 +76,7 @@ export default function ArticlesScreen() {
       <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         {/* Decorative Top Gradient Glow */}
         <LinearGradient
-          colors={['rgba(101, 103, 241, 0.15)', 'rgba(101, 103, 241, 0)']}
+          colors={['rgba(70, 72, 212, 0.15)', 'rgba(70, 72, 212, 0)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradientGlow}
@@ -90,7 +90,6 @@ export default function ArticlesScreen() {
               style={[styles.headerIconButton, { backgroundColor: colors.primaryLight }]}
               onPress={resetArticles}
               activeOpacity={0.7}
-              title="Reset feed"
             >
               <Ionicons name="refresh" size={20} color={colors.primary} />
             </TouchableOpacity>
@@ -578,7 +577,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
-    tracking: -0.5,
+    letterSpacing: -0.5,
   },
   headerRightEmpty: {
     flexDirection: 'row',
@@ -590,11 +589,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.15)',
   },
   mainContentEmpty: {
     flex: 1,
@@ -621,7 +617,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: 'rgba(101, 103, 241, 0.08)',
+    backgroundColor: 'rgba(70, 72, 212, 0.08)',
   },
   centerIconWrapper: {
     justifyContent: 'center',
@@ -689,7 +685,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#6567F1',
+    shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

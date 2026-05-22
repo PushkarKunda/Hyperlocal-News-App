@@ -119,7 +119,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
       label: 'Bookmarks',
       icon: 'bookmark-outline',
       activeIcon: 'bookmark',
-      route: '/bookmarks',
+      route: '/menu-bookmarks',
     },
     {
       id: 'notifications',
@@ -341,7 +341,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
 
             {/* Footer Brand Logo & Version Info */}
             <View style={styles.footer}>
-              <Text style={styles.footerBrand}>Aura News</Text>
+              <Text style={styles.footerBrand}>HyperLocal</Text>
               <Text style={styles.footerVersion}>VERSION 2.4.0</Text>
             </View>
           </ScrollView>
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: '#6063EE',
+    borderColor: '#4648D4',
     padding: 2,
     backgroundColor: 'transparent',
     justifyContent: 'center',

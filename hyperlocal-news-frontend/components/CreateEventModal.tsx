@@ -227,7 +227,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                     activeOpacity={0.7}
                   >
                     <View style={styles.uploadIconWrapper}>
-                      <Ionicons name="image-outline" size={24} color="#6764F2" />
+                      <Ionicons name="image-outline" size={24} color="#4648D4" />
                     </View>
                     <Text style={styles.uploadCardMainText}>Tap to upload image</Text>
                     <Text style={styles.uploadCardSubText}>Recommended size: 1200x675px</Text>
@@ -432,7 +432,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                         {item}
                       </Text>
                       {(pickerType === 'category' ? category : neighborhood) === item ? (
-                        <Ionicons name="checkmark-circle" size={20} color="#6764F2" />
+                        <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
                       ) : null}
                     </TouchableOpacity>
                   ))}
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(103,100,242,0.1)',
+    backgroundColor: 'rgba(70, 72, 212, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   uploadCardMainText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6764F2',
+    color: '#4648D4',
     fontFamily: 'Inter_600SemiBold',
   },
   uploadCardSubText: {
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   presetHeading: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#4648D4',
     fontFamily: 'Inter_600SemiBold',
   },
   presetsScroll: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   presetCardActive: {
-    borderColor: '#6764F2',
+    borderColor: '#4648D4',
   },
   presetImage: {
     width: '100%',
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   submitButton: {
-    backgroundColor: '#6764F2',
+    backgroundColor: '#4648D4',
     borderRadius: 24,
     paddingVertical: 16,
     alignItems: 'center',
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   pickerOptionRowActive: {
-    backgroundColor: 'rgba(103, 100, 242, 0.05)',
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
   },
   pickerOptionLabel: {
     fontSize: 15,
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
   },
   pickerOptionLabelActive: {
-    color: '#6764F2',
+    color: '#4648D4',
     fontWeight: '600',
   },
 });

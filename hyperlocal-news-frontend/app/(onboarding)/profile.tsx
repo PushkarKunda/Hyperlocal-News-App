@@ -11,9 +11,11 @@ import {
   Animated,
   Dimensions,
   Platform,
-  KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Pressable,
+  BackHandler,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -31,6 +33,53 @@ const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80', // Male Artistic
   'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80', // Male Business
 ];
+
+interface PresetAvatarProps {
+  url: string;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function PresetAvatar({ url, isSelected, onPress }: PresetAvatarProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+      style={styles.gridAvatarContainer}
+    >
+      <Animated.View
+        style={[
+          styles.gridAvatarWrapper,
+          isSelected && styles.gridAvatarSelected,
+          { transform: [{ scale }] }
+        ]}
+      >
+        <Image source={{ uri: url }} style={styles.gridAvatarImage} />
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -52,6 +101,13 @@ export default function ProfileCompletionScreen() {
   const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
+    const onBackPress = () => {
+      // Prevent user from going back during the profile setup process
+      return true;
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -64,6 +120,8 @@ export default function ProfileCompletionScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
   }, []);
 
   const handleInputFocus = () => {
@@ -102,17 +160,17 @@ export default function ProfileCompletionScreen() {
   };
 
   const selectAvatar = (url: string) => {
-    // Sparkle scale animation on selecting avatar
+    // Crisp pop scale animation on selecting avatar
     Animated.sequence([
       Animated.timing(avatarScale, {
-        toValue: 0.9,
+        toValue: 0.88,
         duration: 80,
         useNativeDriver: true,
       }),
       Animated.spring(avatarScale, {
         toValue: 1,
-        friction: 5,
-        tension: 150,
+        friction: 6,
+        tension: 180,
         useNativeDriver: true,
       }),
     ]).start();
@@ -121,12 +179,39 @@ export default function ProfileCompletionScreen() {
     closeAvatarPicker();
   };
 
-  const animateButton = (toValue: number) => {
-    Animated.spring(buttonScale, {
-      toValue,
+  const handleAvatarPressIn = () => {
+    Animated.spring(avatarScale, {
+      toValue: 0.94,
       useNativeDriver: true,
-      tension: 100,
-      friction: 8,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handleAvatarPressOut = () => {
+    Animated.spring(avatarScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handleButtonPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.94,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handleButtonPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -146,7 +231,7 @@ export default function ProfileCompletionScreen() {
   // Intercepting border colors
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', '#4648D4'],
+    outputRange: ['rgba(199, 196, 215, 0.3)', '#4648D4'],
   });
 
   return (
@@ -167,7 +252,7 @@ export default function ProfileCompletionScreen() {
           <Ionicons name="arrow-back" size={24} color="#4648D4" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Aura News</Text>
+        <Text style={styles.headerTitle}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -201,9 +286,10 @@ export default function ProfileCompletionScreen() {
 
               {/* Profile Picture Uploader */}
               <View style={styles.uploaderSection}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
+                <Pressable
                   onPress={openAvatarPicker}
+                  onPressIn={handleAvatarPressIn}
+                  onPressOut={handleAvatarPressOut}
                   style={styles.uploaderTouch}
                 >
                   <Animated.View
@@ -224,7 +310,7 @@ export default function ProfileCompletionScreen() {
                       <Ionicons name="add" size={20} color="#FFFFFF" />
                     </View>
                   </Animated.View>
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={styles.uploadPrompt}>TAP TO UPLOAD</Text>
               </View>
 
@@ -275,22 +361,27 @@ export default function ProfileCompletionScreen() {
 
       {/* Footer - Fixed Bottom Action Area */}
       <View style={styles.footer}>
-        <Animated.View style={[styles.buttonWrapper, { transform: [{ scale: buttonScale }] }]}>
-          <TouchableOpacity
+        <Pressable
+          style={styles.buttonWrapper}
+          disabled={isButtonDisabled}
+          onPress={handleFinishSetup}
+          onPressIn={handleButtonPressIn}
+          onPressOut={handleButtonPressOut}
+        >
+          <Animated.View
             style={[
               styles.finishButton,
-              isButtonDisabled ? styles.finishButtonDisabled : styles.finishButtonActive
+              isButtonDisabled ? styles.finishButtonDisabled : styles.finishButtonActive,
+              { transform: [{ scale: buttonScale }] }
             ]}
-            disabled={isButtonDisabled}
-            onPress={handleFinishSetup}
-            onPressIn={() => animateButton(0.96)}
-            onPressOut={() => animateButton(1)}
-            activeOpacity={0.9}
           >
-            <Text style={styles.finishButtonText}>Finish Setup</Text>
-            <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
+            <Text style={[
+              styles.finishButtonText,
+              isButtonDisabled && { color: 'rgba(118, 117, 134, 0.6)' }
+            ]}>Finish Setup</Text>
+            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? "rgba(118, 117, 134, 0.4)" : "#FFFFFF"} />
+          </Animated.View>
+        </Pressable>
 
         <View style={styles.stepTextContainer}>
           <Text style={styles.stepText}>STEP 3 OF 3</Text>
@@ -321,17 +412,12 @@ export default function ProfileCompletionScreen() {
 
                 <View style={styles.avatarGrid}>
                   {PRESET_AVATARS.map((url, index) => (
-                    <TouchableOpacity
+                    <PresetAvatar
                       key={index}
-                      style={[
-                        styles.gridAvatarWrapper,
-                        selectedAvatar === url && styles.gridAvatarSelected
-                      ]}
+                      url={url}
+                      isSelected={selectedAvatar === url}
                       onPress={() => selectAvatar(url)}
-                      activeOpacity={0.8}
-                    >
-                      <Image source={{ uri: url }} style={styles.gridAvatarImage} />
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -462,16 +548,16 @@ const styles = StyleSheet.create({
     borderRadius: 64,
     borderWidth: 4,
     borderColor: '#FFFFFF',
-    backgroundColor: '#DCE9FF',
+    backgroundColor: '#E1E0FF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: 'rgb(63, 63, 70)',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.08,
-        shadowRadius: 32,
+        shadowColor: '#4648D4',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
       },
       android: {
         elevation: 8,
@@ -532,15 +618,16 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     height: 56,
-    borderRadius: 12,
-    backgroundColor: '#EFF4FF',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   inputWrapperFocused: {
+    borderColor: '#4648D4',
     backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
@@ -635,7 +722,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   finishButtonDisabled: {
-    backgroundColor: '#A5A6F6',
+    backgroundColor: 'rgba(199, 196, 215, 0.4)',
   },
   finishButtonActive: {
     backgroundColor: '#4648D4',
@@ -722,16 +809,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 28,
   },
-  gridAvatarWrapper: {
+  gridAvatarContainer: {
     width: (width - 48 - 32) / 3,
     aspectRatio: 1,
+  },
+  gridAvatarWrapper: {
+    flex: 1,
     borderRadius: 999,
     borderWidth: 3,
-    borderColor: 'transparent',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
     overflow: 'hidden',
   },
   gridAvatarSelected: {
     borderColor: '#4648D4',
+    borderWidth: 4,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   gridAvatarImage: {
     width: '100%',

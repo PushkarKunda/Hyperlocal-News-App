@@ -23,6 +23,113 @@ import { useAuthStore } from '@/store/authStore';
 const { width } = Dimensions.get('window');
 const OTP_LENGTH = 6;
 
+interface ResendTimerProps {
+  onResend: () => Promise<boolean>;
+}
+
+const ResendTimer = React.memo(({ onResend }: ResendTimerProps) => {
+  const [timer, setTimer] = useState(59);
+  const [isResending, setIsResending] = useState(false);
+  const timerOpacity = useRef(new Animated.Value(0)).current;
+
+  // Soft fade-in for resend timer on mount
+  useEffect(() => {
+    Animated.timing(timerOpacity, {
+      toValue: 1,
+      duration: 500,
+      delay: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // Timer countdown
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [timer]);
+
+  const handleResendPress = async () => {
+    if (timer > 0 || isResending) return;
+    setIsResending(true);
+    const success = await onResend();
+    setIsResending(false);
+    if (success) {
+      setTimer(59);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <Animated.View style={[styles.timerContainer, { opacity: timerOpacity }]}>
+      <Text style={styles.timerQuestion}>Didn't receive the code?</Text>
+      <TouchableOpacity
+        onPress={handleResendPress}
+        disabled={timer > 0 || isResending}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.timerButtonText, (timer > 0 || isResending) && styles.timerDisabled]}>
+          {isResending ? 'Sending...' : `Resend Code ${timer > 0 ? `(${formatTime(timer)})` : ''}`}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+const SecurityBadge = React.memo(() => {
+  const badgeSlideY = useRef(new Animated.Value(40)).current;
+  const badgeOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(badgeSlideY, {
+        toValue: 0,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(badgeOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.badgeContainer,
+        {
+          opacity: badgeOpacity,
+          transform: [{ translateY: badgeSlideY }]
+        }
+      ]}
+    >
+      <View style={styles.securityBadge}>
+        <View style={styles.badgeIconContainer}>
+          <Ionicons name="shield-checkmark" size={20} color="#0B1C30" />
+        </View>
+        <View style={styles.badgeTextContainer}>
+          <Text style={styles.badgeTitle}>Secure Verification</Text>
+          <Text style={styles.badgeSubtitle}>
+            Your data is protected with 256-bit encryption
+          </Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+});
+
 export default function VerifyOTPScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -44,7 +151,6 @@ export default function VerifyOTPScreen() {
   const { verifyOtp, sendOtp } = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
-  const [timer, setTimer] = useState(59);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
@@ -52,46 +158,6 @@ export default function VerifyOTPScreen() {
   
   // Animated values
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const badgeSlideY = useRef(new Animated.Value(40)).current;
-  const badgeOpacity = useRef(new Animated.Value(0)).current;
-  const timerOpacity = useRef(new Animated.Value(0)).current;
-
-  // Timer countdown
-  useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [timer]);
-
-  // Entrance animations for security badge and timer fade-in
-  useEffect(() => {
-    // Slide up security badge
-    Animated.parallel([
-      Animated.timing(badgeSlideY, {
-        toValue: 0,
-        duration: 600,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(badgeOpacity, {
-        toValue: 1,
-        duration: 600,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Soft fade-in for resend timer
-    Animated.timing(timerOpacity, {
-      toValue: 1,
-      duration: 500,
-      delay: 400,
-      useNativeDriver: true,
-    }).start();
-  }, []);
 
   const handleOtpChange = (value: string, index: number) => {
     const cleaned = value.replace(/\D/g, '');
@@ -167,32 +233,26 @@ export default function VerifyOTPScreen() {
     }
   };
 
-  const handleResend = async () => {
-    if (timer > 0) return;
-    
+  const handleResend = async (): Promise<boolean> => {
     setIsLoading(true);
     try {
       const success = await sendOtp(rawPhone);
       if (success) {
-        setTimer(59);
         setOtp(Array(OTP_LENGTH).fill(''));
         inputRefs.current[0]?.focus();
         setFocusedIndex(0);
         Alert.alert('Code Resent', 'A new 6-digit verification code has been sent.');
+        return true;
       } else {
         Alert.alert('Error', 'Failed to resend code. Please try again.');
+        return false;
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred.');
+      return false;
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -273,18 +333,7 @@ export default function VerifyOTPScreen() {
               </View>
 
               {/* Resend & Timer */}
-              <Animated.View style={[styles.timerContainer, { opacity: timerOpacity }]}>
-                <Text style={styles.timerQuestion}>Didn't receive the code?</Text>
-                <TouchableOpacity
-                  onPress={handleResend}
-                  disabled={timer > 0}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.timerButtonText, timer > 0 && styles.timerDisabled]}>
-                    Resend Code {timer > 0 ? `(${formatTime(timer)})` : ''}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
+              <ResendTimer onResend={handleResend} />
             </View>
 
             {/* Verify Button Action */}
@@ -311,27 +360,7 @@ export default function VerifyOTPScreen() {
             </View>
 
             {/* Slide-in Security Badge */}
-            <Animated.View
-              style={[
-                styles.badgeContainer,
-                {
-                  opacity: badgeOpacity,
-                  transform: [{ translateY: badgeSlideY }]
-                }
-              ]}
-            >
-              <View style={styles.securityBadge}>
-                <View style={styles.badgeIconContainer}>
-                  <Ionicons name="shield-checkmark" size={20} color="#0B1C30" />
-                </View>
-                <View style={styles.badgeTextContainer}>
-                  <Text style={styles.badgeTitle}>Secure Verification</Text>
-                  <Text style={styles.badgeSubtitle}>
-                    Your data is protected with 256-bit encryption
-                  </Text>
-                </View>
-              </View>
-            </Animated.View>
+            <SecurityBadge />
 
             {/* Footer Terms */}
             <View style={styles.footer}>

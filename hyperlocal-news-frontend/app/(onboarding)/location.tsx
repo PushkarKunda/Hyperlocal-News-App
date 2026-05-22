@@ -55,10 +55,10 @@ function RegionCard({ name, flagImage, isAllRegions, isSelected, onPress }: Regi
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.95,
+      toValue: 0.94,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -66,22 +66,24 @@ function RegionCard({ name, flagImage, isAllRegions, isSelected, onPress }: Regi
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
   return (
-    <Animated.View style={[styles.regionCardContainer, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+      style={styles.regionCardContainer}
+    >
+      <Animated.View
         style={[
           styles.regionCard,
           isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
-          isAllRegions && styles.regionCardAll,
+          isAllRegions && !isSelected && styles.regionCardAll,
+          { transform: [{ scale }] },
         ]}
       >
         {isAllRegions ? (
@@ -96,8 +98,8 @@ function RegionCard({ name, flagImage, isAllRegions, isSelected, onPress }: Regi
           </View>
         )}
         <Text style={[styles.regionName, isSelected && styles.regionNameSelected]}>{name}</Text>
-      </TouchableOpacity>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -134,10 +136,10 @@ export default function LocationScreen() {
 
   const handleContinuePressIn = () => {
     Animated.spring(buttonScale, {
-      toValue: 0.96,
+      toValue: 0.95,
       useNativeDriver: true,
-      tension: 100,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -145,17 +147,17 @@ export default function LocationScreen() {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 100,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
   const handleGpsPressIn = () => {
     Animated.spring(gpsScale, {
-      toValue: 0.96,
+      toValue: 0.95,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -163,8 +165,8 @@ export default function LocationScreen() {
     Animated.spring(gpsScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 120,
-      friction: 8,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -191,7 +193,7 @@ export default function LocationScreen() {
   // Interpolate search border colors
   const searchBorderColor = searchBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', '#4648D4'],
+    outputRange: ['rgba(199, 196, 215, 0.5)', '#4648D4'],
   });
 
   return (
@@ -256,18 +258,16 @@ export default function LocationScreen() {
           </Animated.View>
 
           {/* GPS Button */}
-          <Animated.View style={{ transform: [{ scale: gpsScale }] }}>
-            <TouchableOpacity
-              style={styles.gpsButton}
-              onPress={handleUseCurrentLocation}
-              onPressIn={handleGpsPressIn}
-              onPressOut={handleGpsPressOut}
-              activeOpacity={0.9}
-            >
+          <Pressable
+            onPress={handleUseCurrentLocation}
+            onPressIn={handleGpsPressIn}
+            onPressOut={handleGpsPressOut}
+          >
+            <Animated.View style={[styles.gpsButton, { transform: [{ scale: gpsScale }] }]}>
               <Ionicons name="locate-outline" size={20} color="#4648D4" />
               <Text style={styles.gpsButtonText}>Use current location</Text>
-            </TouchableOpacity>
-          </Animated.View>
+            </Animated.View>
+          </Pressable>
         </View>
 
         {/* Popular Regions Bento Grid Section */}
@@ -392,16 +392,16 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF4FF',
+    backgroundColor: '#FFFFFF',
     height: 56,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   searchIcon: {
     marginRight: 12,
@@ -417,17 +417,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DCE9FF',
+    backgroundColor: 'rgba(70, 72, 212, 0.08)',
     height: 56,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(70, 72, 212, 0.15)',
   },
   gpsButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#4648D4',
     fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
   popularSection: {
     gap: 16,
@@ -455,44 +457,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 2,
-    shadowColor: '#3F3F46',
+    borderStyle: 'solid',
+    shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 2,
   },
   regionCardSelected: {
-    backgroundColor: 'rgba(70, 72, 212, 0.04)',
-    borderColor: 'rgba(70, 72, 212, 0.20)',
+    backgroundColor: '#E6E7FB',
+    borderColor: '#4648D4',
+    borderStyle: 'solid',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
   },
   regionCardUnselected: {
     backgroundColor: '#FFFFFF',
-    borderColor: 'transparent',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
+    borderStyle: 'solid',
   },
   regionCardAll: {
-    backgroundColor: '#EFF4FF',
-    borderColor: '#C7C4D7',
+    backgroundColor: '#F4F5FC',
+    borderColor: 'rgba(199, 196, 215, 0.5)',
     borderStyle: 'dashed',
   },
   flagCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    width: 52,
+    height: 52,
+    borderRadius: 40,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    shadowColor: '#DCE9FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 2,
+    marginBottom: 10,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E6E7FB',
   },
   flagCircleSelected: {
-    shadowColor: 'rgba(70, 72, 212, 0.4)',
+    borderColor: '#4648D4',
+    backgroundColor: '#E1E0FF',
+    shadowOpacity: 0.15,
   },
   flagImage: {
     width: '100%',
@@ -500,15 +514,17 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   regionName: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#0B1C30',
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 0.6,
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.4,
     textAlign: 'center',
   },
   regionNameSelected: {
     color: '#4648D4',
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   footer: {
     paddingHorizontal: 20,

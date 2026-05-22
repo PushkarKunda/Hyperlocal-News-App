@@ -93,8 +93,8 @@ export default function NotificationsScreen() {
         return {
           name: 'bar-chart-2',
           lib: 'Feather',
-          bg: '#DBEAFE',
-          iconColor: '#3B82F6',
+          bg: colors.primaryLight,
+          iconColor: colors.primary,
         };
       case 'reminder':
         return {

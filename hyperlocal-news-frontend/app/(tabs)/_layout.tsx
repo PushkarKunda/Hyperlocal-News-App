@@ -1,12 +1,37 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useColorScheme, View, StyleSheet } from 'react-native';
+import { useColorScheme, View, StyleSheet, BackHandler } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
+import { useEffect } from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const onBackPress = () => {
+      // Intercept the physical back button press on Android when the user is on the main tabs screens
+      // to exit the app instead of popping the stack back into onboarding screens in history.
+      const cleanPath = pathname.replace(/^\/\(tabs\)/, '') || '/';
+      if (
+        cleanPath === '/' ||
+        cleanPath === '/shorts' ||
+        cleanPath === '/local' ||
+        cleanPath === '/discover' ||
+        cleanPath === '/profile' ||
+        cleanPath === '/menu-bookmarks'
+      ) {
+        BackHandler.exitApp();
+        return true; // Prevent default pop behavior
+      }
+      return false; // Allow standard backward pop for nested screens
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+  }, [pathname]);
 
   return (
     <Tabs
@@ -70,6 +95,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="create-article"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="menu-bookmarks"
         options={{
           href: null,
         }}

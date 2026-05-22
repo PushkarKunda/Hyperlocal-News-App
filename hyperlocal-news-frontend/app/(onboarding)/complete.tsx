@@ -6,12 +6,14 @@ import {
   useColorScheme,
   Pressable,
   Animated,
+  BackHandler,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAuthStore } from '@/store/authStore';
 
 interface SummaryItem {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -23,6 +25,8 @@ export default function CompleteScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const navigation = useNavigation();
+  const { completeOnboarding } = useAuthStore();
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -38,6 +42,15 @@ export default function CompleteScreen() {
   ];
 
   useEffect(() => {
+    const onBackPress = () => {
+      // Once onboarding is complete, pressing physical back button should exit the app
+      // instead of going back to previous onboarding screens.
+      BackHandler.exitApp();
+      return true;
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
     // Staggered animations
     Animated.sequence([
       Animated.spring(scaleAnim, {
@@ -59,12 +72,16 @@ export default function CompleteScreen() {
         }),
       ]),
     ]).start();
+
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
   }, []);
 
   const handlePressIn = () => {
     Animated.spring(buttonScale, {
-      toValue: 0.98,
+      toValue: 0.94,
       useNativeDriver: true,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
@@ -72,11 +89,17 @@ export default function CompleteScreen() {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
   const handleStartReading = () => {
-    router.replace('/(tabs)');
+    completeOnboarding();
+    (navigation as any).reset({
+      index: 0,
+      routes: [{ name: '(tabs)' }],
+    });
   };
 
   return (
@@ -141,8 +164,6 @@ export default function CompleteScreen() {
         style={[
           styles.summaryCard,
           {
-            backgroundColor: colors.background,
-            borderColor: colors.border,
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           },
@@ -154,10 +175,10 @@ export default function CompleteScreen() {
             style={[
               styles.summaryRow,
               index < summaryItems.length - 1 && styles.summaryRowBorder,
-              index < summaryItems.length - 1 && { borderBottomColor: colors.divider },
+              index < summaryItems.length - 1 && { borderBottomColor: 'rgba(70, 72, 212, 0.1)' },
             ]}
           >
-            <View style={[styles.summaryIcon, { backgroundColor: colors.surface }]}>
+            <View style={styles.summaryIcon}>
               <MaterialIcons name={item.icon} size={20} color={colors.primary} />
             </View>
             <View style={styles.summaryText}>
@@ -177,20 +198,22 @@ export default function CompleteScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Animated.View style={{ transform: [{ scale: buttonScale }], width: '100%' }}>
-          <Pressable
+        <Pressable
+          style={{ width: '100%' }}
+          onPress={handleStartReading}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <Animated.View
             style={[
               styles.startButton,
-              { backgroundColor: colors.primary },
+              { backgroundColor: colors.primary, transform: [{ scale: buttonScale }] },
               Shadows.primaryGlow,
             ]}
-            onPress={handleStartReading}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
           >
             <Text style={styles.startButtonText}>Start Reading</Text>
-          </Pressable>
-        </Animated.View>
+          </Animated.View>
+        </Pressable>
 
         <Text style={[styles.versionText, { color: colors.textTertiary }]}>
           HyperLocal News v2.4
@@ -308,8 +331,15 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.xl,
     marginTop: Spacing['2xl'],
     borderRadius: BorderRadius.xl,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderColor: 'rgba(70, 72, 212, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     padding: Spacing.lg,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 3,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -317,16 +347,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   summaryRowBorder: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
   },
   summaryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.lg,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
-    ...Shadows.sm,
+    backgroundColor: 'rgba(70, 72, 212, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.1)',
   },
   summaryText: {
     flex: 1,

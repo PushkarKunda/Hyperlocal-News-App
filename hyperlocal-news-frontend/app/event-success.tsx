@@ -40,7 +40,7 @@ export default function EventSuccessScreen() {
           <View style={[styles.confettiCircle, { backgroundColor: '#FB923C', bottom: 4, right: -40, width: 12, height: 12, borderRadius: 6 }]} />
           
           {/* Purple Pill - Bottom Left */}
-          <View style={[styles.confettiPill, { backgroundColor: isDark ? 'rgba(101, 103, 241, 0.6)' : 'rgba(101, 103, 241, 0.4)', bottom: -28, left: 10, transform: [{ rotate: '-45deg' }] }]} />
+          <View style={[styles.confettiPill, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.6)' : 'rgba(70, 72, 212, 0.4)', bottom: -28, left: 10, transform: [{ rotate: '-45deg' }] }]} />
 
           {/* Main Success Circle */}
           <View style={[styles.successCircleOuter, { backgroundColor: colors.primaryLight }]}>
