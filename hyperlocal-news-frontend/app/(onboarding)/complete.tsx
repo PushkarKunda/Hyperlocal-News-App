@@ -22,7 +22,7 @@ interface SummaryItem {
 }
 
 export default function CompleteScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const navigation = useNavigation();

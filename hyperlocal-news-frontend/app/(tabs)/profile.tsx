@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MenuOptions from '@/components/MenuOptions';
 
 export default function ProfileScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();

@@ -8,14 +8,13 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colorScheme = 'light' as 'light' | 'dark';
+  const colors = Colors[colorScheme];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   
   const { user, logout } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(colorScheme === 'dark');
 
   const handleLogout = () => {
     Alert.alert(
@@ -140,20 +139,6 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionHeader, { color: colors.primary }]}>APPEARANCE</Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             
-            <View style={styles.settingItem}>
-              <View style={styles.settingLabelContainer}>
-                <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
-              </View>
-              <Switch
-                value={darkModeEnabled}
-                onValueChange={setDarkModeEnabled}
-                trackColor={{ false: '#767577', true: '#a3b899' }}
-                thumbColor={darkModeEnabled ? colors.primary : '#f4f3f4'}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
             <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
               <View style={styles.settingLabelContainer}>

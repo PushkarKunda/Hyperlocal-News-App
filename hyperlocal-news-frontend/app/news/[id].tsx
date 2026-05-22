@@ -18,7 +18,7 @@ const { width } = Dimensions.get('window');
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();

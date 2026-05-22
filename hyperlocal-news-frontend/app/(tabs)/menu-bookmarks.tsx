@@ -66,7 +66,7 @@ const CATEGORIES = [
 ];
 
 export default function MenuBookmarksScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();

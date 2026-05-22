@@ -56,7 +56,7 @@ interface CreateArticleModalProps {
 
 export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArticleModalProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
 

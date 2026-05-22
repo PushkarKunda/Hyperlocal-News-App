@@ -12,7 +12,7 @@ import { useArticleStore, ArticleItem } from '@/store/articleStore';
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function ArticlesScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = 'light' as 'light' | 'dark';
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
