@@ -17,6 +17,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useRouter } from 'expo-router';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -70,6 +71,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
 
   // Form State
   const [title, setTitle] = useState('');
@@ -85,8 +87,6 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
   // Dropdown Picker Overlay States
   const [pickerType, setPickerType] = useState<'category' | 'neighborhood' | null>(null);
 
-  // Success Dialog State
-  const [showSuccess, setShowSuccess] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   const resetForm = () => {
@@ -100,7 +100,6 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
     setCategory('');
     setNeighborhood('');
     setValidationError('');
-    setShowSuccess(false);
   };
 
   const handleClose = () => {
@@ -148,22 +147,20 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
     }
 
     setValidationError('');
-    setShowSuccess(true);
-
-    // Auto close and submit after a premium success animation completes
-    setTimeout(() => {
-      onSubmit({
-        title,
-        description,
-        category,
-        locationName,
-        imageUrl: coverImage,
-        date,
-        time,
-        neighborhood,
-      });
-      handleClose();
-    }, 1800);
+    
+    onSubmit({
+      title,
+      description,
+      category,
+      locationName,
+      imageUrl: coverImage,
+      date,
+      time,
+      neighborhood,
+    });
+    
+    handleClose();
+    router.push('/event-success' as any);
   };
 
   return (
@@ -445,22 +442,6 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
           </Modal>
         )}
 
-        {/* Premium Success Notification Dialog */}
-        {showSuccess && (
-          <View style={styles.successWrapper}>
-            <View style={styles.successDialog}>
-              <View style={styles.successIconOuter}>
-                <View style={styles.successIconInner}>
-                  <Ionicons name="checkmark" size={36} color="#FFFFFF" />
-                </View>
-              </View>
-              <Text style={styles.successHeading}>Event Submitted!</Text>
-              <Text style={styles.successSubtext}>
-                Your event has been submitted for review. It will appear at the top of the feed as soon as approval completes.
-              </Text>
-            </View>
-          </View>
-        )}
       </View>
     </Modal>
   );
@@ -816,58 +797,5 @@ const styles = StyleSheet.create({
   pickerOptionLabelActive: {
     color: '#6764F2',
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  successWrapper: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(11, 28, 48, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
-  },
-  successDialog: {
-    backgroundColor: '#FFFFFF',
-    width: screenWidth * 0.82,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  successIconOuter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(103, 100, 242, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  successIconInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#6764F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  successHeading: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  successSubtext: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-    fontFamily: 'Inter_500Medium',
   },
 });
