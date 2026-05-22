@@ -21,9 +21,9 @@ export default function ProfileScreen() {
     router.replace('/login');
   };
 
-  const displayName = 'Julian Alexander';
+  const displayName = user?.name || 'Julian Alexander';
   const displayPhone = user?.phoneNumber || '+1 (555) 012-3456';
-  const avatarUrl = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'; // Generic avatar
+  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'; // Fallback to generic avatar
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>

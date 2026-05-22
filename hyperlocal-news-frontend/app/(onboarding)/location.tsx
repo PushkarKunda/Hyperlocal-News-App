@@ -8,116 +8,96 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  Dimensions,
+  TextInput,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface DropdownOption {
-  label: string;
-  value: string;
+const { width } = Dimensions.get('window');
+
+const US_FLAG = require('../../assets/immersive_feed/us_flag.png');
+const UK_FLAG = require('../../assets/immersive_feed/uk_flag.png');
+const IN_FLAG = require('../../assets/immersive_feed/in_flag.png');
+const CA_FLAG = require('../../assets/immersive_feed/ca_flag.png');
+const AU_FLAG = require('../../assets/immersive_feed/au_flag.png');
+
+interface Region {
+  id: string;
+  name: string;
+  flagImage?: any;
+  isAllRegions?: boolean;
 }
 
-const STATES: DropdownOption[] = [
-  { label: 'Telangana', value: 'telangana' },
-  { label: 'Andhra Pradesh', value: 'andhra' },
-  { label: 'Karnataka', value: 'karnataka' },
-  { label: 'Tamil Nadu', value: 'tamil_nadu' },
+const POPULAR_REGIONS: Region[] = [
+  { id: 'us', name: 'United States', flagImage: US_FLAG },
+  { id: 'uk', name: 'United Kingdom', flagImage: UK_FLAG },
+  { id: 'in', name: 'India', flagImage: IN_FLAG },
+  { id: 'ca', name: 'Canada', flagImage: CA_FLAG },
+  { id: 'au', name: 'Australia', flagImage: AU_FLAG },
+  { id: 'all', name: 'All Regions', isAllRegions: true },
 ];
 
-const DISTRICTS: DropdownOption[] = [
-  { label: 'Hyderabad', value: 'hyderabad' },
-  { label: 'Warangal', value: 'warangal' },
-  { label: 'Nizamabad', value: 'nizamabad' },
-  { label: 'Karimnagar', value: 'karimnagar' },
-];
-
-const CITIES: DropdownOption[] = [
-  { label: 'Kukatpally', value: 'kukatpally' },
-  { label: 'Banjara Hills', value: 'banjara_hills' },
-  { label: 'Gachibowli', value: 'gachibowli' },
-  { label: 'Hitech City', value: 'hitech_city' },
-];
-
-interface SelectFieldProps {
-  label: string;
-  value: string;
-  options: DropdownOption[];
-  onSelect: (value: string) => void;
-  colors: typeof Colors.light;
+interface RegionCardProps {
+  name: string;
+  flagImage?: any;
+  isAllRegions?: boolean;
+  isSelected: boolean;
+  onPress: () => void;
 }
 
-function SelectField({ label, value, options, onSelect, colors }: SelectFieldProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find((opt) => opt.value === value);
+function RegionCard({ name, flagImage, isAllRegions, isSelected, onPress }: RegionCardProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  };
 
   return (
-    <View style={styles.selectContainer}>
-      <Text style={[styles.selectLabel, { color: colors.textTertiary }]}>
-        {label}
-      </Text>
+    <Animated.View style={[styles.regionCardContainer, { transform: [{ scale }] }]}>
       <TouchableOpacity
+        activeOpacity={0.9}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
         style={[
-          styles.selectButton,
-          {
-            backgroundColor: colors.background,
-            borderColor: colors.border,
-          },
+          styles.regionCard,
+          isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
+          isAllRegions && styles.regionCardAll,
         ]}
-        onPress={() => setIsOpen(!isOpen)}
-        activeOpacity={0.7}
       >
-        <Text style={[styles.selectValue, { color: colors.text }]}>
-          {selectedOption?.label || 'Select'}
-        </Text>
-        <MaterialIcons
-          name={isOpen ? 'expand-less' : 'expand-more'}
-          size={24}
-          color={colors.textTertiary}
-        />
+        {isAllRegions ? (
+          <View style={[styles.flagCircle, isSelected && styles.flagCircleSelected]}>
+            <Ionicons name="globe-outline" size={24} color={isSelected ? '#FFFFFF' : '#4648D4'} />
+          </View>
+        ) : (
+          <View style={[styles.flagCircle, isSelected && styles.flagCircleSelected]}>
+            {flagImage && (
+              <Image source={flagImage} style={styles.flagImage} />
+            )}
+          </View>
+        )}
+        <Text style={[styles.regionName, isSelected && styles.regionNameSelected]}>{name}</Text>
       </TouchableOpacity>
-
-      {isOpen && (
-        <View
-          style={[
-            styles.dropdown,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
-            Shadows.md,
-          ]}
-        >
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.dropdownOption,
-                value === option.value && { backgroundColor: colors.primaryLight },
-              ]}
-              onPress={() => {
-                onSelect(option.value);
-                setIsOpen(false);
-              }}
-            >
-              <Text
-                style={[
-                  styles.dropdownOptionText,
-                  { color: colors.text },
-                  value === option.value && { color: colors.primary, fontWeight: '600' },
-                ]}
-              >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -126,348 +106,434 @@ export default function LocationScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
-  const [state, setState] = useState('telangana');
-  const [district, setDistrict] = useState('hyderabad');
-  const [city, setCity] = useState('kukatpally');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('in');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const gpsScale = useRef(new Animated.Value(1)).current;
+  const searchBorderAnim = useRef(new Animated.Value(0)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.98,
-      useNativeDriver: true,
+  const handleSearchFocus = () => {
+    setIsSearchFocused(true);
+    Animated.timing(searchBorderAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: false,
     }).start();
   };
 
-  const handlePressOut = () => {
+  const handleSearchBlur = () => {
+    setIsSearchFocused(false);
+    Animated.timing(searchBorderAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleContinuePressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+  };
+
+  const handleContinuePressOut = () => {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+  };
+
+  const handleGpsPressIn = () => {
+    Animated.spring(gpsScale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  };
+
+  const handleGpsPressOut = () => {
+    Animated.spring(gpsScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
     }).start();
   };
 
   const handleContinue = () => {
-    // Navigate to interests instead of tabs
     router.push('/(onboarding)/interests');
   };
 
   const handleUseCurrentLocation = () => {
-    // Will implement location permission later
-    console.log('Use current location');
+    // Simulate finding current location
+    setSelectedRegion('in');
+    setSearchQuery('Hyderabad, India');
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+  const handleSelectRegion = (regionId: string) => {
+    setSelectedRegion(regionId);
+    const region = POPULAR_REGIONS.find(r => r.id === regionId);
+    if (region && !region.isAllRegions) {
+      setSearchQuery(region.name);
+    } else if (region?.isAllRegions) {
+      setSearchQuery('Global');
+    }
+  };
 
-      {/* Header */}
+  // Interpolate search border colors
+  const searchBorderColor = searchBorderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['transparent', '#4648D4'],
+  });
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+
+      {/* Simulated Background Blur Vectors */}
+      <View style={styles.purpleBlur} />
+      <View style={styles.tealBlur} />
+
+      {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.background }]}
+          style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="arrow-back-ios-new" size={20} color={colors.textSecondary} />
+          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
         </TouchableOpacity>
 
-        <View style={styles.stepIndicatorRight}>
-          <Text style={[styles.stepText, { color: colors.textTertiary }]}>
-            STEP 2 OF 4
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressBarInner,
-                { backgroundColor: colors.background },
-              ]}
-            >
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: colors.primary, width: '50%' },
-                ]}
-              />
-            </View>
-          </View>
-        </View>
+        <Text style={styles.headerTitle}>HyperLocal</Text>
+
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Content */}
+      {/* Main Content Area */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Select Your Location
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Get news from your area delivered straight to your feed.
+        {/* Hero Titles */}
+        <View style={styles.headlineSection}>
+          <Text style={styles.mainTitle}>Where are you?</Text>
+          <Text style={styles.subtitle}>
+            Get news and updates tailored to your region.
           </Text>
         </View>
 
-        {/* Selection Form */}
-        <View style={styles.formSection}>
-          <SelectField
-            label="STATE"
-            value={state}
-            options={STATES}
-            onSelect={setState}
-            colors={colors}
-          />
-
-          <SelectField
-            label="DISTRICT"
-            value={district}
-            options={DISTRICTS}
-            onSelect={setDistrict}
-            colors={colors}
-          />
-
-          <SelectField
-            label="CITY / AREA"
-            value={city}
-            options={CITIES}
-            onSelect={setCity}
-            colors={colors}
-          />
-        </View>
-
-        {/* GPS Button */}
-        <TouchableOpacity
-          style={[styles.gpsButton, { backgroundColor: colors.primaryLight }]}
-          onPress={handleUseCurrentLocation}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="my-location" size={20} color={colors.primary} />
-          <Text style={[styles.gpsButtonText, { color: colors.primary }]}>
-            Use Current Location
-          </Text>
-        </TouchableOpacity>
-
-        {/* Map Illustration */}
-        <View style={styles.mapContainer}>
-          <View style={[styles.mapPlaceholder, { backgroundColor: colors.background }]}>
-            <MaterialIcons name="map" size={48} color={colors.textTertiary} />
-          </View>
-          <LinearGradient
-            colors={[
-              'transparent',
-              colorScheme === 'dark' ? colors.surface : colors.surface,
+        {/* Search Bar & GPS Button */}
+        <View style={styles.searchContainer}>
+          <Animated.View
+            style={[
+              styles.searchBar,
+              {
+                borderColor: searchBorderColor,
+                shadowOpacity: isSearchFocused ? 0.15 : 0.05,
+              }
             ]}
-            style={styles.mapGradient}
-          />
+          >
+            <Ionicons name="search-outline" size={20} color="#767586" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search city or country"
+              placeholderTextColor="#767586"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+            />
+          </Animated.View>
+
+          {/* GPS Button */}
+          <Animated.View style={{ transform: [{ scale: gpsScale }] }}>
+            <TouchableOpacity
+              style={styles.gpsButton}
+              onPress={handleUseCurrentLocation}
+              onPressIn={handleGpsPressIn}
+              onPressOut={handleGpsPressOut}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="locate-outline" size={20} color="#4648D4" />
+              <Text style={styles.gpsButtonText}>Use current location</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {/* Popular Regions Bento Grid Section */}
+        <View style={styles.popularSection}>
+          <Text style={styles.sectionHeader}>POPULAR REGIONS</Text>
+
+          <View style={styles.gridContainer}>
+            {POPULAR_REGIONS.map((region) => (
+              <RegionCard
+                key={region.id}
+                name={region.name}
+                flagImage={region.flagImage}
+                isAllRegions={region.isAllRegions}
+                isSelected={selectedRegion === region.id}
+                onPress={() => handleSelectRegion(region.id)}
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
 
-      {/* Footer */}
+      {/* Bottom Footer Action */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
-            style={[
-              styles.continueButton,
-              { backgroundColor: colors.primary },
-              Shadows.primaryGlow,
-            ]}
+            style={styles.continueButton}
             onPress={handleContinue}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPressIn={handleContinuePressIn}
+            onPressOut={handleContinuePressOut}
           >
-            <Text style={styles.continueButtonText}>Continue</Text>
-            <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
+            <Text style={styles.continueButtonText}>Get Started</Text>
           </Pressable>
         </Animated.View>
-
-        <Text style={[styles.footerNote, { color: colors.textTertiary }]}>
-          You can change your location preferences anytime in settings.
-        </Text>
       </View>
-
-      {/* Home Indicator */}
-      <View style={styles.homeIndicatorContainer}>
-        <View
-          style={[
-            styles.homeIndicator,
-            { backgroundColor: colorScheme === 'dark' ? colors.border : colors.divider },
-          ]}
-        />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FF',
+  },
+  purpleBlur: {
+    position: 'absolute',
+    right: -39,
+    top: -98,
+    width: 156,
+    height: 393.59,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
+    zIndex: -1,
+  },
+  tealBlur: {
+    position: 'absolute',
+    left: -19.5,
+    bottom: -49.19,
+    width: 117,
+    height: 295.19,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(0, 106, 97, 0.05)',
+    zIndex: -1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.full,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  stepIndicatorRight: {
-    alignItems: 'flex-end',
-  },
-  stepText: {
-    fontSize: 11,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: '600',
+    color: '#4648D4',
     fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 1,
-    marginBottom: Spacing.sm,
+    letterSpacing: -0.5,
   },
-  progressBar: {
-    width: 96,
-  },
-  progressBarInner: {
-    height: 6,
-    borderRadius: BorderRadius.full,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: BorderRadius.full,
+  headerSpacer: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
-  titleSection: {
-    marginBottom: Spacing['2xl'],
+  headlineSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+    gap: 8,
   },
-  title: {
-    fontSize: 28,
+  mainTitle: {
+    fontSize: 32,
     fontWeight: '700',
+    color: '#0B1C30',
     fontFamily: 'Inter_700Bold',
-    marginBottom: Spacing.sm,
+    letterSpacing: -0.64,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
+    fontWeight: '400',
+    color: '#464554',
     fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  formSection: {
-    gap: Spacing.md,
+  searchContainer: {
+    gap: 16,
+    marginBottom: 40,
   },
-  selectContainer: {
-    zIndex: 1,
-  },
-  selectLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 1,
-    marginBottom: Spacing.xs,
-    marginLeft: 4,
-  },
-  selectButton: {
-    height: 56,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
+    backgroundColor: '#EFF4FF',
+    height: 56,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  selectValue: {
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-  },
-  dropdown: {
-    position: 'absolute',
-    top: 80,
-    left: 0,
-    right: 0,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    zIndex: 100,
-    overflow: 'hidden',
-  },
-  dropdownOption: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-  },
-  dropdownOptionText: {
-    fontSize: 16,
+    color: '#0B1C30',
     fontFamily: 'Inter_400Regular',
   },
   gpsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.xl,
+    backgroundColor: '#DCE9FF',
+    height: 56,
+    borderRadius: 12,
+    gap: 8,
   },
   gpsButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
+    color: '#4648D4',
     fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.6,
   },
-  mapContainer: {
-    height: 128,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.lg,
+  popularSection: {
+    gap: 16,
   },
-  mapPlaceholder: {
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#767586',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 1.2,
+    textAlign: 'center',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  regionCardContainer: {
+    width: '47.5%',
+    height: 120,
+  },
+  regionCard: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    opacity: 0.6,
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    shadowColor: '#3F3F46',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  mapGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 64,
+  regionCardSelected: {
+    backgroundColor: 'rgba(70, 72, 212, 0.04)',
+    borderColor: 'rgba(70, 72, 212, 0.20)',
+  },
+  regionCardUnselected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: 'transparent',
+  },
+  regionCardAll: {
+    backgroundColor: '#EFF4FF',
+    borderColor: '#C7C4D7',
+    borderStyle: 'dashed',
+  },
+  flagCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#DCE9FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  flagCircleSelected: {
+    shadowColor: 'rgba(70, 72, 212, 0.4)',
+  },
+  flagImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  regionName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0B1C30',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.6,
+    textAlign: 'center',
+  },
+  regionNameSelected: {
+    color: '#4648D4',
   },
   footer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 16,
+    backgroundColor: '#F8F9FF',
   },
   continueButton: {
-    height: 64,
-    borderRadius: BorderRadius.xl,
+    height: 56,
+    borderRadius: 9999,
+    backgroundColor: '#4648D4',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.sm,
+    elevation: 4,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-  },
-  footerNote: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-  },
-  homeIndicatorContainer: {
-    paddingBottom: Spacing.xs,
-    alignItems: 'center',
-  },
-  homeIndicator: {
-    width: 128,
-    height: 4,
-    borderRadius: 100,
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    lineHeight: 28,
   },
 });

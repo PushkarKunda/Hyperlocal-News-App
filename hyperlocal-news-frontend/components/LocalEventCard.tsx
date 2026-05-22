@@ -42,7 +42,7 @@ export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProp
       </View>
 
       <View style={[styles.mapContainer, { backgroundColor: '#e2e8f0' }]}>
-        <Image source={{ uri: item.mapImageUrl }} style={styles.mapImage} opacity={0.6} />
+        <Image source={{ uri: item.mapImageUrl }} style={[styles.mapImage, { opacity: 0.6 }]} />
         <View style={[styles.mapMarker, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
           <MaterialIcons name="location-on" size={14} color="#FFF" />
         </View>

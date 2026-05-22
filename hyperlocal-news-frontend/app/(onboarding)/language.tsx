@@ -8,44 +8,83 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
 
 interface Language {
   id: string;
   name: string;
-  nativeName: string;
-  description: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
 }
 
 const LANGUAGES: Language[] = [
-  {
-    id: 'en',
-    name: 'English',
-    nativeName: '',
-    description: 'Read news in English',
-    icon: 'translate',
-  },
-  {
-    id: 'te',
-    name: 'Telugu',
-    nativeName: 'తెలుగు',
-    description: 'తెలుగులో వార్తలను చదవండి',
-    icon: 'language',
-  },
-  {
-    id: 'hi',
-    name: 'Hindi',
-    nativeName: 'हिंदी',
-    description: 'हिंदी में समाचार पढ़ें',
-    icon: 'public',
-  },
+  { id: 'en', name: 'English' },
+  { id: 'es', name: 'Spanish' },
+  { id: 'fr', name: 'French' },
+  { id: 'de', name: 'German' },
+  { id: 'hi', name: 'Hindi' },
+  { id: 'ja', name: 'Japanese' },
 ];
+
+interface LanguageCardProps {
+  name: string;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        style={[
+          styles.languageCard,
+          isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
+        ]}
+      >
+        <Text style={styles.languageName}>{name}</Text>
+        
+        <View
+          style={[
+            styles.radioOuter,
+            isSelected ? styles.radioOuterSelected : styles.radioOuterUnselected,
+          ]}
+        >
+          {isSelected && <View style={styles.radioInner} />}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function LanguageScreen() {
   const colorScheme = useColorScheme();
@@ -55,17 +94,21 @@ export default function LanguageScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
+  const handleContinuePressIn = () => {
     Animated.spring(buttonScale, {
-      toValue: 0.98,
+      toValue: 0.96,
       useNativeDriver: true,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
-  const handlePressOut = () => {
+  const handleContinuePressOut = () => {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
@@ -74,180 +117,106 @@ export default function LanguageScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-      {/* Status Bar */}
-      <View style={styles.statusBar}>
-        <Text style={[styles.statusTime, { color: colors.text }]}>9:41</Text>
-        <View style={styles.statusIcons}>
-          <MaterialIcons name="signal-cellular-alt" size={14} color={colors.text} />
-          <MaterialIcons name="wifi" size={14} color={colors.text} />
-          <MaterialIcons name="battery-full" size={14} color={colors.text} />
-        </View>
-      </View>
+      {/* Simulated Background Blur Vectors */}
+      <View style={styles.purpleBlur} />
+      <View style={styles.tealBlur} />
 
-      {/* Header */}
+      {/* Header Container */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="arrow-back-ios" size={24} color={colors.textSecondary} />
+          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
         </TouchableOpacity>
 
-        <View style={styles.stepIndicator}>
-          <Text style={[styles.stepText, { color: colors.primary }]}>
-            STEP 1 OF 4
-          </Text>
-          <View style={styles.progressDots}>
-            <View style={[styles.dot, styles.dotActive, { backgroundColor: colors.primary }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-          </View>
-        </View>
-
-        <View style={styles.spacer} />
+        <Text style={styles.headerTitle}>Aura News</Text>
+        
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Content */}
+      {/* Main Content Area */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Choose Your Language
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Select your preferred language for news updates
+        {/* Headline Section */}
+        <View style={styles.headlineSection}>
+          <Text style={styles.mainTitle}>Choose your language</Text>
+          <Text style={styles.subtitle}>
+            Select your preferred language to read stories.
           </Text>
         </View>
 
-        {/* Language Cards */}
+        {/* Language Cards Grid */}
         <View style={styles.languageList}>
-          {LANGUAGES.map((language) => {
-            const isSelected = selectedLanguage === language.id;
-            
-            return (
-              <TouchableOpacity
-                key={language.id}
-                style={[
-                  styles.languageCard,
-                  {
-                    backgroundColor: isSelected ? colors.primaryLight : colors.surface,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setSelectedLanguage(language.id)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.languageIcon,
-                    {
-                      backgroundColor: isSelected ? colors.primary : colors.background,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name={language.icon}
-                    size={24}
-                    color={isSelected ? '#FFF' : colors.textSecondary}
-                  />
-                </View>
-
-                <View style={styles.languageInfo}>
-                  <Text style={[styles.languageName, { color: colors.text }]}>
-                    {language.name}
-                    {language.nativeName ? ` (${language.nativeName})` : ''}
-                  </Text>
-                  <Text style={[styles.languageDesc, { color: colors.textSecondary }]}>
-                    {language.description}
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.radioOuter,
-                    { borderColor: isSelected ? colors.primary : colors.border },
-                  ]}
-                >
-                  {isSelected && (
-                    <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {LANGUAGES.map((language) => (
+            <LanguageCard
+              key={language.id}
+              name={language.name}
+              isSelected={selectedLanguage === language.id}
+              onPress={() => setSelectedLanguage(language.id)}
+            />
+          ))}
         </View>
       </ScrollView>
 
-      {/* Footer */}
+      {/* Bottom Action Footer */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
-            style={[
-              styles.continueButton,
-              { backgroundColor: colors.primary },
-              Shadows.primaryGlow,
-            ]}
+            style={styles.continueButton}
             onPress={handleContinue}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPressIn={handleContinuePressIn}
+            onPressOut={handleContinuePressOut}
           >
             <Text style={styles.continueButtonText}>Continue</Text>
-            <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
+            <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.continueIcon} />
           </Pressable>
         </Animated.View>
-
-        <Text style={[styles.footerNote, { color: colors.textTertiary }]}>
-          You can change your language preferences later in the application settings.
-        </Text>
       </View>
-
-      {/* Home Indicator */}
-      <View style={styles.homeIndicatorContainer}>
-        <View
-          style={[
-            styles.homeIndicator,
-            { backgroundColor: colorScheme === 'dark' ? colors.border : colors.divider },
-          ]}
-        />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FF',
   },
-  statusBar: {
-    height: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
+  purpleBlur: {
+    position: 'absolute',
+    right: -39,
+    top: -98,
+    width: 156,
+    height: 393.59,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
+    zIndex: -1,
   },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  statusIcons: {
-    flexDirection: 'row',
-    gap: 6,
+  tealBlur: {
+    position: 'absolute',
+    left: -19.5,
+    bottom: -49.19,
+    width: 117,
+    height: 295.19,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(0, 106, 97, 0.05)',
+    zIndex: -1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
   },
   backButton: {
     width: 40,
@@ -255,129 +224,126 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  stepIndicator: {
-    alignItems: 'center',
-  },
-  stepText: {
-    fontSize: 11,
+  headerTitle: {
+    fontSize: 32,
     fontWeight: '700',
+    color: '#4648D4',
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-    marginBottom: 4,
+    letterSpacing: -0.8,
   },
-  progressDots: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  dot: {
-    width: 24,
-    height: 4,
-    borderRadius: BorderRadius.full,
-  },
-  dotActive: {
-    // Active styles applied inline
-  },
-  spacer: {
+  headerSpacer: {
     width: 40,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
-  titleSection: {
-    marginBottom: Spacing['2xl'],
+  headlineSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+    gap: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: Spacing.sm,
+  mainTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#0B1C30',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: -0.24,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
+    fontWeight: '400',
+    color: '#464554',
     fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
   },
   languageList: {
-    gap: Spacing.md,
+    gap: 16,
   },
   languageCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.xl,
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 26,
+    borderRadius: 12,
     borderWidth: 2,
+    shadowColor: '#3F3F46',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  languageIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
+  languageCardSelected: {
+    backgroundColor: 'rgba(70, 72, 212, 0.04)',
+    borderColor: 'rgba(70, 72, 212, 0.20)',
   },
-  languageInfo: {
-    flex: 1,
+  languageCardUnselected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.70)',
+    borderColor: 'transparent',
   },
   languageName: {
     fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 2,
-  },
-  languageDesc: {
-    fontSize: 14,
+    fontWeight: '400',
+    color: '#0B1C30',
     fontFamily: 'Inter_400Regular',
+    lineHeight: 28,
   },
   radioOuter: {
     width: 24,
     height: 24,
-    borderRadius: BorderRadius.full,
+    borderRadius: 12,
     borderWidth: 2,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    backgroundColor: '#4648D4',
+    borderColor: '#4648D4',
+  },
+  radioOuterUnselected: {
+    borderColor: '#C7C4D7',
   },
   radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: BorderRadius.full,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
   footer: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 16,
+    backgroundColor: '#F8F9FF',
   },
   continueButton: {
     height: 56,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 12,
+    backgroundColor: '#4648D4',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.sm,
+    elevation: 4,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    lineHeight: 28,
   },
-  footerNote: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    lineHeight: 18,
-  },
-  homeIndicatorContainer: {
-    paddingBottom: Spacing.sm,
-    alignItems: 'center',
-  },
-  homeIndicator: {
-    width: 128,
-    height: 5,
-    borderRadius: 100,
+  continueIcon: {
+    marginLeft: 8,
+    marginTop: 2,
   },
 });

@@ -1,25 +1,31 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, useColorScheme, Animated } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Animated, Easing, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useAuthStore } from '@/store/authStore';
+import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  
-  // Use getState() inside the timeout to ensure we have the fully hydrated state
-  
-  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Intro branding animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const scaleAnim = useRef(new Animated.Value(0.82)).current;
+  const textRevealAnim = useRef(new Animated.Value(0)).current;
+
+  // Infinite spinner rotation
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  // Breathing subtext pulse
+  const pulseAnim = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    // Start animations
+    // 1. Trigger intro branding animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -28,41 +34,80 @@ export default function SplashScreen() {
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        friction: 6,
+        tension: 40,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(() => {
+      // Reveal tagline/subtitle slightly after logo pops in
+      Animated.timing(textRevealAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+    });
 
-    // Progress bar
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 2000,
-      useNativeDriver: false,
-    }).start();
+    // 2. Infinite circular rotation for spinner
+    Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
 
-    // Navigate after delay
+    // 3. Infinite breathing pulse for loading subtitle
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.5,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // 4. Authentication state check and routing after delay
     const timer = setTimeout(() => {
       const isAuthenticated = useAuthStore.getState().isAuthenticated;
       if (isAuthenticated) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/(auth)/login');
+        router.replace('/(onboarding)/language');
       }
-    }, 2500);
+    }, 2800);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const progressWidth = progressAnim.interpolate({
+  // Map 0-1 values to rotational degree
+  const spin = spinAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: ['0deg', '360deg'],
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <LinearGradient
+      colors={['#F8F9FF', '#E5EEFF', '#F0F7FF', '#F8F9FF']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
 
+      {/* Background Decorative Blurs */}
+      <View style={styles.topLeftBlur} />
+      <View style={styles.bottomRightBlur} />
+
+      {/* Main Content Area */}
       <View style={styles.content}>
         <Animated.View 
           style={[
@@ -73,65 +118,61 @@ export default function SplashScreen() {
             },
           ]}
         >
-          {/* Logo */}
-          <View 
-            style={[
-              styles.logoContainer, 
-              { backgroundColor: colors.primaryLight },
-            ]}
-          >
-            <MaterialIcons 
-              name="newspaper" 
-              size={72} 
-              color={colors.primary} 
-            />
+          {/* Logo Card with Scale-up, Fade-in & Shadow */}
+          <View style={styles.logoContainer}>
+            <Ionicons name="cloud-done" size={48} color="#FFFFFF" />
           </View>
 
-          {/* App Name */}
-          <Text style={[styles.appName, { color: colors.text }]}>
-            HyperLocal
-          </Text>
-
-          {/* Tagline */}
-          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Your Local Voice
-          </Text>
+          {/* App Name/Headline */}
+          <Animated.View style={[styles.textContainer, { opacity: textRevealAnim }]}>
+            <Text style={styles.appName}>HyperLocal</Text>
+            <Text style={styles.subtitle}>SECURE SOLUTIONS</Text>
+          </Animated.View>
         </Animated.View>
       </View>
 
-      {/* Footer */}
+      {/* Bottom Loading Indicator Stack */}
       <View style={styles.footer}>
-        <View style={[styles.progressContainer, { backgroundColor: colors.indicator }]}>
-          <Animated.View
-            style={[
-              styles.progressBar,
-              {
-                width: progressWidth,
-                backgroundColor: colors.primary,
-                ...Shadows.glow,
-              },
-            ]}
-          />
+        <View style={styles.spinnerContainer}>
+          <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]}>
+            <View style={styles.spinnerArc} />
+          </Animated.View>
+          
+          <Animated.Text style={[styles.loadingText, { opacity: pulseAnim }]}>
+            INITIALISING SECURITY
+          </Animated.Text>
         </View>
 
-        {/* Home Indicator */}
-        <View 
-          style={[
-            styles.homeIndicator,
-            { 
-              backgroundColor: colorScheme === 'dark' ? '#FFF' : '#000',
-              opacity: colorScheme === 'dark' ? 0.2 : 0.1,
-            },
-          ]}
-        />
+        {/* Minimal iOS/Android home layout spacer */}
+        <View style={styles.homeIndicator} />
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  topLeftBlur: {
+    position: 'absolute',
+    top: -64,
+    left: -64,
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    backgroundColor: 'rgba(70, 72, 212, 0.12)',
+  },
+  bottomRightBlur: {
+    position: 'absolute',
+    bottom: 60,
+    right: -96,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(0, 106, 97, 0.08)',
   },
   content: {
     flex: 1,
@@ -145,44 +186,72 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 96,
     height: 96,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 24,
+    backgroundColor: '#4648D4',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
-    ...Shadows.sm,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  appName: {
-    fontSize: 48,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: Spacing.sm,
-  },
-  tagline: {
-    fontSize: 20,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-  footer: {
-    paddingHorizontal: Spacing['2xl'],
-    paddingBottom: Spacing['2xl'],
+  textContainer: {
     alignItems: 'center',
   },
-  progressContainer: {
-    width: 200,
-    height: 4,
-    borderRadius: BorderRadius.full,
-    overflow: 'hidden',
-    marginBottom: Spacing['2xl'],
+  appName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#4648D4',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.8,
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  progressBar: {
+  subtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#767586',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 1.2,
+    textAlign: 'center',
+  },
+  footer: {
+    paddingBottom: Spacing.xl,
+    alignItems: 'center',
+  },
+  spinnerContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  spinner: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  spinnerArc: {
+    width: '100%',
     height: '100%',
-    borderRadius: BorderRadius.full,
+    borderRadius: 16,
+    borderWidth: 2.5,
+    borderColor: '#4648D4',
+    borderTopColor: 'transparent',
+  },
+  loadingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#464554',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 1.65,
+    textAlign: 'center',
   },
   homeIndicator: {
     width: 134,
     height: 5,
     borderRadius: 100,
-    marginBottom: Spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
 });

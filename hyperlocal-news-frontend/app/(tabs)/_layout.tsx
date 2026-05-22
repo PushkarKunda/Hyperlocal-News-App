@@ -36,6 +36,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={24} color={color} />
           ),
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen

@@ -6,6 +6,8 @@ export interface User {
   id: string;
   phoneNumber?: string;
   isGuest?: boolean;
+  name?: string;
+  avatar?: string;
 }
 
 interface AuthState {
@@ -16,6 +18,7 @@ interface AuthState {
   verifyOtp: (phoneNumber: string, otp: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => void;
+  updateProfile: (name: string, avatar?: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -67,6 +70,19 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: null,
           isAuthenticated: false,
+        });
+      },
+
+      updateProfile: (name: string, avatar?: string) => {
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              name,
+              avatar: avatar || state.user.avatar,
+            },
+          };
         });
       },
     }),
