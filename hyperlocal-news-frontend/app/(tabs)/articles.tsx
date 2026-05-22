@@ -1,70 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, useColorScheme, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, useColorScheme, Share, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useArticleStore, ArticleItem } from '@/store/articleStore';
+import { CreateArticleModal } from '@/components/CreateArticleModal';
 
-interface ArticleItem {
-  id: string;
-  category: string;
-  headline: string;
-  summary: string;
-  sourceName: string;
-  publishedAt: string;
-  views: string;
-  likes: string;
-  readingTime: string;
-  imageUrl: string;
-}
-
-const ARTICLES_DATA: ArticleItem[] = [
-  {
-    id: '1',
-    category: 'BUSINESS',
-    headline: 'Historic Funding: Kukatpally Tech Startups Raise $500M',
-    summary: "In a historic week for the local ecosystem, three homegrown tech startups have announced massive funding rounds. Investors cite the city's growing talent pool and favorable regulatory environment as primary drivers...",
-    sourceName: 'Times of Kukatpally',
-    publishedAt: '2h ago',
-    views: '3.4k views',
-    likes: '1.2k',
-    readingTime: '3 min read',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600',
-  },
-  {
-    id: '2',
-    category: 'ENVIRONMENT',
-    headline: 'Lake Beautification Project Completed Successfully',
-    summary: 'The local municipality has successfully concluded the lake rejuvenation and park development initiative. Over 10 acres of wetlands have been clean-restored with modern walk-paths and flora...',
-    sourceName: 'Local Chronicle',
-    publishedAt: '5h ago',
-    views: '1.8k views',
-    likes: '820',
-    readingTime: '4 min read',
-    imageUrl: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=600',
-  },
-  {
-    id: '3',
-    category: 'LIFESTYLE',
-    headline: "Culinary Gem 'The Spicery' Wins State Award",
-    summary: 'A beloved family-owned eatery in the heart of Kukatpally has clinched the prestigious State Culinary Excellence Award. Known for its traditional preparations, the restaurant was founded in 1985...',
-    sourceName: 'Metro Bulletin',
-    publishedAt: '1d ago',
-    views: '4.2k views',
-    likes: '2.1k',
-    readingTime: '2 min read',
-    imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
-  },
-];
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function ArticlesScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const theme = colorScheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[theme];
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // Zustand Store
+  const { articles, addArticle, deleteArticle, resetArticles } = useArticleStore();
+
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>({
     '1': { count: 1200, liked: false },
     '2': { count: 820, liked: false },
@@ -79,10 +37,9 @@ export default function ArticlesScreen() {
     }, 1200);
   };
 
-  const handleLike = (id: string) => {
+  const handleLike = (id: string, initialLikesCount: number) => {
     setLikesState((prev) => {
-      const item = prev[id];
-      if (!item) return prev;
+      const item = prev[id] || { count: initialLikesCount, liked: false };
       return {
         ...prev,
         [id]: {
@@ -114,31 +71,156 @@ export default function ArticlesScreen() {
     return count.toString();
   };
 
+  const handleCreateArticle = (articleData: {
+    headline: string;
+    summary: string;
+    category: string;
+    sourceName: string;
+    readingTime: string;
+    imageUrl: string;
+  }) => {
+    addArticle(articleData);
+  };
+
+  // Render Figma Empty State
+  const renderEmptyState = () => {
+    return (
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+        {/* Decorative Top Gradient Glow */}
+        <LinearGradient
+          colors={['rgba(101, 103, 241, 0.15)', 'rgba(101, 103, 241, 0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientGlow}
+        />
+
+        {/* Custom Figma Header */}
+        <View style={[styles.headerEmpty, { paddingTop: insets.top }]}>
+          <Text style={[styles.headerTitleEmpty, { color: colors.text }]}>My Articles</Text>
+          <View style={styles.headerRightEmpty}>
+            <TouchableOpacity
+              style={[styles.headerIconButton, { backgroundColor: colors.primaryLight }]}
+              onPress={resetArticles}
+              activeOpacity={0.7}
+              title="Reset feed"
+            >
+              <Ionicons name="refresh" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerIconButton, { backgroundColor: colors.primaryLight, marginLeft: 8 }]}
+              onPress={() => router.push('/settings')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-sharp" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Center Illustration Area */}
+        <View style={styles.mainContentEmpty}>
+          <View style={styles.illustrationContainer}>
+            {/* Outer Abstract Circle */}
+            <View style={[styles.outerCircle, { backgroundColor: colors.primaryLight }]} />
+            {/* Inner Glow Circle */}
+            <View style={styles.innerCircle} />
+
+            {/* Central News Document Outline */}
+            <View style={styles.centerIconWrapper}>
+              <Ionicons name="newspaper-outline" size={48} color={colors.primary} />
+            </View>
+
+            {/* Top-Right Badge: Rotated Plus Box */}
+            <View style={[styles.badgeTopRight, { backgroundColor: colors.primary, transform: [{ rotate: '12deg' }] }]}>
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+            </View>
+
+            {/* Bottom-Left Badge: White Circle with Document Outline */}
+            <View style={[styles.badgeBottomLeft, styles.shadow]}>
+              <Ionicons name="create-outline" size={14} color={colors.primary} />
+            </View>
+          </View>
+
+          {/* Text Stack */}
+          <View style={styles.textStackEmpty}>
+            <Text style={[styles.titleTextEmpty, { color: colors.text }]}>No articles yet</Text>
+            <Text style={[styles.descTextEmpty, { color: colors.textSecondary }]}>
+              Start your reporting journey by{"\n"}creating your first local news{"\n"}article.
+            </Text>
+          </View>
+        </View>
+
+        {/* Bottom CTA Button Area */}
+        <View style={[styles.bottomActionEmpty, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+          <TouchableOpacity
+            style={[styles.ctaButtonEmpty, { backgroundColor: colors.primary }]}
+            onPress={() => setIsCreateModalVisible(true)}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.ctaButtonTextEmpty}>Create First Article</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // If no articles are present, render the empty state
+  if (articles.length === 0) {
+    return (
+      <View style={{ flex: 1 }}>
+        {renderEmptyState()}
+        <CreateArticleModal
+          isVisible={isCreateModalVisible}
+          onClose={() => setIsCreateModalVisible(false)}
+          onSubmit={handleCreateArticle}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      {/* Header */}
+      {/* Feed Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>latest articles</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>My Articles</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.headerIconButton, { backgroundColor: colors.primaryLight, marginRight: 8 }]}
+            onPress={resetArticles}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerIconButton, { backgroundColor: colors.primaryLight }]}
+            onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-sharp" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Articles List */}
       <FlatList
-        data={ARTICLES_DATA}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        data={articles}
+        keyExtractor={(item: ArticleItem) => item.id}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
         refreshing={isRefreshing}
         onRefresh={handleRefresh}
-        renderItem={({ item, index }) => {
-          const likeData = likesState[item.id] || { count: 0, liked: false };
+        renderItem={({ item, index }: { item: ArticleItem; index: number }) => {
+          const initialLikesCount = parseInt(item.likes.replace(/k/, '000').replace(/[^\d]/g, '')) || 0;
+          const likeData = likesState[item.id] || { count: initialLikesCount, liked: false };
           const isBookmarked = bookmarksState[item.id] || false;
 
           // Render vertical card for first/major article, horizontal card for others
@@ -159,14 +241,16 @@ export default function ArticlesScreen() {
                     {item.headline}
                   </Text>
                   <View style={styles.metaRow}>
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.sourceName}</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {item.sourceName}
+                    </Text>
                     <View style={styles.dot} />
                     <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.publishedAt}</Text>
                   </View>
-                  
+
                   {/* Actions Bar inside Horizontal Card */}
                   <View style={styles.miniActions}>
-                    <TouchableOpacity style={styles.miniActionBtn} onPress={() => handleLike(item.id)}>
+                    <TouchableOpacity style={styles.miniActionBtn} onPress={() => handleLike(item.id, initialLikesCount)}>
                       <Ionicons
                         name={likeData.liked ? "heart" : "heart-outline"}
                         size={16}
@@ -182,6 +266,9 @@ export default function ArticlesScreen() {
                         size={16}
                         color={isBookmarked ? colors.primary : colors.textSecondary}
                       />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.miniActionBtn} onPress={() => deleteArticle(item.id)}>
+                      <Ionicons name="trash-outline" size={16} color="#BA1A1A" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -199,7 +286,7 @@ export default function ArticlesScreen() {
             >
               <Image source={{ uri: item.imageUrl }} style={styles.verticalImage} />
               <View style={styles.verticalContent}>
-                
+
                 {/* Meta row: Tag, time, read duration */}
                 <View style={styles.verticalMetaRow}>
                   <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
@@ -232,7 +319,7 @@ export default function ArticlesScreen() {
                 <View style={[styles.actionRow, { borderTopColor: colors.divider }]}>
                   <TouchableOpacity
                     style={styles.actionBtn}
-                    onPress={() => handleLike(item.id)}
+                    onPress={() => handleLike(item.id, initialLikesCount)}
                     activeOpacity={0.7}
                   >
                     <Ionicons
@@ -268,12 +355,37 @@ export default function ArticlesScreen() {
                     <Ionicons name="share-social-outline" size={20} color={colors.textSecondary} />
                     <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Share</Text>
                   </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => deleteArticle(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#BA1A1A" />
+                    <Text style={[styles.actionBtnText, { color: '#BA1A1A' }]}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
 
               </View>
             </TouchableOpacity>
           );
         }}
+      />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => setIsCreateModalVisible(true)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Creation Modal Component */}
+      <CreateArticleModal
+        isVisible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onSubmit={handleCreateArticle}
       />
     </View>
   );
@@ -291,6 +403,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   backButton: {
     width: 40,
     height: 40,
@@ -298,6 +414,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -308,12 +425,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
-    textTransform: 'capitalize',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
     gap: 20,
   },
   verticalCard: {
@@ -446,6 +565,169 @@ const styles = StyleSheet.create({
   },
   miniActionText: {
     fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+
+  // Figma Empty State Styles
+  emptyContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  gradientGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 450,
+  },
+  headerEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    height: 64 + 40, // Account for visual padding & layout
+    zIndex: 10,
+  },
+  headerTitleEmpty: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    tracking: -0.5,
+  },
+  headerRightEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  mainContentEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  illustrationContainer: {
+    width: 192,
+    height: 192,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 32,
+  },
+  outerCircle: {
+    position: 'absolute',
+    width: 192,
+    height: 192,
+    borderRadius: 96,
+  },
+  innerCircle: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(101, 103, 241, 0.08)',
+  },
+  centerIconWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeTopRight: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  badgeBottomLeft: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  textStackEmpty: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  titleTextEmpty: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    textAlign: 'center',
+  },
+  descTextEmpty: {
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  bottomActionEmpty: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  ctaButtonEmpty: {
+    flexDirection: 'row',
+    width: '100%',
+    height: 56,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#6567F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  ctaButtonTextEmpty: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
   },
 });
