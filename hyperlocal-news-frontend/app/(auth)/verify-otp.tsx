@@ -222,7 +222,7 @@ export default function VerifyOTPScreen() {
     try {
       const success = await verifyOtp(rawPhone, otpValue);
       if (success) {
-        router.replace('/(onboarding)/complete');
+        router.replace('/(onboarding)/profile');
       } else {
         Alert.alert('Verification Failed', 'The code you entered is incorrect.');
       }

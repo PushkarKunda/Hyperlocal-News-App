@@ -59,7 +59,7 @@ const CITIES = [
 ];
 
 export default function CreateArticleScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();

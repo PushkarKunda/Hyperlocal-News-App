@@ -77,11 +77,15 @@ export default function SplashScreen() {
 
     // 4. Authentication state check and routing after delay
     const timer = setTimeout(() => {
-      const { isAuthenticated, isOnboarded } = useAuthStore.getState();
+      const { isAuthenticated, isOnboarded, user } = useAuthStore.getState();
       if (isAuthenticated && isOnboarded) {
         router.replace('/(tabs)');
       } else if (isAuthenticated) {
-        router.replace('/(onboarding)/complete');
+        if (user?.name) {
+          router.replace('/(onboarding)/complete');
+        } else {
+          router.replace('/(onboarding)/profile');
+        }
       } else {
         router.replace('/(onboarding)/language');
       }
@@ -206,7 +210,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.8,
     marginBottom: 4,
     textAlign: 'center',
@@ -215,7 +219,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     textAlign: 'center',
   },
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#464554',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.65,
     textAlign: 'center',
   },

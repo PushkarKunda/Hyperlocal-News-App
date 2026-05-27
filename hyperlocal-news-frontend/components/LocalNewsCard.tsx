@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAppTextScale } from '@/hooks/useAppTextScale';
 
 export interface LocalNewsItem {
   id: string;
@@ -20,8 +21,10 @@ interface LocalNewsCardProps {
 }
 
 export function LocalNewsCard({ item, onPress }: LocalNewsCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const scale = useAppTextScale();
+  const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
   if (item.variant === 'horizontal') {
     return (
@@ -33,16 +36,16 @@ export function LocalNewsCard({ item, onPress }: LocalNewsCardProps) {
         <View style={styles.horizontalContent}>
           <View style={[styles.distanceBadgeLight, { backgroundColor: colors.primaryLight }]}>
             <MaterialIcons name="near-me" size={10} color={colors.primary} />
-            <Text style={[styles.distanceTextLight, { color: colors.primary }]}>{item.distance}</Text>
+            <Text style={[styles.distanceTextLight, { color: colors.primary }, scaledFontSize(10)]}>{item.distance}</Text>
           </View>
-          <Text style={[styles.title, { color: colors.text, fontSize: 16 }]} numberOfLines={2}>
+          <Text style={[styles.title, { color: colors.text }, scaledFontSize(16)]} numberOfLines={2}>
             {item.title}
           </Text>
           <View style={styles.infoRow}>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>{item.timeAgo}</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }, scaledFontSize(12)]}>{item.timeAgo}</Text>
             <View style={styles.dot} />
             <MaterialIcons name="visibility" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>{item.views}</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }, scaledFontSize(12)]}>{item.views}</Text>
           </View>
         </View>
         <Image source={{ uri: item.imageUrl }} style={styles.horizontalImage} />
@@ -60,19 +63,19 @@ export function LocalNewsCard({ item, onPress }: LocalNewsCardProps) {
         <Image source={{ uri: item.imageUrl }} style={styles.verticalImage} />
         <View style={[styles.distanceBadgeSolid, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="near-me" size={10} color="#FFF" />
-          <Text style={styles.distanceTextSolid}>{item.distance}</Text>
+          <Text style={[styles.distanceTextSolid, scaledFontSize(10)]}>{item.distance}</Text>
         </View>
       </View>
       <View style={styles.verticalContent}>
-        <Text style={[styles.title, { color: colors.text, fontSize: 18 }]} numberOfLines={2}>
+        <Text style={[styles.title, { color: colors.text }, scaledFontSize(18)]} numberOfLines={2}>
           {item.title}
         </Text>
         <View style={styles.infoRow}>
           <MaterialIcons name="schedule" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>{item.timeAgo}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }, scaledFontSize(12)]}>{item.timeAgo}</Text>
           <View style={styles.dot} />
           <MaterialIcons name="visibility" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>{item.views}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }, scaledFontSize(12)]}>{item.views}</Text>
         </View>
       </View>
     </TouchableOpacity>

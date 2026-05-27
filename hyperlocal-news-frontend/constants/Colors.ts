@@ -44,22 +44,22 @@ export const Colors: ColorsType = {
   
   dark: {
     primary: '#4648D4',
-    primaryLight: 'rgba(70, 72, 212, 0.1)',
+    primaryLight: 'rgba(70, 72, 212, 0.2)',
     primaryGlow: 'rgba(70, 72, 212, 0.5)',
     
-    background: '#F6F6F8',
-    surface: '#FFFFFF',
-    card: '#FFFFFF',
+    background: '#111122',
+    surface: '#1A1A2E',
+    card: '#262636',
     
-    text: '#0F172A',
-    textSecondary: '#64748B',
-    textTertiary: '#94A3B8',
+    text: '#FFFFFF',
+    textSecondary: '#94A3B8',
+    textTertiary: '#64748B',
     
-    border: '#E2E8F0',
-    divider: '#F1F5F9',
-    indicator: '#E2E8F0',
+    border: '#374151',
+    divider: '#262636',
+    indicator: '#374151',
     
-    statusBar: 'dark',
+    statusBar: 'light',
   },
 };
 

@@ -6,80 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Modal,
   Image,
   Animated,
-  Dimensions,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
   Pressable,
   BackHandler,
   KeyboardAvoidingView,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
-
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', // Female Professional
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', // Male Cheerful
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', // Female Tech
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', // Male Creative
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80', // Male Artistic
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80', // Male Business
-];
-
-interface PresetAvatarProps {
-  url: string;
-  isSelected: boolean;
-  onPress: () => void;
-}
-
-function PresetAvatar({ url, isSelected, onPress }: PresetAvatarProps) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.9,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      style={styles.gridAvatarContainer}
-    >
-      <Animated.View
-        style={[
-          styles.gridAvatarWrapper,
-          isSelected && styles.gridAvatarSelected,
-          { transform: [{ scale }] }
-        ]}
-      >
-        <Image source={{ uri: url }} style={styles.gridAvatarImage} />
-      </Animated.View>
-    </Pressable>
-  );
-}
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -88,13 +30,11 @@ export default function ProfileCompletionScreen() {
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
 
   // Animations
   const buttonScale = useRef(new Animated.Value(1)).current;
   const avatarScale = useRef(new Animated.Value(1)).current;
   const inputBorderAnim = useRef(new Animated.Value(0)).current;
-  const modalY = useRef(new Animated.Value(300)).current;
 
   // Staggered screen entry animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -142,41 +82,48 @@ export default function ProfileCompletionScreen() {
     }).start();
   };
 
-  const openAvatarPicker = () => {
-    setModalVisible(true);
-    Animated.timing(modalY, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'We need access to your photo library to let you upload a custom profile picture.'
+        );
+        return;
+      }
 
-  const closeAvatarPicker = () => {
-    Animated.timing(modalY, {
-      toValue: 300,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => setModalVisible(false));
-  };
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-  const selectAvatar = (url: string) => {
-    // Crisp pop scale animation on selecting avatar
-    Animated.sequence([
-      Animated.timing(avatarScale, {
-        toValue: 0.88,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.spring(avatarScale, {
-        toValue: 1,
-        friction: 6,
-        tension: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const customPhotoUri = result.assets[0].uri;
+        
+        // Pop animation
+        Animated.sequence([
+          Animated.timing(avatarScale, {
+            toValue: 0.88,
+            duration: 80,
+            useNativeDriver: true,
+          }),
+          Animated.spring(avatarScale, {
+            toValue: 1,
+            friction: 6,
+            tension: 180,
+            useNativeDriver: true,
+          }),
+        ]).start();
 
-    setSelectedAvatar(url);
-    closeAvatarPicker();
+        setSelectedAvatar(customPhotoUri);
+      }
+    } catch (error) {
+      console.error('Image picking error:', error);
+      Alert.alert('Upload Error', 'Could not select your photo. Please try again.');
+    }
   };
 
   const handleAvatarPressIn = () => {
@@ -244,14 +191,7 @@ export default function ProfileCompletionScreen() {
 
       {/* Header - Top Navigation Anchor */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#4648D4" />
-        </TouchableOpacity>
-
+        <View style={styles.headerPlaceholder} />
         <Text style={styles.headerTitle}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -287,7 +227,7 @@ export default function ProfileCompletionScreen() {
               {/* Profile Picture Uploader */}
               <View style={styles.uploaderSection}>
                 <Pressable
-                  onPress={openAvatarPicker}
+                  onPress={handlePickFromGallery}
                   onPressIn={handleAvatarPressIn}
                   onPressOut={handleAvatarPressOut}
                   style={styles.uploaderTouch}
@@ -299,7 +239,7 @@ export default function ProfileCompletionScreen() {
                     ]}
                   >
                     {selectedAvatar ? (
-                      <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
+                       <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
                     ) : (
                       <View style={styles.cameraIconContainer}>
                         <Feather name="camera" size={32} color="#4648D4" />
@@ -387,52 +327,6 @@ export default function ProfileCompletionScreen() {
           <Text style={styles.stepText}>STEP 3 OF 3</Text>
         </View>
       </View>
-
-      {/* Custom Avatar Picker Bottom Sheet Modal */}
-      <Modal
-        animationType="none"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={closeAvatarPicker}
-      >
-        <TouchableWithoutFeedback onPress={closeAvatarPicker}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <Animated.View
-                style={[
-                  styles.modalContent,
-                  { transform: [{ translateY: modalY }] }
-                ]}
-              >
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalIndicator} />
-                  <Text style={styles.modalTitle}>Choose an Avatar</Text>
-                  <Text style={styles.modalSubtitle}>Pick a modern profile picture representation</Text>
-                </View>
-
-                <View style={styles.avatarGrid}>
-                  {PRESET_AVATARS.map((url, index) => (
-                    <PresetAvatar
-                      key={index}
-                      url={url}
-                      isSelected={selectedAvatar === url}
-                      onPress={() => selectAvatar(url)}
-                    />
-                  ))}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={closeAvatarPicker}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.closeButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -752,99 +646,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#C7C4D7',
     letterSpacing: 1.1,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(11, 28, 48, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  modalIndicator: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#C7C4D7',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0B1C30',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#464554',
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-  },
-  avatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-  gridAvatarContainer: {
-    width: (width - 48 - 32) / 3,
-    aspectRatio: 1,
-  },
-  gridAvatarWrapper: {
-    flex: 1,
-    borderRadius: 999,
-    borderWidth: 3,
-    borderColor: 'rgba(199, 196, 215, 0.3)',
-    overflow: 'hidden',
-  },
-  gridAvatarSelected: {
-    borderColor: '#4648D4',
-    borderWidth: 4,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  gridAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  closeButton: {
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#EFF4FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#464554',
     fontFamily: 'Inter_600SemiBold',
   },
 });

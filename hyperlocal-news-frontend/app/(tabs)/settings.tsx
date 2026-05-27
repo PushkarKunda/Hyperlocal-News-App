@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, useColorScheme, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+  useColorScheme,
+  Alert,
+  Image,
+  Pressable,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useAuthStore } from '@/store/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 export default function SettingsScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
-  const colors = Colors[colorScheme];
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateTheme, updateTextSize } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const darkModeEnabled = colorScheme === 'dark';
 
   const handleLogout = () => {
     Alert.alert(
@@ -37,80 +50,166 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleTextSizeChange = () => {
+    Alert.alert(
+      'Text Size',
+      'Choose your preferred reading text size:',
+      [
+        {
+          text: 'Small',
+          onPress: () => updateTextSize('small'),
+        },
+        {
+          text: 'Medium (Default)',
+          onPress: () => updateTextSize('medium'),
+        },
+        {
+          text: 'Large',
+          onPress: () => updateTextSize('large'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const displayTextSize = user?.textSize 
+    ? user.textSize.charAt(0).toUpperCase() + user.textSize.slice(1) 
+    : 'Medium';
+
+  const displayName = user?.name || 'Rahul Kumar';
+  const displayPhone = user?.phoneNumber || '+91 98765 43210';
+  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400';
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      {/* Header */}
+      {/* Background Gradient Blurs */}
+      <View style={styles.purpleBlur} />
+      <View style={styles.tealBlur} />
+
+      {/* Symmetrical Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[styles.backButton, { backgroundColor: colors.primaryLight }]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
+        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
-        <View style={{ width: 40 }} />
+        
+        <View style={styles.headerPlaceholder} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Account Section */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Profile Bento Card */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.primary }]}>ACCOUNT</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ACCOUNT</Text>
+          <View style={[styles.bentoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.profileRow}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.avatarText}>P</Text>
+              {/* Double Bordered Linear Gradient Avatar */}
+              <View style={styles.avatarContainer}>
+                <LinearGradient
+                  colors={['#4648D4', '#86F2E4']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatarGradient}
+                >
+                  <View style={[styles.avatarInner, { borderColor: colors.card }]}>
+                    <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  </View>
+                </LinearGradient>
+                
+                {/* Verified Check Badge */}
+                <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
+                  <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
+                </View>
               </View>
+
               <View style={styles.profileDetails}>
-                <Text style={[styles.profileName, { color: colors.text }]}>
-                  {user?.name || 'Praveen Kumar'}
-                </Text>
-                <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>
-                  {user?.phoneNumber || '+91 98765 43210'}
-                </Text>
+                <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
+                <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>{displayPhone}</Text>
+                
+                <View style={styles.premiumBadgeContainer}>
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumBadgeText}>Premium Member</Text>
+                  </View>
+                </View>
               </View>
-              <TouchableOpacity style={styles.editProfileButton}>
-                <MaterialIcons name="edit" size={18} color={colors.primary} />
+
+              <TouchableOpacity 
+                style={[styles.editProfileButton, { backgroundColor: colors.primaryLight }]}
+                activeOpacity={0.7}
+                onPress={() => router.push('/(onboarding)/profile')}
+              >
+                <MaterialIcons name="edit" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Preferences Section */}
+        {/* Preferences Bento Card */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.primary }]}>PREFERENCES</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            
-            <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>PREFERENCES</Text>
+          <View style={[styles.bentoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Language */}
+            <TouchableOpacity 
+              style={styles.settingItem} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/(onboarding)/language')}
+            >
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="language-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
+                  <Ionicons name="language-outline" size={20} color="#E11D48" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Language</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>Telugu</Text>
+                <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.language || 'English'}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
-            
+
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-            <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
+            {/* Location */}
+            <TouchableOpacity 
+              style={styles.settingItem} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/(onboarding)/location')}
+            >
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(0, 106, 97, 0.08)' }]}>
+                  <Ionicons name="location-outline" size={20} color="#006A61" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Location</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>Hyderabad</Text>
+                <Text style={[styles.settingValue, { color: colors.primary }]}>Hyderabad, Telangana</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-            <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
+            {/* Interests */}
+            <TouchableOpacity 
+              style={styles.settingItem} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/(onboarding)/interests')}
+            >
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="heart-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(217, 119, 6, 0.08)' }]}>
+                  <Ionicons name="heart-outline" size={20} color="#D97706" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Interests</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -118,50 +217,76 @@ export default function SettingsScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
+            {/* Notifications Switch */}
             <View style={styles.settingItem}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Ionicons name="notifications-outline" size={20} color="#4648D4" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Notifications</Text>
               </View>
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{ false: '#767577', true: '#a3b899' }}
-                thumbColor={notificationsEnabled ? colors.primary : '#f4f3f4'}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={notificationsEnabled ? colors.primary : '#F1F5F9'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Appearance Bento Card */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPEARANCE</Text>
+          <View style={[styles.bentoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Dark Mode Switch */}
+            <View style={styles.settingItem}>
+              <View style={styles.settingLabelContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Ionicons name="moon-outline" size={20} color="#4648D4" />
+                </View>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
+              </View>
+              <Switch
+                value={darkModeEnabled}
+                onValueChange={(val) => updateTheme(val ? 'dark' : 'light')}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={darkModeEnabled ? colors.primary : '#F1F5F9'}
               />
             </View>
 
-          </View>
-        </View>
+            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.primary }]}>APPEARANCE</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            
-
-            <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
+            {/* Text Size */}
+            <TouchableOpacity 
+              style={styles.settingItem} 
+              activeOpacity={0.7}
+              onPress={handleTextSizeChange}
+            >
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="text-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Ionicons name="text-outline" size={20} color="#4648D4" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Text Size</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>Medium</Text>
+                <Text style={[styles.settingValue, { color: colors.primary }]}>{displayTextSize}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
-
           </View>
         </View>
 
-        {/* About Section */}
+        {/* About Bento Card */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.primary }]}>ABOUT</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ABOUT</Text>
+          <View style={[styles.bentoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Privacy Policy */}
             <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 69, 84, 0.08)' }]}>
+                  <Ionicons name="document-text-outline" size={20} color="#464554" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Privacy Policy</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -169,9 +294,12 @@ export default function SettingsScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
+            {/* Terms of Service */}
             <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 69, 84, 0.08)' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color="#464554" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Terms of Service</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -179,9 +307,12 @@ export default function SettingsScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
+            {/* Rate Us */}
             <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="star-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(217, 119, 6, 0.08)' }]}>
+                  <Ionicons name="star-outline" size={20} color="#D97706" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Rate Us</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -189,27 +320,28 @@ export default function SettingsScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
+            {/* App Version */}
             <View style={styles.settingItem}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 69, 84, 0.08)' }]}>
+                  <Ionicons name="information-circle-outline" size={20} color="#464554" />
+                </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>App Version</Text>
               </View>
               <Text style={[styles.versionText, { color: colors.textSecondary }]}>1.0.0</Text>
             </View>
-
           </View>
         </View>
 
-        {/* Logout Button */}
+        {/* Premium Capsule Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
           activeOpacity={0.8}
         >
-          <Ionicons name="exit-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Ionicons name="exit-outline" size={20} color="#FFFFFF" style={styles.logoutIcon} />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </View>
   );
@@ -218,6 +350,27 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FF',
+  },
+  purpleBlur: {
+    position: 'absolute',
+    right: -39,
+    top: -98,
+    width: 156,
+    height: 393.59,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(70, 72, 212, 0.04)',
+    zIndex: -1,
+  },
+  tealBlur: {
+    position: 'absolute',
+    left: -19.5,
+    bottom: -49.19,
+    width: 117,
+    height: 295.19,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(0, 106, 97, 0.04)',
+    zIndex: -1,
   },
   header: {
     flexDirection: 'row',
@@ -226,103 +379,172 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    color: '#0B1C30',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: -0.5,
+  },
+  headerPlaceholder: {
+    width: 40,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 40,
     gap: 24,
   },
   section: {
-    gap: 8,
+    gap: 10,
   },
   sectionHeader: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#767586',
+    fontFamily: 'Inter_600SemiBold',
     letterSpacing: 1.2,
-    fontFamily: 'Inter_700Bold',
     marginLeft: 4,
   },
-  card: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
+  bentoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(199, 196, 215, 0.3)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
   },
-  profileAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#4648D4',
+  avatarContainer: {
+    position: 'relative',
+    width: 68,
+    height: 68,
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 34,
+    padding: 2.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    backgroundColor: '#006A61',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   profileDetails: {
-    marginLeft: 14,
+    marginLeft: 16,
     flex: 1,
+    gap: 2,
   },
   profileName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    color: '#0B1C30',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: -0.2,
   },
   profilePhone: {
     fontSize: 13,
+    color: '#767586',
     fontFamily: 'Inter_500Medium',
-    marginTop: 2,
+  },
+  premiumBadgeContainer: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  premiumBadge: {
+    backgroundColor: '#86F2E4',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+  premiumBadgeText: {
+    color: '#006F66',
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   editProfileButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     minHeight: 56,
   },
   settingLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingLabel: {
     fontSize: 15,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontWeight: '600',
+    color: '#0B1C30',
+    fontFamily: 'Inter_600SemiBold',
   },
   settingValueContainer: {
     flexDirection: 'row',
@@ -331,35 +553,42 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '700',
+    color: '#4648D4',
+    fontFamily: 'Inter_700Bold',
   },
   versionText: {
     fontSize: 14,
+    fontWeight: '500',
+    color: '#767586',
     fontFamily: 'Inter_500Medium',
   },
   divider: {
     height: 1,
-    marginHorizontal: 16,
+    backgroundColor: 'rgba(199, 196, 215, 0.2)',
+    marginHorizontal: 20,
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#E53E3E',
-    borderRadius: BorderRadius.md,
-    height: 50,
+    backgroundColor: '#ba1a1a',
+    borderRadius: 9999,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#E53E3E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    marginTop: 12,
     elevation: 4,
+    shadowColor: '#ba1a1a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  logoutIcon: {
+    marginRight: 8,
   },
   logoutButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

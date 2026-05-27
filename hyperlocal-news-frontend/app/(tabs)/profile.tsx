@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useColorScheme, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import MenuOptions from '@/components/MenuOptions';
 
 export default function ProfileScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
@@ -144,21 +145,7 @@ export default function ProfileScreen() {
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
 
-          {/* Saved Stories */}
-          <TouchableOpacity 
-            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            onPress={() => router.push('/(tabs)/bookmarks?from=profile')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 178, 183, 0.25)' }]}>
-              <MaterialIcons name="bookmark" size={24} color="#E53E3E" />
-            </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Saved Stories</Text>
-              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>42 articles bookmarked</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
-          </TouchableOpacity>
+
 
           {/* Reading History */}
           <TouchableOpacity 
@@ -336,6 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.2,
+    fontFamily: 'Poppins_700Bold',
   },
   badgeWrapper: {
     alignItems: 'center',
@@ -375,6 +363,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
   },
   statLabel: {
     fontSize: 11,
@@ -459,6 +448,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
   },
   subBannerSubtitle: {
     color: 'rgba(255, 255, 255, 0.9)',

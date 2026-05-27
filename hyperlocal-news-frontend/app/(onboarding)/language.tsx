@@ -15,30 +15,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
 interface Language {
   id: string;
   name: string;
+  glyph: string;
 }
 
 const LANGUAGES: Language[] = [
-  { id: 'en', name: 'English' },
-  { id: 'es', name: 'Spanish' },
-  { id: 'fr', name: 'French' },
-  { id: 'de', name: 'German' },
-  { id: 'hi', name: 'Hindi' },
-  { id: 'ja', name: 'Japanese' },
+  { id: 'en', name: 'English', glyph: 'Aa' },
+  { id: 'hi', name: 'Hindi', glyph: 'अ' },
+  { id: 'te', name: 'Telugu', glyph: 'అ' },
+  { id: 'ta', name: 'Tamil', glyph: 'அ' },
+  { id: 'es', name: 'Spanish', glyph: 'Es' },
+  { id: 'fr', name: 'French', glyph: 'Fr' },
 ];
 
 interface LanguageCardProps {
   name: string;
+  glyph: string;
   isSelected: boolean;
   onPress: () => void;
 }
 
-function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
+function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -64,6 +67,7 @@ function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
+      style={styles.cardContainer}
     >
       <Animated.View
         style={[
@@ -72,16 +76,24 @@ function LanguageCard({ name, isSelected, onPress }: LanguageCardProps) {
           { transform: [{ scale }] },
         ]}
       >
-        <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>{name}</Text>
+        {/* Sleek Selection Indicator in Top Right Corner */}
+        {isSelected && (
+          <View style={styles.checkBadge}>
+            <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+          </View>
+        )}
 
-        <View
-          style={[
-            styles.radioOuter,
-            isSelected ? styles.radioOuterSelected : styles.radioOuterUnselected,
-          ]}
-        >
-          {isSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+        {/* Large Script Preview Circle */}
+        <View style={[styles.glyphCircle, isSelected && styles.glyphCircleSelected]}>
+          <Text style={[styles.glyphText, isSelected ? styles.glyphTextSelected : styles.glyphTextUnselected]}>
+            {glyph}
+          </Text>
         </View>
+
+        {/* Language Name */}
+        <Text style={[styles.languageName, isSelected && styles.languageNameSelected]} numberOfLines={1}>
+          {name}
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -113,7 +125,13 @@ export default function LanguageScreen() {
     }).start();
   };
 
+  const { updateLanguage } = useAuthStore();
+
   const handleContinue = () => {
+    const matchedLanguage = LANGUAGES.find(l => l.id === selectedLanguage);
+    if (matchedLanguage) {
+      updateLanguage(matchedLanguage.name);
+    }
     router.push('/(onboarding)/location');
   };
 
@@ -145,6 +163,7 @@ export default function LanguageScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Headline Section */}
         <View style={styles.headlineSection}>
@@ -154,12 +173,13 @@ export default function LanguageScreen() {
           </Text>
         </View>
 
-        {/* Language Cards Grid */}
-        <View style={styles.languageList}>
+        {/* Bento Grid of Language Cards */}
+        <View style={styles.gridContainer}>
           {LANGUAGES.map((language) => (
             <LanguageCard
               key={language.id}
               name={language.name}
+              glyph={language.glyph}
               isSelected={selectedLanguage === language.id}
               onPress={() => setSelectedLanguage(language.id)}
             />
@@ -226,11 +246,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: -0.8,
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: -0.5,
   },
   headerSpacer: {
     width: 40,
@@ -245,36 +265,43 @@ const styles = StyleSheet.create({
   },
   headlineSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
     gap: 8,
   },
   mainTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 32,
+    fontWeight: '700',
     color: '#0B1C30',
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: -0.24,
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: -0.64,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     fontWeight: '400',
     color: '#464554',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     lineHeight: 24,
   },
-  languageList: {
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 16,
   },
+  cardContainer: {
+    width: '47.5%',
+    height: 130,
+  },
   languageCard: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 20,
-    paddingHorizontal: 26,
-    borderRadius: 16,
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 2,
+    borderStyle: 'solid',
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -282,8 +309,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   languageCardSelected: {
-    backgroundColor: '#EAEBFE',
+    backgroundColor: '#E6E7FB',
     borderColor: '#4648D4',
+    borderStyle: 'solid',
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
@@ -293,33 +321,61 @@ const styles = StyleSheet.create({
   languageCardUnselected: {
     backgroundColor: '#FFFFFF',
     borderColor: 'rgba(199, 196, 215, 0.3)',
+    borderStyle: 'solid',
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  glyphCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 40,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E6E7FB',
+  },
+  glyphCircleSelected: {
+    borderColor: '#4648D4',
+    backgroundColor: '#4648D4',
+    shadowOpacity: 0.15,
+  },
+  glyphText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  glyphTextSelected: {
+    color: '#FFFFFF',
+  },
+  glyphTextUnselected: {
+    color: '#4648D4',
   },
   languageName: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '500',
     color: '#0B1C30',
     fontFamily: 'Inter_500Medium',
-    lineHeight: 28,
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   languageNameSelected: {
     color: '#4648D4',
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  radioOuter: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOuterSelected: {
-    backgroundColor: '#4648D4',
-    borderColor: '#4648D4',
-  },
-  radioOuterUnselected: {
-    borderColor: '#C7C4D7',
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   footer: {
     paddingHorizontal: 20,
@@ -329,7 +385,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     height: 56,
-    borderRadius: 12,
+    borderRadius: 9999,
     backgroundColor: '#4648D4',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -337,14 +393,14 @@ const styles = StyleSheet.create({
     elevation: 4,
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   continueButtonText: {
     color: '#FFF',
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     lineHeight: 28,
   },
   continueIcon: {

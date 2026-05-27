@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
@@ -69,7 +69,7 @@ interface CreateEventModalProps {
 
 export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventModalProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 

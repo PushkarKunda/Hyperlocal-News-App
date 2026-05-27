@@ -9,7 +9,7 @@ export default function OnboardingLayout() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isOnboarded } = useAuthStore();
+  const { isAuthenticated, isOnboarded, user } = useAuthStore();
 
   useEffect(() => {
     if (isAuthenticated && isOnboarded) {
@@ -21,10 +21,14 @@ export default function OnboardingLayout() {
         pathname.includes('profile');
         
       if (!isAllowedPath) {
-        router.replace('/(onboarding)/complete');
+        if (user?.name) {
+          router.replace('/(onboarding)/complete');
+        } else {
+          router.replace('/(onboarding)/profile');
+        }
       }
     }
-  }, [isAuthenticated, isOnboarded, pathname]);
+  }, [isAuthenticated, isOnboarded, pathname, user]);
 
   if (isAuthenticated && isOnboarded) {
     return null;
@@ -51,6 +55,7 @@ export default function OnboardingLayout() {
     >
       <Stack.Screen name="language" />
       <Stack.Screen name="location" />
+      <Stack.Screen name="districts" />
       <Stack.Screen name="interests" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="setup-feed" />

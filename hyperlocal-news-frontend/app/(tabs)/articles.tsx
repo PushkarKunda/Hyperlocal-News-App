@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, useColorScheme, Share, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Share, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,7 +13,7 @@ import { useArticleStore, ArticleItem } from '@/store/articleStore';
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function ArticlesScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useAppColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();

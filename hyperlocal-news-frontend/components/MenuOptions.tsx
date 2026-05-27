@@ -14,6 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
 
 const DRAWER_WIDTH = 320;
 
@@ -26,6 +29,12 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  
+  const colorScheme = useAppColorScheme();
+  const isDark = colorScheme === 'dark';
+  const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuthStore();
+  const displayName = user?.name || 'Alex Rivera';
 
   // Tracks native modal visibility during slide close animations
   const [shouldRender, setShouldRender] = useState(isVisible);
@@ -208,12 +217,13 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
               paddingTop: insets.top,
               paddingBottom: Math.max(insets.bottom + 16, 24),
               transform: [{ translateX: slideAnim }],
+              backgroundColor: isDark ? colors.surface : '#EFF4FF',
             },
           ]}
         >
           {/* Header row: profile picture + close button */}
           <View style={styles.headerRow}>
-            <View style={styles.avatarContainer}>
+            <View style={[styles.avatarContainer, { borderColor: colors.primary }]}>
               <Image
                 source={require('@/assets/immersive_feed/f8a7444eb4e0445e94186837bf33bd7f2f8b5681.png')}
                 style={styles.avatarImage}
@@ -225,14 +235,14 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
               onPress={handleClose}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={24} color="#464554" />
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* User detail info headings */}
           <View style={styles.userInfoContainer}>
-            <Text style={styles.userName}>Alex Rivera</Text>
-            <Text style={styles.userSubtitle}>Premium Subscriber</Text>
+            <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
+            <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Premium Subscriber</Text>
           </View>
 
           {/* Navigation Links Scroll List */}
@@ -245,12 +255,16 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
             <View style={styles.menuList}>
               {menuOptions.map((option) => {
                 const isActive = cleanPath === option.route;
+                const activeBgColor = isDark ? 'rgba(134, 242, 228, 0.15)' : '#86F2E4';
+                const activeTextColor = isDark ? '#86F2E4' : '#006F66';
+                const inactiveColor = colors.textSecondary;
+                
                 return (
                   <TouchableOpacity
                     key={option.id}
                     style={[
                       styles.menuItem,
-                      isActive ? styles.activeMenuItem : styles.inactiveMenuItem,
+                      isActive ? { backgroundColor: activeBgColor, borderRadius: 9999 } : styles.inactiveMenuItem,
                     ]}
                     onPress={() => handleNavigate(option.route)}
                     activeOpacity={0.7}
@@ -258,13 +272,13 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                     <Ionicons
                       name={(isActive && option.activeIcon ? option.activeIcon : option.icon) as any}
                       size={22}
-                      color={isActive ? '#006F66' : '#464554'}
+                      color={isActive ? activeTextColor : inactiveColor}
                       style={styles.menuIcon}
                     />
                     <Text
                       style={[
                         styles.menuLabel,
-                        isActive ? styles.activeMenuLabel : styles.inactiveMenuLabel,
+                        { color: isActive ? activeTextColor : colors.text },
                       ]}
                     >
                       {option.label}
@@ -275,34 +289,43 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
             </View>
 
             {/* Separator Divider */}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
             {/* Bottom Stack of Links */}
             <View style={styles.bottomList}>
               {/* App Settings */}
-              <TouchableOpacity
-                style={[
-                  styles.menuItem,
-                  cleanPath === '/settings' ? styles.activeMenuItem : styles.inactiveMenuItem,
-                ]}
-                onPress={() => handleNavigate('/settings')}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={cleanPath === '/settings' ? 'settings' : 'settings-outline'}
-                  size={22}
-                  color={cleanPath === '/settings' ? '#006F66' : '#464554'}
-                  style={styles.menuIcon}
-                />
-                <Text
-                  style={[
-                    styles.menuLabel,
-                    cleanPath === '/settings' ? styles.activeMenuLabel : styles.inactiveMenuLabel,
-                  ]}
-                >
-                  App Settings
-                </Text>
-              </TouchableOpacity>
+              {(() => {
+                const isSettingsActive = cleanPath === '/settings';
+                const activeBgColor = isDark ? 'rgba(134, 242, 228, 0.15)' : '#86F2E4';
+                const activeTextColor = isDark ? '#86F2E4' : '#006F66';
+                const inactiveColor = colors.textSecondary;
+                
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      isSettingsActive ? { backgroundColor: activeBgColor, borderRadius: 9999 } : styles.inactiveMenuItem,
+                    ]}
+                    onPress={() => handleNavigate('/settings')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isSettingsActive ? 'settings' : 'settings-outline'}
+                      size={22}
+                      color={isSettingsActive ? activeTextColor : inactiveColor}
+                      style={styles.menuIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.menuLabel,
+                        { color: isSettingsActive ? activeTextColor : colors.text },
+                      ]}
+                    >
+                      App Settings
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
 
               {/* Help & Support */}
               <TouchableOpacity
@@ -313,10 +336,10 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                 <Ionicons
                   name="help-circle-outline"
                   size={22}
-                  color="#464554"
+                  color={colors.textSecondary}
                   style={styles.menuIcon}
                 />
-                <Text style={[styles.menuLabel, styles.inactiveMenuLabel]}>
+                <Text style={[styles.menuLabel, { color: colors.text }]}>
                   Help & Support
                 </Text>
               </TouchableOpacity>
@@ -341,8 +364,8 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
 
             {/* Footer Brand Logo & Version Info */}
             <View style={styles.footer}>
-              <Text style={styles.footerBrand}>HyperLocal</Text>
-              <Text style={styles.footerVersion}>VERSION 2.4.0</Text>
+              <Text style={[styles.footerBrand, { color: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(96, 99, 238, 0.4)' }]}>HyperLocal</Text>
+              <Text style={[styles.footerVersion, { color: colors.textSecondary }]}>VERSION 2.4.0</Text>
             </View>
           </ScrollView>
         </Animated.View>

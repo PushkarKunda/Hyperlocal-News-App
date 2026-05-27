@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAppTextScale } from '@/hooks/useAppTextScale';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -53,12 +55,15 @@ const YESTERDAY_EVENT: LocalEventItem = {
 };
 
 export default function LocalScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All Time');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  
+  const scale = useAppTextScale();
+  const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -66,7 +71,7 @@ export default function LocalScreen() {
       {/* Header Section */}
       <View style={styles.headerContainer}>
         <View style={styles.headerTop}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Local News</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }, scaledFontSize(30)]}>Local News</Text>
           <TouchableOpacity 
             style={[styles.headerButton, { backgroundColor: colors.border }]}
             onPress={() => setIsMenuVisible(true)}
@@ -78,7 +83,7 @@ export default function LocalScreen() {
         
         <TouchableOpacity style={[styles.locationPicker, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
-          <Text style={[styles.locationText, { color: colors.text }]}>Kukatpally, Hyderabad</Text>
+          <Text style={[styles.locationText, { color: colors.text }, scaledFontSize(14)]}>Kukatpally, Hyderabad</Text>
           <MaterialIcons name="keyboard-arrow-down" size={20} color={colors.textSecondary} style={styles.locationDropdownIcon} />
         </TouchableOpacity>
       </View>
@@ -105,7 +110,8 @@ export default function LocalScreen() {
                 >
                   <Text style={[
                     styles.filterText,
-                    { color: isActive ? '#FFF' : colors.textSecondary }
+                    { color: isActive ? '#FFF' : colors.textSecondary },
+                    scaledFontSize(12)
                   ]}>
                     {filter}
                   </Text>
@@ -126,7 +132,7 @@ export default function LocalScreen() {
           
           {/* TODAY Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>TODAY</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textTertiary }, scaledFontSize(12)]}>TODAY</Text>
             <View style={styles.cardsContainer}>
               {TODAY_NEWS.map(item => (
                 <LocalNewsCard 
@@ -140,7 +146,7 @@ export default function LocalScreen() {
 
           {/* YESTERDAY Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>YESTERDAY</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textTertiary }, scaledFontSize(12)]}>YESTERDAY</Text>
             <View style={styles.cardsContainer}>
               {YESTERDAY_NEWS.map(item => (
                 <LocalNewsCard 

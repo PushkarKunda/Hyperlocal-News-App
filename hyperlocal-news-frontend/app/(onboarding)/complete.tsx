@@ -22,11 +22,11 @@ interface SummaryItem {
 }
 
 export default function CompleteScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const navigation = useNavigation();
-  const { completeOnboarding } = useAuthStore();
+  const { completeOnboarding, user } = useAuthStore();
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -36,7 +36,7 @@ export default function CompleteScreen() {
 
   // Summary data - In real app, this would come from store/context
   const summaryItems: SummaryItem[] = [
-    { icon: 'language', label: 'Language', value: 'Telugu' },
+    { icon: 'language', label: 'Language', value: user?.language || 'English' },
     { icon: 'place', label: 'Location', value: 'Hyderabad, Telangana' },
     { icon: 'bookmark-border', label: 'Interests', value: '5 Topics Selected' },
   ];

@@ -9,7 +9,7 @@ import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function EventSuccessScreen() {
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();

@@ -8,6 +8,9 @@ export interface User {
   isGuest?: boolean;
   name?: string;
   avatar?: string;
+  language?: string;
+  theme?: 'light' | 'dark' | 'system';
+  textSize?: 'small' | 'medium' | 'large';
 }
 
 interface AuthState {
@@ -20,6 +23,9 @@ interface AuthState {
   loginAsGuest: () => void;
   logout: () => void;
   updateProfile: (name: string, avatar?: string) => void;
+  updateLanguage: (language: string) => void;
+  updateTheme: (theme: 'light' | 'dark' | 'system') => void;
+  updateTextSize: (textSize: 'small' | 'medium' | 'large') => void;
   completeOnboarding: () => void;
 }
 
@@ -86,6 +92,54 @@ export const useAuthStore = create<AuthState>()(
               ...state.user,
               name,
               avatar: avatar || state.user.avatar,
+            },
+          };
+        });
+      },
+
+      updateLanguage: (language: string) => {
+        set((state) => {
+          const defaultUser = {
+            id: 'user-' + Math.random().toString(36).substr(2, 9),
+            isGuest: true,
+          };
+          const currentUser = state.user || defaultUser;
+          return {
+            user: {
+              ...currentUser,
+              language,
+            },
+          };
+        });
+      },
+
+      updateTheme: (theme: 'light' | 'dark' | 'system') => {
+        set((state) => {
+          const defaultUser = {
+            id: 'user-' + Math.random().toString(36).substr(2, 9),
+            isGuest: true,
+          };
+          const currentUser = state.user || defaultUser;
+          return {
+            user: {
+              ...currentUser,
+              theme,
+            },
+          };
+        });
+      },
+
+      updateTextSize: (textSize: 'small' | 'medium' | 'large') => {
+        set((state) => {
+          const defaultUser = {
+            id: 'user-' + Math.random().toString(36).substr(2, 9),
+            isGuest: true,
+          };
+          const currentUser = state.user || defaultUser;
+          return {
+            user: {
+              ...currentUser,
+              textSize,
             },
           };
         });

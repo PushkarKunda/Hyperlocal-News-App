@@ -8,17 +8,21 @@ export default function AuthLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  const { isAuthenticated, isOnboarded } = useAuthStore();
+  const { isAuthenticated, isOnboarded, user } = useAuthStore();
 
   useEffect(() => {
     if (isAuthenticated) {
       if (isOnboarded) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/(onboarding)/complete');
+        if (user?.name) {
+          router.replace('/(onboarding)/complete');
+        } else {
+          router.replace('/(onboarding)/profile');
+        }
       }
     }
-  }, [isAuthenticated, isOnboarded]);
+  }, [isAuthenticated, isOnboarded, user]);
 
   if (isAuthenticated) {
     return null;

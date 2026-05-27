@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAppTextScale } from '@/hooks/useAppTextScale';
 
 export interface LocalEventItem {
   id: string;
@@ -20,8 +21,10 @@ interface LocalEventCardProps {
 }
 
 export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const scale = useAppTextScale();
+  const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
   return (
     <TouchableOpacity 
@@ -31,13 +34,13 @@ export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProp
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.category, { color: colors.primary }]}>{item.category.toUpperCase()}</Text>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[styles.category, { color: colors.primary }, scaledFontSize(10)]}>{item.category.toUpperCase()}</Text>
+          <Text style={[styles.title, { color: colors.text }, scaledFontSize(16)]} numberOfLines={2}>
             {item.title}
           </Text>
         </View>
         <View style={[styles.distanceBadge, { backgroundColor: colors.primaryLight }]}>
-          <Text style={[styles.distanceText, { color: colors.primary }]}>{item.distance}</Text>
+          <Text style={[styles.distanceText, { color: colors.primary }, scaledFontSize(10)]}>{item.distance}</Text>
         </View>
       </View>
 
@@ -49,9 +52,9 @@ export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProp
       </View>
 
       <View style={styles.footer}>
-        <Text style={[styles.scheduleText, { color: colors.textSecondary }]}>{item.schedule}</Text>
+        <Text style={[styles.scheduleText, { color: colors.textSecondary }, scaledFontSize(10)]}>{item.schedule}</Text>
         <TouchableOpacity style={styles.remindButton} onPress={onRemindMe}>
-          <Text style={[styles.remindText, { color: colors.primary }]}>Remind Me</Text>
+          <Text style={[styles.remindText, { color: colors.primary }, scaledFontSize(10)]}>Remind Me</Text>
           <MaterialIcons name="notifications-none" size={12} color={colors.primary} />
         </TouchableOpacity>
       </View>

@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface ProfileMenuItemProps {
   iconName: keyof typeof MaterialIcons.glyphMap;
@@ -24,7 +25,7 @@ export function ProfileMenuItem({
   onToggle,
   onPress,
 }: ProfileMenuItemProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   return (

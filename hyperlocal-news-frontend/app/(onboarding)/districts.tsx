@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,68 +10,93 @@ import {
   Animated,
   Dimensions,
   TextInput,
-  Image,
-  ActivityIndicator,
-  Alert,
 } from 'react-native';
-import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-interface StateItem {
+interface DistrictItem {
   id: string;
   name: string;
   code: string;
 }
 
-const INDIAN_STATES: StateItem[] = [
-  { id: 'ap', name: 'Andhra Pradesh', code: 'AP' },
-  { id: 'ar', name: 'Arunachal Pradesh', code: 'AR' },
-  { id: 'as', name: 'Assam', code: 'AS' },
-  { id: 'br', name: 'Bihar', code: 'BR' },
-  { id: 'cg', name: 'Chhattisgarh', code: 'CG' },
-  { id: 'ga', name: 'Goa', code: 'GA' },
-  { id: 'gj', name: 'Gujarat', code: 'GJ' },
-  { id: 'hr', name: 'Haryana', code: 'HR' },
-  { id: 'hp', name: 'Himachal Pradesh', code: 'HP' },
-  { id: 'jh', name: 'Jharkhand', code: 'JH' },
-  { id: 'ka', name: 'Karnataka', code: 'KA' },
-  { id: 'kl', name: 'Kerala', code: 'KL' },
-  { id: 'mp', name: 'Madhya Pradesh', code: 'MP' },
-  { id: 'mh', name: 'Maharashtra', code: 'MH' },
-  { id: 'mn', name: 'Manipur', code: 'MN' },
-  { id: 'ml', name: 'Meghalaya', code: 'ML' },
-  { id: 'mz', name: 'Mizoram', code: 'MZ' },
-  { id: 'nl', name: 'Nagaland', code: 'NL' },
-  { id: 'or', name: 'Odisha', code: 'OR' },
-  { id: 'pb', name: 'Punjab', code: 'PB' },
-  { id: 'rj', name: 'Rajasthan', code: 'RJ' },
-  { id: 'sk', name: 'Sikkim', code: 'SK' },
-  { id: 'tn', name: 'Tamil Nadu', code: 'TN' },
-  { id: 'ts', name: 'Telangana', code: 'TS' },
-  { id: 'tr', name: 'Tripura', code: 'TR' },
-  { id: 'up', name: 'Uttar Pradesh', code: 'UP' },
-  { id: 'uk', name: 'Uttarakhand', code: 'UK' },
-  { id: 'wb', name: 'West Bengal', code: 'WB' },
-  { id: 'dl', name: 'Delhi', code: 'DL' },
-  { id: 'jk', name: 'Jammu & Kashmir', code: 'JK' },
-  { id: 'la', name: 'Ladakh', code: 'LA' },
-  { id: 'py', name: 'Puducherry', code: 'PY' },
+const TELANGANA_DISTRICTS: DistrictItem[] = [
+  { id: 'hyderabad', name: 'Hyderabad', code: 'HYD' },
+  { id: 'medchal_malkajgiri', name: 'Medchal-Malkajgiri', code: 'MM' },
+  { id: 'rangareddy', name: 'Rangareddy', code: 'RR' },
+  { id: 'sangareddy', name: 'Sangareddy', code: 'SR' },
+  { id: 'warangal', name: 'Warangal', code: 'WGL' },
+  { id: 'karimnagar', name: 'Karimnagar', code: 'KMR' },
+  { id: 'nizamabad', name: 'Nizamabad', code: 'NZB' },
+  { id: 'khammam', name: 'Khammam', code: 'KMM' },
+  { id: 'nalgonda', name: 'Nalgonda', code: 'NLG' },
+  { id: 'mahabubnagar', name: 'Mahabubnagar', code: 'MBN' },
+  { id: 'medak', name: 'Medak', code: 'MDK' },
+  { id: 'adilabad', name: 'Adilabad', code: 'ADB' },
+  { id: 'bhadradri_kothagudem', name: 'Bhadradri Kothagudem', code: 'BK' },
+  { id: 'hanamkonda', name: 'Hanamkonda', code: 'HNK' },
+  { id: 'jagtial', name: 'Jagtial', code: 'JGL' },
+  { id: 'jangaon', name: 'Jangaon', code: 'JGN' },
+  { id: 'jayashankar_bhupalpally', name: 'Jayashankar Bhupalpally', code: 'JB' },
+  { id: 'jogulamba_gadwal', name: 'Jogulamba Gadwal', code: 'JG' },
+  { id: 'kamareddy', name: 'Kamareddy', code: 'KMR' },
+  { id: 'kumuram_bheem_asifabad', name: 'Kumuram Bheem Asifabad', code: 'KB' },
+  { id: 'mahabubabad', name: 'Mahabubabad', code: 'MBB' },
+  { id: 'mancherial', name: 'Mancherial', code: 'MCL' },
+  { id: 'mulugu', name: 'Mulugu', code: 'MLG' },
+  { id: 'nagarkurnool', name: 'Nagarkurnool', code: 'NKL' },
+  { id: 'narayanpet', name: 'Narayanpet', code: 'NRP' },
+  { id: 'nirmal', name: 'Nirmal', code: 'NML' },
+  { id: 'peddapalli', name: 'Peddapalli', code: 'PDP' },
+  { id: 'rajanna_sircilla', name: 'Rajanna Sircilla', code: 'RS' },
+  { id: 'siddipet', name: 'Siddipet', code: 'SDP' },
+  { id: 'suryapet', name: 'Suryapet', code: 'SYP' },
+  { id: 'vikarabad', name: 'Vikarabad', code: 'VKB' },
+  { id: 'wanaparthy', name: 'Wanaparthy', code: 'WNP' },
+  { id: 'yadadri_bhuvanagiri', name: 'Yadadri Bhuvanagiri', code: 'YB' },
 ];
 
-interface StateCardProps {
+const ANDHRA_PRADESH_DISTRICTS: DistrictItem[] = [
+  { id: 'visakhapatnam', name: 'Visakhapatnam', code: 'VSP' },
+  { id: 'ntr_vijayawada', name: 'NTR (Vijayawada)', code: 'NTR' },
+  { id: 'guntur', name: 'Guntur', code: 'GTR' },
+  { id: 'nellore_spsr', name: 'Nellore (SPSR)', code: 'NLR' },
+  { id: 'kurnool', name: 'Kurnool', code: 'KNL' },
+  { id: 'tirupati', name: 'Tirupati', code: 'TPT' },
+  { id: 'kakinada', name: 'Kakinada', code: 'KKD' },
+  { id: 'kadapa_ysr', name: 'Kadapa (YSR)', code: 'KDP' },
+  { id: 'anantapur', name: 'Anantapur', code: 'ATP' },
+  { id: 'vizianagaram', name: 'Vizianagaram', code: 'VZM' },
+  { id: 'srikakulam', name: 'Srikakulam', code: 'SKL' },
+  { id: 'east_godavari', name: 'East Godavari', code: 'EG' },
+  { id: 'west_godavari', name: 'West Godavari', code: 'WG' },
+  { id: 'chittoor', name: 'Chittoor', code: 'CTR' },
+  { id: 'prakasam', name: 'Prakasam', code: 'PKM' },
+  { id: 'anamayya', name: 'Anamayya', code: 'AMY' },
+  { id: 'bapatla', name: 'Bapatla', code: 'BPT' },
+  { id: 'eluru', name: 'Eluru', code: 'ELR' },
+  { id: 'konaseema', name: 'Dr. B.R. Ambedkar Konaseema', code: 'KSM' },
+  { id: 'manyam_parvathipuram', name: 'Parvathipuram Manyam', code: 'MYM' },
+  { id: 'nandyal', name: 'Nandyal', code: 'NDY' },
+  { id: 'palnadu', name: 'Palnadu', code: 'PLD' },
+  { id: 'sri_satya_sai', name: 'Sri Satya Sai', code: 'SSS' },
+  { id: 'alluri_sitharama_raju', name: 'Alluri Sitharama Raju', code: 'ASR' },
+  { id: 'anakapalli', name: 'Anakapalli', code: 'AKP' },
+];
+
+interface DistrictCardProps {
   name: string;
   code: string;
   isSelected: boolean;
   onPress: () => void;
 }
 
-function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
+function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -97,38 +122,51 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.regionCardContainer}
+      style={styles.cardContainer}
     >
       <Animated.View
         style={[
-          styles.regionCard,
-          isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
+          styles.card,
+          isSelected ? styles.cardSelected : styles.cardUnselected,
           { transform: [{ scale }] },
         ]}
       >
-        <View style={[styles.flagCircle, isSelected && styles.flagCircleSelected]}>
-          <Text style={[styles.stateCodeText, isSelected ? styles.stateCodeTextSelected : styles.stateCodeTextUnselected]}>
+        <View style={[styles.badgeCircle, isSelected && styles.badgeCircleSelected]}>
+          <Text style={[styles.badgeText, isSelected ? styles.badgeTextSelected : styles.badgeTextUnselected]}>
             {code}
           </Text>
         </View>
-        <Text style={[styles.regionName, isSelected && styles.regionNameSelected]} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.districtName, isSelected && styles.districtNameSelected]} numberOfLines={1}>
+          {name}
+        </Text>
       </Animated.View>
     </Pressable>
   );
 }
 
-export default function LocationScreen() {
+export default function DistrictsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { state } = useLocalSearchParams<{ state?: string }>();
+
+  // Determine state parameters
+  const isAP = state === 'ap';
+  const stateLabel = isAP ? 'Andhra Pradesh' : 'Telangana';
+  const districtsList = isAP ? ANDHRA_PRADESH_DISTRICTS : TELANGANA_DISTRICTS;
+  const defaultDistrictId = isAP ? 'visakhapatnam' : 'hyderabad';
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedState, setSelectedState] = useState('ts');
+  const [selectedDistrict, setSelectedDistrict] = useState(defaultDistrictId);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+
+  // Set default selection when switching states
+  useEffect(() => {
+    setSelectedDistrict(defaultDistrictId);
+    setSearchQuery('');
+  }, [state, defaultDistrictId]);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const gpsScale = useRef(new Animated.Value(1)).current;
   const searchBorderAnim = useRef(new Animated.Value(0)).current;
 
   const handleSearchFocus = () => {
@@ -167,112 +205,13 @@ export default function LocationScreen() {
     }).start();
   };
 
-  const handleGpsPressIn = () => {
-    Animated.spring(gpsScale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handleGpsPressOut = () => {
-    Animated.spring(gpsScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
   const handleContinue = () => {
-    if (selectedState === 'ap' || selectedState === 'ts') {
-      router.push({
-        pathname: '/(onboarding)/districts',
-        params: { state: selectedState },
-      });
-    } else {
-      router.push('/(onboarding)/interests');
-    }
+    router.push('/(onboarding)/interests');
   };
 
-  const handleUseCurrentLocation = async () => {
-    if (isLocating) return;
-    
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'We need location access to find your current state.'
-        );
-        return;
-      }
-
-      setIsLocating(true);
-      
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const { latitude, longitude } = location.coords;
-      const reverseGeocoded = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude,
-      });
-
-      if (reverseGeocoded && reverseGeocoded.length > 0) {
-        const address = reverseGeocoded[0];
-        const stateName = address.region || '';
-        const cityName = address.city || address.subregion || address.district || '';
-
-        // Match the state name to INDIAN_STATES
-        const matchedState = INDIAN_STATES.find(s => 
-          s.name.toLowerCase().includes(stateName.toLowerCase()) || 
-          stateName.toLowerCase().includes(s.name.toLowerCase())
-        );
-
-        if (matchedState) {
-          setSelectedState(matchedState.id);
-          setSearchQuery(cityName ? `${cityName}, ${matchedState.name}` : matchedState.name);
-        } else {
-          // If we couldn't match or the location is outside India (e.g. mock emulator in US),
-          // Fall back gracefully to Telangana (Hyderabad) to preserve onboarding usability
-          setSelectedState('ts');
-          setSearchQuery(cityName ? `${cityName}, ${stateName}` : 'Hyderabad, Telangana');
-          Alert.alert(
-            'Location Detected',
-            `We detected you are in ${stateName || 'another region'}. Defaulting to Telangana (Hyderabad) for mock data.`
-          );
-        }
-      } else {
-        setSelectedState('ts');
-        setSearchQuery('Hyderabad, Telangana');
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert(
-        'Location Error',
-        'Could not fetch your current location. Please select your state manually.'
-      );
-      setSelectedState('ts');
-      setSearchQuery('Hyderabad, Telangana');
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  const handleSelectState = (stateId: string) => {
-    setSelectedState(stateId);
-    const state = INDIAN_STATES.find(s => s.id === stateId);
-    if (state) {
-      setSearchQuery(state.name);
-    }
-  };
-
-  const filteredStates = INDIAN_STATES.filter(state =>
-    state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    state.code.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredDistricts = districtsList.filter(district =>
+    district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    district.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Interpolate search border colors
@@ -285,7 +224,7 @@ export default function LocationScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* Simulated Background Blur Vectors */}
+      {/* Background Blurs */}
       <View style={styles.purpleBlur} />
       <View style={styles.tealBlur} />
 
@@ -304,22 +243,22 @@ export default function LocationScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Main Content Area */}
+      {/* Scrollable Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero Titles */}
+        {/* Hero Title */}
         <View style={styles.headlineSection}>
-          <Text style={styles.mainTitle}>Where are you?</Text>
+          <Text style={styles.mainTitle}>Which district?</Text>
           <Text style={styles.subtitle}>
-            Get news and updates tailored to your region.
+            Select your district in {stateLabel} to get hyperlocal updates.
           </Text>
         </View>
 
-        {/* Search Bar & GPS Button */}
+        {/* Search Input */}
         <View style={styles.searchContainer}>
           <Animated.View
             style={[
@@ -333,7 +272,7 @@ export default function LocationScreen() {
             <Ionicons name="search-outline" size={20} color="#767586" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search state..."
+              placeholder="Search district..."
               placeholderTextColor="#767586"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -341,46 +280,27 @@ export default function LocationScreen() {
               onBlur={handleSearchBlur}
             />
           </Animated.View>
-
-          {/* GPS Button */}
-          <Pressable
-            onPress={handleUseCurrentLocation}
-            onPressIn={handleGpsPressIn}
-            onPressOut={handleGpsPressOut}
-            disabled={isLocating}
-          >
-            <Animated.View style={[styles.gpsButton, { transform: [{ scale: gpsScale }] }, isLocating && styles.gpsButtonDisabled]}>
-              {isLocating ? (
-                <ActivityIndicator size="small" color="#4648D4" />
-              ) : (
-                <Ionicons name="locate-outline" size={20} color="#4648D4" />
-              )}
-              <Text style={styles.gpsButtonText}>
-                {isLocating ? 'Locating...' : 'Use current location'}
-              </Text>
-            </Animated.View>
-          </Pressable>
         </View>
 
-        {/* Popular Regions Bento Grid Section */}
-        <View style={styles.popularSection}>
-          <Text style={styles.sectionHeader}>INDIAN STATES</Text>
+        {/* District Selection Area */}
+        <View style={styles.districtsSection}>
+          <Text style={styles.sectionHeader}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
 
           <View style={styles.gridContainer}>
-            {filteredStates.map((state) => (
-              <StateCard
-                key={state.id}
-                name={state.name}
-                code={state.code}
-                isSelected={selectedState === state.id}
-                onPress={() => handleSelectState(state.id)}
+            {filteredDistricts.map((district) => (
+              <DistrictCard
+                key={district.id}
+                name={district.name}
+                code={district.code}
+                isSelected={selectedDistrict === district.id}
+                onPress={() => setSelectedDistrict(district.id)}
               />
             ))}
           </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Footer Action */}
+      {/* Footer Button */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
@@ -389,7 +309,7 @@ export default function LocationScreen() {
             onPressIn={handleContinuePressIn}
             onPressOut={handleContinuePressOut}
           >
-            <Text style={styles.continueButtonText}>Get Started</Text>
+            <Text style={styles.continueButtonText}>Confirm & Continue</Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -477,8 +397,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   searchContainer: {
-    gap: 16,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   searchBar: {
     flexDirection: 'row',
@@ -504,28 +423,7 @@ const styles = StyleSheet.create({
     color: '#0B1C30',
     fontFamily: 'Inter_400Regular',
   },
-  gpsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(70, 72, 212, 0.08)',
-    height: 56,
-    borderRadius: 16,
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: 'rgba(70, 72, 212, 0.15)',
-  },
-  gpsButtonDisabled: {
-    opacity: 0.6,
-  },
-  gpsButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 0.4,
-  },
-  popularSection: {
+  districtsSection: {
     gap: 16,
   },
   sectionHeader: {
@@ -542,11 +440,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
   },
-  regionCardContainer: {
+  cardContainer: {
     width: '47.5%',
     height: 120,
   },
-  regionCard: {
+  card: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -560,7 +458,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 2,
   },
-  regionCardSelected: {
+  cardSelected: {
     backgroundColor: '#E6E7FB',
     borderColor: '#4648D4',
     borderStyle: 'solid',
@@ -570,12 +468,12 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  regionCardUnselected: {
+  cardUnselected: {
     backgroundColor: '#FFFFFF',
     borderColor: 'rgba(199, 196, 215, 0.3)',
     borderStyle: 'solid',
   },
-  flagCircle: {
+  badgeCircle: {
     width: 52,
     height: 52,
     borderRadius: 40,
@@ -592,28 +490,23 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E6E7FB',
   },
-  flagCircleSelected: {
+  badgeCircleSelected: {
     borderColor: '#4648D4',
     backgroundColor: '#4648D4',
     shadowOpacity: 0.15,
   },
-  stateCodeText: {
-    fontSize: 14,
+  badgeText: {
+    fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  stateCodeTextSelected: {
+  badgeTextSelected: {
     color: '#FFFFFF',
   },
-  stateCodeTextUnselected: {
+  badgeTextUnselected: {
     color: '#4648D4',
   },
-  flagImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  regionName: {
+  districtName: {
     fontSize: 13,
     fontWeight: '500',
     color: '#0B1C30',
@@ -621,7 +514,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textAlign: 'center',
   },
-  regionNameSelected: {
+  districtNameSelected: {
     color: '#4648D4',
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',

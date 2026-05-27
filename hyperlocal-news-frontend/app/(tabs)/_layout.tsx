@@ -1,12 +1,13 @@
 import { Tabs, usePathname } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useColorScheme, View, StyleSheet, BackHandler } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useEffect } from 'react';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const pathname = usePathname();
 

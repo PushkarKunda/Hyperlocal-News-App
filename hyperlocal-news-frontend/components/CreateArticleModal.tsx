@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
@@ -56,7 +56,7 @@ interface CreateArticleModalProps {
 
 export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArticleModalProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = 'light' as 'light' | 'dark';
+  const colorScheme = useAppColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
 

@@ -1,9 +1,16 @@
 export const Typography = {
   fonts: {
+    // Body / Interface (Inter)
     regular: 'Inter_400Regular',
     medium: 'Inter_500Medium',
     semiBold: 'Inter_600SemiBold',
     bold: 'Inter_700Bold',
+    
+    // Display / Headings (Poppins)
+    displayRegular: 'Poppins_400Regular',
+    displayMedium: 'Poppins_500Medium',
+    displaySemiBold: 'Poppins_600SemiBold',
+    displayBold: 'Poppins_700Bold',
   },
   
   sizes: {
