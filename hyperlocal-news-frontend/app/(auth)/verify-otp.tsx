@@ -13,7 +13,6 @@ import {
   Image,
   Dimensions,
   Alert,
-  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -21,9 +20,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+
 
 const { width } = Dimensions.get('window');
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 4;
 
 interface ResendTimerProps {
   onResend: () => Promise<boolean>;
@@ -34,7 +35,7 @@ const ResendTimer = React.memo(({ onResend }: ResendTimerProps) => {
   const [isResending, setIsResending] = useState(false);
   const timerOpacity = useRef(new Animated.Value(0)).current;
   
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   // Soft fade-in for resend timer on mount
@@ -97,7 +98,7 @@ const SecurityBadge = React.memo(() => {
   const badgeSlideY = useRef(new Animated.Value(40)).current;
   const badgeOpacity = useRef(new Animated.Value(0)).current;
 
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
@@ -145,7 +146,7 @@ const SecurityBadge = React.memo(() => {
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const params = useLocalSearchParams();
@@ -421,7 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: {
     width: 32,
@@ -475,24 +476,21 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     letterSpacing: -0.64,
     lineHeight: 40,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 12,
   },
   welcomeSubtitle: {
     fontSize: 16,
     fontWeight: '400',
-    color: '#464554',
     lineHeight: 24,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_400Regular',
   },
   phoneHighlight: {
     fontWeight: '600',
-    color: '#0B1C30',
   },
   otpGridSection: {
     width: '100%',
@@ -532,12 +530,11 @@ const styles = StyleSheet.create({
   otpInput: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#0B1C30',
     textAlign: 'center',
     width: '100%',
     height: '100%',
     padding: 0,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   timerContainer: {
     alignItems: 'center',
@@ -545,17 +542,15 @@ const styles = StyleSheet.create({
   },
   timerQuestion: {
     fontSize: 14,
-    color: '#464554',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_400Regular',
   },
   timerButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4648D4',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   timerDisabled: {
     color: '#464554',
@@ -586,7 +581,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   buttonIcon: {
     marginTop: 1,
@@ -619,16 +614,14 @@ const styles = StyleSheet.create({
   badgeTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0B1C30',
     letterSpacing: 0.6,
     marginBottom: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   badgeSubtitle: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#464554',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   footer: {
     width: '100%',
@@ -639,9 +632,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '500',
-    color: '#767586',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   footerLink: {
     textDecorationLine: 'underline',

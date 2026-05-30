@@ -428,7 +428,6 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     lineHeight: 40,
     letterSpacing: -0.8,
     fontFamily: 'Inter_700Bold',

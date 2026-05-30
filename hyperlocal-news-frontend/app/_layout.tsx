@@ -13,7 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
-import { Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, Appearance } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
 
 // Global text interceptor to support app-wide dynamic text scaling and Poppins font family enforcement
@@ -111,6 +111,9 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+useEffect(() => {
+  Appearance.setColorScheme(colorScheme ?? 'light');
+}, [colorScheme]);
   if (!fontsLoaded && !fontError) {
     return null;
   }

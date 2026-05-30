@@ -1,9 +1,9 @@
 import { Stack } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
 
 export default function PublisherLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   return (

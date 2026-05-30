@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,14 +13,18 @@ import {
   Image,
   Dimensions,
   Alert,
-  useColorScheme,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
@@ -33,11 +37,51 @@ const COUNTRY_CODES = [
 
 export default function LoginScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const navigation = useNavigation();
   const { sendOtp, loginAsGuest } = useAuthStore();
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: 'YOUR_EXPO_CLIENT_ID',
+    iosClientId: 'YOUR_IOS_CLIENT_ID',
+    androidClientId: 'YOUR_ANDROID_CLIENT_ID',
+    // webClientId: 'YOUR_WEB_CLIENT_ID', // optional for web
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${authentication?.accessToken}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          useAuthStore.setState({
+            user: {
+              id: data.sub,
+              name: data.name,
+              email: data.email,
+              avatar: data.picture,
+              theme: 'system',
+              textSize: 'medium',
+            },
+            isAuthenticated: true,
+            isOnboarded: true,
+          });
+          Alert.alert('Google Sign‑In', `Welcome ${data.name}`);
+          (navigation as any).reset({ index: 0, routes: [{ name: '(tabs)' }] });
+        })
+        .catch(() => {
+          Alert.alert('Google Sign‑In', 'Failed to retrieve profile');
+        })
+        .finally(() => setIsLoading(false));
+    } else if (response?.type === 'error' || response?.type === 'cancel') {
+      Alert.alert('Google Sign‑In', 'Authentication cancelled');
+      setIsLoading(false);
+    }
+  }, [response]);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
@@ -146,6 +190,16 @@ export default function LoginScreen() {
     });
   };
 
+const handleGoogleLogin = async () => {
+  setIsLoading(true);
+  try {
+    await promptAsync();
+  } catch (e) {
+    Alert.alert('Google Sign‑In', 'Failed to start authentication');
+    setIsLoading(false);
+  }
+};
+
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -165,34 +219,7 @@ export default function LoginScreen() {
     Alert.alert('Continue with Email', 'Email login will be implemented in a future update.');
   };
 
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    
-    // Simulate authenticating user with Google credentials
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      useAuthStore.setState({
-        user: {
-          id: 'google-' + Math.random().toString(36).substr(2, 9),
-          name: 'Sujana Kumar',
-          email: 'sujana.kumar@gmail.com',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
-          theme: 'system',
-          textSize: 'medium',
-        },
-        isAuthenticated: true,
-        isOnboarded: true,
-      });
 
-      Alert.alert('Google Sign-In', 'Signed in successfully via Google!');
-
-      (navigation as any).reset({
-        index: 0,
-        routes: [{ name: '(tabs)' }],
-      });
-    }, 1200);
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -345,19 +372,6 @@ export default function LoginScreen() {
                 <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
               </View>
 
-              {/* "Continue with Email" Button */}
-              <Animated.View style={{ transform: [{ scale: emailButtonScale }] }}>
-                <Pressable
-                  style={[styles.secondaryButton, { borderColor: colors.border }]}
-                  onPressIn={() => animateButton(emailButtonScale, 0.96)}
-                  onPressOut={() => animateButton(emailButtonScale, 1)}
-                  onPress={handleEmailLogin}
-                >
-                  <Feather name="mail" size={18} color={colors.text} style={styles.mailIcon} />
-                  <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Continue with Email</Text>
-                </Pressable>
-              </Animated.View>
-
               {/* "Continue with Google" Button */}
               <Animated.View style={{ transform: [{ scale: googleButtonScale }] }}>
                 <Pressable
@@ -417,7 +431,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_700Bold',
     color: '#4648D4',
   },
   skipButton: {
@@ -427,7 +441,7 @@ const styles = StyleSheet.create({
   skipButtonText: {
     fontSize: 16,
     color: '#4648D4',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_400Regular',
   },
   keyboardView: {
     flex: 1,
@@ -475,18 +489,16 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     letterSpacing: -0.64,
     lineHeight: 40,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 8,
   },
   welcomeSubtitle: {
     fontSize: 16,
     fontWeight: '400',
-    color: '#464554',
     lineHeight: 24,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_400Regular',
   },
   formSection: {
     marginBottom: 24,
@@ -496,11 +508,10 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#767586',
     letterSpacing: 0.6,
     marginBottom: 12,
     paddingHorizontal: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   phoneInputRow: {
     flexDirection: 'row',
@@ -525,8 +536,7 @@ const styles = StyleSheet.create({
   countryPickerText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#0B1C30',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   phoneInputContainer: {
     flex: 1,
@@ -543,8 +553,7 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     fontSize: 16,
-    color: '#0B1C30',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_400Regular',
     padding: 0,
   },
   countryDropdown: {
@@ -579,8 +588,7 @@ const styles = StyleSheet.create({
   countryOptionText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#0B1C30',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   actionsSection: {
     width: '100%',
@@ -605,7 +613,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   buttonIcon: {
     marginTop: 1,
@@ -627,7 +635,7 @@ const styles = StyleSheet.create({
     color: '#C7C4D7',
     letterSpacing: 1.5,
     marginHorizontal: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_600SemiBold',
   },
   secondaryButton: {
     backgroundColor: 'transparent',
@@ -641,10 +649,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryButtonText: {
-    color: '#0B1C30',
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   mailIcon: {
     marginTop: 1,
@@ -661,9 +668,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     fontWeight: '500',
-    color: '#464554',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: 'Poppins_500Medium',
   },
   footerLink: {
     color: '#4648D4',

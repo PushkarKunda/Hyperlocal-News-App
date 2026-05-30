@@ -471,7 +471,6 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     lineHeight: 40,
     letterSpacing: -0.64,
     fontFamily: 'Inter_700Bold',
@@ -593,7 +592,6 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     height: '100%',
-    color: '#0B1C30',
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
   },
@@ -637,7 +635,6 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0B1C30',
     fontFamily: 'Inter_600SemiBold',
     marginBottom: 4,
   },

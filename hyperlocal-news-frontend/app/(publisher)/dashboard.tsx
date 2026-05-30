@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   Pressable,
   FlatList,
   Dimensions,
@@ -16,6 +15,7 @@ import { Colors } from '@/constants/Colors';
 import { usePublisherArticles } from '@/hooks/useNews';
 import { useStore } from '@/store/useStore';
 import { NewsArticle, ArticleStatus } from '@/types';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const TABS = ['all', 'pending', 'published', 'rejected'] as const;
 type TabKey = (typeof TABS)[number];
@@ -28,7 +28,7 @@ const TAB_CONFIG: Record<TabKey, { label: string; icon: string; color: string }>
 };
 
 export default function PublisherDashboard() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const user = useStore((state) => state.user);

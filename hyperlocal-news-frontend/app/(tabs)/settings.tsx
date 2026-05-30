@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  useColorScheme,
   Alert,
   Image,
   Pressable,
@@ -405,7 +404,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
   },
@@ -498,7 +496,6 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
@@ -556,7 +553,6 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0B1C30',
     fontFamily: 'Inter_600SemiBold',
   },
   settingValueContainer: {

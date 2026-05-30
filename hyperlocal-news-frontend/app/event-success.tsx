@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function EventSuccessScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();

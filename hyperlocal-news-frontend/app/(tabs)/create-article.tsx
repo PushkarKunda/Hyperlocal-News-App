@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  useColorScheme,
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +18,7 @@ import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useArticleStore } from '@/store/articleStore';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -59,7 +59,7 @@ const CITIES = [
 ];
 
 export default function CreateArticleScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();

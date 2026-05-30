@@ -141,9 +141,9 @@ export default function MenuBookmarksScreen() {
             onPress={() => setIsMenuVisible(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="menu" size={24} color={isDark ? '#FFFFFF' : '#0B1C30'} />
+            <Ionicons name="menu" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#0B1C30' }]}>Bookmarks</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Bookmarks</Text>
         </View>
         
         <View style={styles.headerRight}>
@@ -152,14 +152,14 @@ export default function MenuBookmarksScreen() {
             onPress={() => router.push('/(tabs)/discover')}
             activeOpacity={0.7}
           >
-            <Ionicons name="search-outline" size={22} color={isDark ? '#FFFFFF' : '#0B1C30'} />
+             <Ionicons name="search-outline" size={22} color={colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => router.push('/(tabs)/profile')}
             activeOpacity={0.7}
           >
-            <Ionicons name="ellipsis-vertical" size={20} color={isDark ? '#FFFFFF' : '#0B1C30'} />
+             <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -175,7 +175,7 @@ export default function MenuBookmarksScreen() {
           <View style={[styles.searchInputContainer, { backgroundColor: isDark ? '#1A1A35' : '#EFF4FF' }]}>
             <Ionicons name="search" size={18} color={isDark ? 'rgba(148, 163, 184, 0.6)' : 'rgba(70, 69, 84, 0.6)'} style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchInput, { color: isDark ? '#FFFFFF' : '#0B1C30' }]}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search saved stories..."
               placeholderTextColor={isDark ? 'rgba(148, 163, 184, 0.6)' : 'rgba(70, 69, 84, 0.6)'}
               value={searchQuery}
@@ -292,7 +292,7 @@ export default function MenuBookmarksScreen() {
                     </View>
 
                     {/* Heading Text */}
-                    <Text style={[styles.articleTitle, { color: isDark ? '#FFFFFF' : '#0B1C30' }]} numberOfLines={2}>
+                    <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>
                       {item.title}
                     </Text>
 
@@ -327,7 +327,7 @@ export default function MenuBookmarksScreen() {
             <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.15)' : 'rgba(70, 72, 212, 0.08)' }]}>
               <Ionicons name="bookmark-outline" size={48} color="#4648D4" />
             </View>
-            <Text style={[styles.emptyTitle, { color: isDark ? '#FFFFFF' : '#0B1C30' }]}>No Saved Stories</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Saved Stories</Text>
             <Text style={[styles.emptySubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
               {searchQuery
                 ? `No results match "${searchQuery}". Please try another keyword.`
@@ -360,7 +360,7 @@ export default function MenuBookmarksScreen() {
           >
             <View style={[styles.modalSheet, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF' }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#0B1C30' }]}>Add to Bookmarks</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Add to Bookmarks</Text>
                 <TouchableOpacity
                   onPress={() => setIsAddModalVisible(false)}
                   style={styles.modalCloseButton}
@@ -374,7 +374,7 @@ export default function MenuBookmarksScreen() {
                 <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#464554' }]}>Title</Text>
                 <TextInput
                   style={[styles.formInput, {
-                    color: isDark ? '#FFFFFF' : '#0B1C30',
+                    color: colors.text,
                     backgroundColor: isDark ? '#111122' : '#F1F5F9',
                     borderColor: isDark ? '#2E2E48' : '#E2E8F0'
                   }]}
@@ -390,7 +390,7 @@ export default function MenuBookmarksScreen() {
                 <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#464554' }]}>Description Summary</Text>
                 <TextInput
                   style={[styles.formInput, styles.textAreaInput, {
-                    color: isDark ? '#FFFFFF' : '#0B1C30',
+                    color: colors.text,
                     backgroundColor: isDark ? '#111122' : '#F1F5F9',
                     borderColor: isDark ? '#2E2E48' : '#E2E8F0'
                   }]}

@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   Pressable,
   TextInput,
   Alert,
@@ -19,6 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { useCategories } from '@/hooks/useCategories';
 import { useStore } from '@/store/useStore';
 import { Category } from '@/types';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 // ── Validation helpers ─────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ const validate = (
 };
 
 export default function CreateArticleScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const submitArticle = useStore((state) => state.submitArticle);

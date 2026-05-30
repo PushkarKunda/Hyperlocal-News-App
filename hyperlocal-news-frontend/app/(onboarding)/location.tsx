@@ -471,7 +471,6 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.64,
     textAlign: 'center',
@@ -509,7 +508,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    color: '#0B1C30',
     fontFamily: 'Inter_400Regular',
   },
   gpsButton: {
@@ -624,7 +622,6 @@ const styles = StyleSheet.create({
   regionName: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#0B1C30',
     fontFamily: 'Inter_500Medium',
     letterSpacing: 0.4,
     textAlign: 'center',
