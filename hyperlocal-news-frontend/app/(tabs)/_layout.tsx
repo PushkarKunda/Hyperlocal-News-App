@@ -1,26 +1,45 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useColorScheme, View, StyleSheet } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useEffect } from 'react';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const onBackPress = () => {
+      // Intercept the physical back button press on Android when the user is on the main tabs screens
+      // to exit the app instead of popping the stack back into onboarding screens in history.
+      const cleanPath = pathname.replace(/^\/\(tabs\)/, '') || '/';
+      if (
+        cleanPath === '/' ||
+        cleanPath === '/shorts' ||
+        cleanPath === '/local' ||
+        cleanPath === '/discover' ||
+        cleanPath === '/profile' ||
+        cleanPath === '/menu-bookmarks'
+      ) {
+        BackHandler.exitApp();
+        return true; // Prevent default pop behavior
+      }
+      return false; // Allow standard backward pop for nested screens
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+  }, [pathname]);
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 64,
-          paddingBottom: Spacing.sm,
-          paddingTop: Spacing.sm,
-        },
+        tabBarStyle: { display: 'none' },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
@@ -36,6 +55,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={24} color={color} />
           ),
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
@@ -72,6 +92,18 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="person-outline" size={24} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="create-article"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="menu-bookmarks"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

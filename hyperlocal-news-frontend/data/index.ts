@@ -5,6 +5,7 @@ export * from './mockCategories';
 export * from './mockLocations';
 export * from './mockNews';
 export * from './mockUser';
+export * from './mockImmersiveNews';
 export * from './mockEvents';
 export * from './mockPolls';
 export * from './mockNotifications';

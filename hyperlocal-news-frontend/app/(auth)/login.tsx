@@ -5,89 +5,183 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Animated,
   Pressable,
+  Image,
+  Dimensions,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { useRouter, useNavigation } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/store/authStore';
+
+const { width } = Dimensions.get('window');
 
 const COUNTRY_CODES = [
-  { code: '+91', country: 'IN' },
-  { code: '+1', country: 'US' },
-  { code: '+44', country: 'UK' },
-  { code: '+61', country: 'AU' },
+  { code: '+91', country: 'IN', flag: '🇮🇳' },
+  { code: '+1', country: 'US', flag: '🇺🇸' },
+  { code: '+44', country: 'UK', flag: '🇬🇧' },
+  { code: '+61', country: 'AU', flag: '🇦🇺' },
 ];
 
 export default function LoginScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const navigation = useNavigation();
+  const { sendOtp, loginAsGuest } = useAuthStore();
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Animation refs
-  const buttonScale = useRef(new Animated.Value(1)).current;
+  // Animated values
+  const primaryButtonScale = useRef(new Animated.Value(1)).current;
+  const emailButtonScale = useRef(new Animated.Value(1)).current;
+  const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.98,
+  // Handles phone number input and formats to (555) 000-0000
+  const handlePhoneChange = (text: string, country = selectedCountry) => {
+    const cleaned = text.replace(/\D/g, '');
+    
+    if (cleaned.length === 0) {
+      setPhoneNumber('');
+      return;
+    }
+    
+    let formatted = '';
+    if (country.code === '+91') {
+      // Indian format: XXXXX XXXXX (10 digits)
+      const limited = cleaned.slice(0, 10);
+      if (limited.length <= 5) {
+        formatted = limited;
+      } else {
+        formatted = `${limited.slice(0, 5)} ${limited.slice(5)}`;
+      }
+    } else {
+      // US and other formats: (XXX) XXX-XXXX (10 digits)
+      const limited = cleaned.slice(0, 10);
+      if (limited.length <= 3) {
+        formatted = `(${limited}`;
+      } else if (limited.length <= 6) {
+        formatted = `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+      } else {
+        formatted = `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+      }
+    }
+    
+    setPhoneNumber(formatted);
+  };
+
+  // Button micro-interactions (press scale animations)
+  const animateButton = (value: Animated.Value, toValue: number) => {
+    Animated.spring(value, {
+      toValue,
       useNativeDriver: true,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
-  const handlePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
+  const toggleDropdown = (show: boolean) => {
+    if (show) {
+      setShowCountryPicker(true);
+      Animated.timing(pickerDropdownOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(pickerDropdownOpacity, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }).start(() => setShowCountryPicker(false));
+    }
   };
 
-  const handleSendOTP = () => {
-    if (phoneNumber.length < 10) {
-      // Show error - we'll add proper validation later
+  const handleSendOTP = async () => {
+    const rawDigits = phoneNumber.replace(/\D/g, '');
+    
+    if (rawDigits.length < 10) {
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit phone number.');
       return;
     }
 
     setIsLoading(true);
+    const fullPhone = `${selectedCountry.code}${rawDigits}`;
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const success = await sendOtp(fullPhone);
+      if (success) {
+        router.push({
+          pathname: '/(auth)/verify-otp',
+          params: { phone: fullPhone },
+        });
+      } else {
+        Alert.alert('Error', 'Failed to send verification code. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
       setIsLoading(false);
-      router.push({
-        pathname: '/(auth)/verify-otp',
-        params: { phone: `${selectedCountry.code}${phoneNumber}` },
-      });
-    }, 1000);
+    }
   };
 
   const handleGuestLogin = () => {
-    router.replace('/(tabs)');
-    // Guest skips OTP but still needs to select preferences
-    //router.replace('/(onboarding)/language');
+    loginAsGuest();
+    (navigation as any).reset({
+      index: 0,
+      routes: [{ name: '(tabs)' }],
+    });
+  };
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
+  const handleLinkPress = (type: 'terms' | 'privacy') => {
+    Alert.alert(
+      type === 'terms' ? 'Terms of Service' : 'Privacy Policy',
+      `Redirecting to HyperLocal's ${type === 'terms' ? 'Terms of Service' : 'Privacy Policy'}...`
+    );
+  };
+
+  const handleEmailLogin = () => {
+    Alert.alert('Continue with Email', 'Email login will be implemented in a future update.');
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-      {/* Status Bar Simulation */}
-      <View style={styles.statusBar}>
-        <Text style={[styles.statusTime, { color: colors.text }]}>9:41</Text>
-        <View style={styles.statusIcons}>
-          <MaterialIcons name="signal-cellular-alt" size={16} color={colors.text} />
-          <MaterialIcons name="wifi" size={16} color={colors.text} />
-          <MaterialIcons name="battery-full" size={16} color={colors.text} />
-        </View>
+      {/* Header - Top Navigation Anchor */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#4648D4" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>HyperLocal</Text>
+
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleGuestLogin}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -99,401 +193,427 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.primaryLight }]}>
-              <MaterialIcons name="newspaper" size={40} color={colors.primary} />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Welcome to HyperLocal News
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Your neighborhood, your news.
-            </Text>
-          </View>
+          {/* Main Content Area */}
+          <View style={styles.mainContent}>
+            
+            {/* Hero Section */}
+            <View style={styles.heroSection}>
+              {/* Background Card */}
+              <View style={styles.heroCard}>
+                <Image
+                  source={require('../../assets/immersive_feed/64186b35bff5b154bbf523e6dae56134a7cd7e14.png')}
+                  style={styles.heroImage}
+                />
+              </View>
 
-          {/* Phone Input Section */}
-          <View style={styles.inputSection}>
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              Phone Number
-            </Text>
-
-            <View style={styles.phoneInputRow}>
-              {/* Country Code Picker */}
-              <TouchableOpacity
-                style={[
-                  styles.countryPicker,
-                  {
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setShowCountryPicker(!showCountryPicker)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.countryCode, { color: colors.text }]}>
-                  {selectedCountry.code}
+              {/* Headings */}
+              <View style={styles.headingContainer}>
+                <Text style={styles.welcomeTitle}>Welcome Back!</Text>
+                <Text style={styles.welcomeSubtitle}>
+                  Log in to your account with your phone number to continue where you left off.
                 </Text>
-                <MaterialIcons
-                  name="expand-more"
-                  size={20}
-                  color={colors.textTertiary}
-                />
-              </TouchableOpacity>
-
-              {/* Phone Number Input */}
-              <View
-                style={[
-                  styles.phoneInputContainer,
-                  {
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <TextInput
-                  style={[styles.phoneInput, { color: colors.text }]}
-                  placeholder="Enter mobile number"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                />
               </View>
             </View>
 
-            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-              We'll send a 6-digit OTP via SMS for verification.
-            </Text>
-          </View>
+            {/* Login Form Section */}
+            <View style={styles.formSection}>
+              {/* Input Label */}
+              <Text style={styles.inputLabel}>PHONE NUMBER</Text>
 
-          {/* Country Picker Dropdown */}
-          {showCountryPicker && (
-            <View
-              style={[
-                styles.countryDropdown,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  ...Shadows.md,
-                },
-              ]}
-            >
-              {COUNTRY_CODES.map((country) => (
+              {/* Input Row */}
+              <View style={styles.phoneInputRow}>
+                {/* Country Selector */}
                 <TouchableOpacity
-                  key={country.code}
-                  style={[
-                    styles.countryOption,
-                    selectedCountry.code === country.code && {
-                      backgroundColor: colors.primaryLight,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedCountry(country);
-                    setShowCountryPicker(false);
-                  }}
+                  style={styles.countryPicker}
+                  onPress={() => toggleDropdown(!showCountryPicker)}
+                  activeOpacity={0.8}
                 >
-                  <Text
-                    style={[
-                      styles.countryOptionText,
-                      { color: colors.text },
-                      selectedCountry.code === country.code && {
-                        color: colors.primary,
-                        fontWeight: '600',
-                      },
-                    ]}
-                  >
-                    {country.code} ({country.country})
+                  <Text style={styles.countryPickerText}>
+                    {selectedCountry.flag} {selectedCountry.code}
                   </Text>
+                  <Feather name="chevron-down" size={16} color="#0B1C30" />
                 </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
-          {/* Send OTP Button */}
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <Pressable
-              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-              onPress={handleSendOTP}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              disabled={isLoading}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isLoading ? 'Sending...' : 'Send OTP'}
-              </Text>
-              {!isLoading && (
-                <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
+                {/* Number Input Field */}
+                <View style={styles.phoneInputContainer}>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder={selectedCountry.code === '+91' ? '98765 43210' : '(555) 000-0000'}
+                    placeholderTextColor="#C7C4D7"
+                    keyboardType="phone-pad"
+                    maxLength={selectedCountry.code === '+91' ? 11 : 14}
+                    value={phoneNumber}
+                    onChangeText={(text) => handlePhoneChange(text)}
+                  />
+                </View>
+              </View>
+
+              {/* Country Code Picker Dropdown Overlay */}
+              {showCountryPicker && (
+                <Animated.View 
+                  style={[
+                    styles.countryDropdown,
+                    { opacity: pickerDropdownOpacity }
+                  ]}
+                >
+                  {COUNTRY_CODES.map((country) => (
+                    <TouchableOpacity
+                      key={country.code}
+                      style={[
+                        styles.countryOption,
+                        selectedCountry.code === country.code && styles.selectedOption
+                      ]}
+                      onPress={() => {
+                        setSelectedCountry(country);
+                        toggleDropdown(false);
+                        handlePhoneChange(phoneNumber, country);
+                      }}
+                    >
+                      <Text style={styles.countryOptionText}>
+                        {country.flag} {country.country} ({country.code})
+                      </Text>
+                      {selectedCountry.code === country.code && (
+                        <Feather name="check" size={16} color="#4648D4" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </Animated.View>
               )}
-            </Pressable>
-          </Animated.View>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>OR</Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
-
-          {/* Guest Button */}
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              {
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={handleGuestLogin}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>
-              Continue as Guest
-            </Text>
-          </TouchableOpacity>
-
-          {/* Spacer */}
-          <View style={styles.spacer} />
-
-          {/* Social Login Icons */}
-          <View style={styles.socialSection}>
-            <View style={styles.socialIcons}>
-              <TouchableOpacity style={styles.socialIcon}>
-                <MaterialIcons name="apple" size={24} color={colors.textTertiary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialIcon}>
-                <MaterialIcons name="mail" size={24} color={colors.textTertiary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialIcon}>
-                <MaterialIcons name="facebook" size={24} color={colors.textTertiary} />
-              </TouchableOpacity>
             </View>
 
-            {/* Terms Text */}
-            <Text style={[styles.termsText, { color: colors.textTertiary }]}>
-              By continuing, you agree to our{' '}
-              <Text style={[styles.termsLink, { color: colors.primary }]}>
-                Terms of Service
-              </Text>{' '}
-              and{' '}
-              <Text style={[styles.termsLink, { color: colors.primary }]}>
-                Privacy Policy
+            {/* Form Actions Section */}
+            <View style={styles.actionsSection}>
+              {/* Primary "Send Code" Button */}
+              <Animated.View style={{ transform: [{ scale: primaryButtonScale }] }}>
+                <Pressable
+                  style={styles.primaryButton}
+                  onPressIn={() => animateButton(primaryButtonScale, 0.96)}
+                  onPressOut={() => animateButton(primaryButtonScale, 1)}
+                  onPress={handleSendOTP}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {isLoading ? 'Sending...' : 'Send Code'}
+                  </Text>
+                  {!isLoading && (
+                    <Feather name="arrow-right" size={16} color="#FFF" style={styles.buttonIcon} />
+                  )}
+                </Pressable>
+              </Animated.View>
+
+              {/* OR Separator */}
+              <View style={styles.separatorRow}>
+                <View style={styles.separatorLine} />
+                <Text style={styles.separatorText}>OR</Text>
+                <View style={styles.separatorLine} />
+              </View>
+
+              {/* "Continue with Email" Button */}
+              <Animated.View style={{ transform: [{ scale: emailButtonScale }] }}>
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPressIn={() => animateButton(emailButtonScale, 0.96)}
+                  onPressOut={() => animateButton(emailButtonScale, 1)}
+                  onPress={handleEmailLogin}
+                >
+                  <Feather name="mail" size={18} color="#0B1C30" style={styles.mailIcon} />
+                  <Text style={styles.secondaryButtonText}>Continue with Email</Text>
+                </Pressable>
+              </Animated.View>
+            </View>
+
+            {/* Footer Legal Terms */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                By continuing, you agree to our{' '}
+                <Text style={styles.footerLink} onPress={() => handleLinkPress('terms')}>
+                  Terms of Service
+                </Text>
+                {' and '}
+                <Text style={styles.footerLink} onPress={() => handleLinkPress('privacy')}>
+                  Privacy Policy
+                </Text>
+                .
               </Text>
-              .
-            </Text>
+            </View>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Home Indicator */}
-      <View style={styles.homeIndicatorContainer}>
-        <View
-          style={[
-            styles.homeIndicator,
-            {
-              backgroundColor: colorScheme === 'dark' ? colors.border : '#1A1A1A',
-            },
-          ]}
-        />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FF',
   },
-  statusBar: {
-    height: 48,
+  header: {
+    height: 64,
+    width: '100%',
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8F9FF',
+    borderBottomWidth: 0,
   },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+  backButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  statusIcons: {
-    flexDirection: 'row',
-    gap: 6,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    color: '#4648D4',
+  },
+  skipButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    color: '#4648D4',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.lg,
   },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: Spacing['2xl'],
+  mainContent: {
+    flex: 1,
+    maxWidth: 448,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius['2xl'],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
+  heroSection: {
+    marginBottom: 32,
+    width: '100%',
   },
-  title: {
-    fontSize: 24,
+  heroCard: {
+    backgroundColor: '#E5EEFF',
+    height: 192,
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  heroImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '180%',
+    top: '-40%',
+    left: 0,
+    resizeMode: 'cover',
+  },
+  headingContainer: {
+    marginTop: 16,
+    width: '100%',
+  },
+  welcomeTitle: {
+    fontSize: 32,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
+    color: '#0B1C30',
+    letterSpacing: -0.64,
+    lineHeight: 40,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
+  welcomeSubtitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#464554',
+    lineHeight: 24,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  inputSection: {
-    marginBottom: Spacing.lg,
+  formSection: {
+    marginBottom: 24,
+    width: '100%',
+    position: 'relative',
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-    marginBottom: Spacing.sm,
-    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#767586',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+    paddingHorizontal: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   phoneInputRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: 8,
     height: 56,
+    width: '100%',
   },
   countryPicker: {
+    backgroundColor: '#EFF4FF',
+    height: 56,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
+    paddingHorizontal: 12,
     gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 1,
+    elevation: 1,
   },
-  countryCode: {
-    fontSize: 14,
+  countryPickerText: {
+    fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    color: '#0B1C30',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   phoneInputContainer: {
     flex: 1,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.md,
+    backgroundColor: '#EFF4FF',
+    height: 56,
+    borderRadius: 8,
+    paddingHorizontal: 16,
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 1,
+    elevation: 1,
   },
   phoneInput: {
     fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-  helperText: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    marginTop: Spacing.sm,
-    marginLeft: 4,
+    color: '#0B1C30',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    padding: 0,
   },
   countryDropdown: {
     position: 'absolute',
-    top: 220,
-    left: Spacing.xl,
-    right: Spacing.xl,
-    borderRadius: BorderRadius.lg,
+    top: 84,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     borderWidth: 1,
-    zIndex: 100,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 999,
     overflow: 'hidden',
   },
   countryOption: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  selectedOption: {
+    backgroundColor: '#F8F9FF',
   },
   countryOptionText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#0B1C30',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  actionsSection: {
+    width: '100%',
+    gap: 16,
+    marginBottom: 32,
   },
   primaryButton: {
+    backgroundColor: '#4648D4',
     height: 56,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    ...Shadows.sm,
+    gap: 8,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   primaryButtonText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  divider: {
+  buttonIcon: {
+    marginTop: 1,
+  },
+  separatorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.lg,
-    gap: Spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-  },
-  secondaryButton: {
-    height: 56,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginVertical: 8,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#C7C4D7',
+  },
+  separatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#C7C4D7',
+    letterSpacing: 1.5,
+    marginHorizontal: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#C7C4D7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   secondaryButtonText: {
+    color: '#0B1C30',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  spacer: {
-    flex: 1,
-    minHeight: Spacing.xl,
-  },
-  socialSection: {
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  socialIcons: {
-    flexDirection: 'row',
-    gap: Spacing.xl,
-  },
-  socialIcon: {
-    opacity: 0.3,
-  },
-  termsText: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: Spacing.md,
-  },
-  termsLink: {
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  homeIndicatorContainer: {
-    paddingVertical: Spacing.sm,
+  mailIcon: {
+    marginTop: 1,
+  },
+  footer: {
+    width: '100%',
     alignItems: 'center',
+    paddingVertical: 12,
   },
-  homeIndicator: {
-    width: 128,
-    height: 5,
-    borderRadius: 100,
+  footerText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500',
+    color: '#464554',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  footerLink: {
+    color: '#4648D4',
+    fontWeight: '500',
   },
 });

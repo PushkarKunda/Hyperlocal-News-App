@@ -1,7 +1,7 @@
 import { Category, Interest } from '@/types';
 
 export const MOCK_CATEGORIES: Category[] = [
-  { id: '1', name: 'For You', slug: 'for-you', icon: 'auto-awesome', color: '#6567F1' },
+  { id: '1', name: 'For You', slug: 'for-you', icon: 'auto-awesome', color: '#4648D4' },
   { id: '2', name: 'Local', slug: 'local', icon: 'location-on', color: '#10B981' },
   { id: '3', name: 'Politics', slug: 'politics', icon: 'account-balance', color: '#EF4444' },
   { id: '4', name: 'Sports', slug: 'sports', icon: 'sports-soccer', color: '#F59E0B' },

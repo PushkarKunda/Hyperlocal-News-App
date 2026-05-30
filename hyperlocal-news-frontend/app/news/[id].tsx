@@ -1,124 +1,145 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, Pressable, useColorScheme, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, useColorScheme, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { useNewsArticle } from '@/hooks/useNews';
-import { useStore } from '@/store/useStore';
-import { formatDistanceToNow } from 'date-fns';
+import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { MOCK_NEWS } from '@/data/mockNews';
+import { formatDate } from '@/utils/formatters';
+import { Badge } from '@/components/ui/Badge';
+import { StatusBar } from 'expo-status-bar';
+import { BlurView } from 'expo-blur';
 
-export default function ArticleDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+const { width } = Dimensions.get('window');
+
+export default function NewsDetailScreen() {
+  const { id } = useLocalSearchParams();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  
-  const { data: article, isLoading } = useNewsArticle(id as string);
-  const toggleBookmark = useStore((state) => state.toggleBookmark);
+  const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
 
-  const handleShare = async () => {
-    if (!article) return;
-    try {
-      await Share.share({
-        message: `${article.headline}\n\nRead more at: ${article.url}`,
-        url: article.url,
-        title: article.headline,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const article = MOCK_NEWS.find((item) => item.id === id);
 
   if (!article) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text }}>Article not found.</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>Article not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={{ color: colors.primary }}>Go Back</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const timeAgo = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true });
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <View style={styles.headerActions}>
-          <Pressable onPress={() => toggleBookmark(article.id)} style={styles.iconButton}>
-            <MaterialIcons 
-              name={article.isBookmarked ? "bookmark" : "bookmark-border"} 
-              size={24} 
-              color={article.isBookmarked ? colors.primary : colors.text} 
-            />
-          </Pressable>
-          <Pressable onPress={handleShare} style={styles.iconButton}>
-            <MaterialIcons name="share" size={24} color={colors.text} />
-          </Pressable>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      
+      {/* Immersive Top Bar */}
+      <View style={[styles.topBar, { top: Math.max(insets.top, 20) }]}>
+        <TouchableOpacity 
+          style={styles.circularButton} 
+          onPress={() => router.back()}
+        >
+          <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
+            <MaterialIcons name="arrow-back" size={24} color="#FFF" />
+          </BlurView>
+        </TouchableOpacity>
+
+        <View style={styles.rightActions}>
+          <TouchableOpacity style={styles.circularButton}>
+            <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
+              <Feather name="share" size={20} color="#FFF" />
+            </BlurView>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.circularButton, { marginLeft: Spacing.sm }]}>
+            <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
+              <MaterialIcons name="bookmark-border" size={24} color="#FFF" />
+            </BlurView>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        <Image source={{ uri: article.imageUrl }} style={styles.heroImage} />
-        
-        <View style={styles.content}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{article.category.name.toUpperCase()}</Text>
-          </View>
-          
-          <Text style={[styles.headline, { color: colors.text }]}>{article.headline}</Text>
-          
-          <View style={styles.metaRow}>
-            <View style={styles.sourceInfo}>
-              <MaterialIcons name="business" size={16} color={colors.textSecondary} />
-              <Text style={[styles.sourceName, { color: colors.textSecondary }]}>{article.source.name}</Text>
-            </View>
-            <View style={styles.dot} />
-            <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>{timeAgo}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={true} scrollEventThrottle={16}>
+        {/* Immersive Hero Image */}
+        <View style={styles.heroContainer}>
+          <Image
+            source={{ uri: article.imageUrl }}
+            style={styles.heroImage}
+            contentFit="cover"
+            transition={1000}
+          />
+          <LinearGradient
+            colors={['transparent', colors.surface]}
+            style={styles.heroGradient}
+          />
+        </View>
+
+        <View style={[styles.content, { backgroundColor: colors.surface }]}>
+          {/* Metadata Row */}
+          <View style={styles.categoryRow}>
+            <Badge 
+              label={article.category.name} 
+              color={article.category.color || colors.primary} 
+              variant="subtle"
+              size="md"
+            />
+            <View style={[styles.dot, { backgroundColor: colors.textTertiary }]} />
+            <Text style={[styles.readTime, { color: colors.textTertiary }]}>
+              {article.readTime}
+            </Text>
           </View>
 
-          {/* Fake Article Content */}
-          <Text style={[styles.bodyText, { color: colors.text }]}>
-            This is a full article view. In a real application, the article body text would be fetched from the backend API.
-            {'\n\n'}
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor. Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus.
-            {'\n\n'}
-            Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio. Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus.
+          {/* Premium Headline */}
+          <Text style={[styles.headline, { color: colors.text }]}>
+            {article.headline}
           </Text>
 
-          {/* Stats */}
-          <View style={[styles.statsContainer, { borderTopColor: 'rgba(0,0,0,0.05)' }]}>
-            <View style={styles.statItem}>
-              <MaterialIcons name="visibility" size={20} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>{article.stats.views} Views</Text>
+          {/* Refined Byline */}
+          <View style={[styles.byline, { borderBottomColor: colors.divider }]}>
+             <Image 
+              source={{ uri: article.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100' }} 
+              style={styles.authorAvatar} 
+            />
+            <View style={styles.authorInfo}>
+              <Text style={[styles.authorName, { color: colors.text }]}>
+                {article.author?.name || 'Editorial Team'}
+              </Text>
+              <Text style={[styles.publishedDate, { color: colors.textSecondary }]}>
+                {article.source.name} • {formatDate(article.publishedAt)}
+              </Text>
             </View>
-            <View style={styles.statItem}>
-              <MaterialIcons name="thumb-up" size={20} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>{article.stats.likes} Likes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <MaterialIcons name="chat-bubble-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>{article.stats.comments} Comments</Text>
-            </View>
+            <TouchableOpacity style={[styles.followBtn, { borderColor: colors.primary }]}>
+              <Text style={[styles.followBtnText, { color: colors.primary }]}>Follow</Text>
+            </TouchableOpacity>
           </View>
 
+          {/* Article Body */}
+          <View style={styles.articleBody}>
+            <Text style={[styles.leadIn, { color: colors.text }]}>
+              {article.summary}
+            </Text>
+            
+            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+              {article.content || "Experience the future of local storytelling. Our deep dive into this developing situation reveals critical insights for the community..."}
+            </Text>
+
+            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            </Text>
+
+            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+              Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+            </Text>
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -126,95 +147,131 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centerContainer: {
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    zIndex: 100,
+  },
+  circularButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  blur: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  rightActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  iconButton: {
-    padding: 8,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  heroContainer: {
+    width: width,
+    height: 420,
   },
   heroImage: {
-    width: '100%',
-    height: 250,
+    flex: 1,
+  },
+  heroGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 180,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 100,
+    backgroundColor: 'inherit',
+    borderTopLeftRadius: BorderRadius['2xl'],
+    borderTopRightRadius: BorderRadius['2xl'],
+    paddingTop: Spacing.xl,
   },
-  categoryBadge: {
-    backgroundColor: 'rgba(101, 103, 241, 0.1)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  categoryText: {
-    color: '#6567f1',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  headline: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 32,
-    marginBottom: 16,
-  },
-  metaRow: {
+  categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  sourceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sourceName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
+    marginBottom: Spacing.md,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#9ca3af',
-    marginHorizontal: 8,
+    marginHorizontal: Spacing.sm,
   },
-  timeAgo: {
+  readTime: {
     fontSize: 14,
+    fontFamily: 'Inter_500Medium',
   },
-  bodyText: {
-    fontSize: 16,
-    lineHeight: 26,
-    marginBottom: 32,
+  headline: {
+    fontSize: 32,
+    fontFamily: 'Newsreader_700Bold',
+    lineHeight: 40,
+    marginBottom: Spacing.xl,
+    letterSpacing: -0.5,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  statItem: {
+  byline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    paddingBottom: Spacing.lg,
+    borderBottomWidth: 1,
+    marginBottom: Spacing.xl,
   },
-  statText: {
+  authorAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  authorInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  authorName: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  publishedDate: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 2,
+  },
+  followBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  followBtnText: {
     fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  articleBody: {
+    marginTop: Spacing.sm,
+  },
+  leadIn: {
+    fontSize: 20,
+    fontFamily: 'Newsreader_600SemiBold',
+    lineHeight: 30,
+    marginBottom: Spacing.lg,
+    opacity: 0.9,
+  },
+  bodyText: {
+    fontSize: 19,
+    fontFamily: 'Newsreader_400Regular',
+    lineHeight: 32,
+    letterSpacing: 0.3,
+    marginBottom: Spacing.lg,
+  },
+  backButton: {
+    marginTop: Spacing.md,
+    padding: Spacing.sm,
   },
 });

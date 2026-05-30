@@ -8,44 +8,96 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/store/authStore';
+
+const { width } = Dimensions.get('window');
 
 interface Language {
   id: string;
   name: string;
-  nativeName: string;
-  description: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
+  glyph: string;
 }
 
 const LANGUAGES: Language[] = [
-  {
-    id: 'en',
-    name: 'English',
-    nativeName: '',
-    description: 'Read news in English',
-    icon: 'translate',
-  },
-  {
-    id: 'te',
-    name: 'Telugu',
-    nativeName: 'తెలుగు',
-    description: 'తెలుగులో వార్తలను చదవండి',
-    icon: 'language',
-  },
-  {
-    id: 'hi',
-    name: 'Hindi',
-    nativeName: 'हिंदी',
-    description: 'हिंदी में समाचार पढ़ें',
-    icon: 'public',
-  },
+  { id: 'en', name: 'English', glyph: 'Aa' },
+  { id: 'hi', name: 'Hindi', glyph: 'अ' },
+  { id: 'te', name: 'Telugu', glyph: 'అ' },
+  { id: 'ta', name: 'Tamil', glyph: 'அ' },
+  { id: 'es', name: 'Spanish', glyph: 'Es' },
+  { id: 'fr', name: 'French', glyph: 'Fr' },
 ];
+
+interface LanguageCardProps {
+  name: string;
+  glyph: string;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.94,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+      style={styles.cardContainer}
+    >
+      <Animated.View
+        style={[
+          styles.languageCard,
+          isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
+          { transform: [{ scale }] },
+        ]}
+      >
+        {/* Sleek Selection Indicator in Top Right Corner */}
+        {isSelected && (
+          <View style={styles.checkBadge}>
+            <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+          </View>
+        )}
+
+        {/* Large Script Preview Circle */}
+        <View style={[styles.glyphCircle, isSelected && styles.glyphCircleSelected]}>
+          <Text style={[styles.glyphText, isSelected ? styles.glyphTextSelected : styles.glyphTextUnselected]}>
+            {glyph}
+          </Text>
+        </View>
+
+        {/* Language Name */}
+        <Text style={[styles.languageName, isSelected && styles.languageNameSelected]} numberOfLines={1}>
+          {name}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function LanguageScreen() {
   const colorScheme = useColorScheme();
@@ -55,199 +107,137 @@ export default function LanguageScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
+  const handleContinuePressIn = () => {
     Animated.spring(buttonScale, {
-      toValue: 0.98,
+      toValue: 0.95,
       useNativeDriver: true,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
-  const handlePressOut = () => {
+  const handleContinuePressOut = () => {
     Animated.spring(buttonScale, {
       toValue: 1,
       useNativeDriver: true,
+      tension: 180,
+      friction: 12,
     }).start();
   };
 
+  const { updateLanguage } = useAuthStore();
+
   const handleContinue = () => {
+    const matchedLanguage = LANGUAGES.find(l => l.id === selectedLanguage);
+    if (matchedLanguage) {
+      updateLanguage(matchedLanguage.name);
+    }
     router.push('/(onboarding)/location');
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-      {/* Status Bar */}
-      <View style={styles.statusBar}>
-        <Text style={[styles.statusTime, { color: colors.text }]}>9:41</Text>
-        <View style={styles.statusIcons}>
-          <MaterialIcons name="signal-cellular-alt" size={14} color={colors.text} />
-          <MaterialIcons name="wifi" size={14} color={colors.text} />
-          <MaterialIcons name="battery-full" size={14} color={colors.text} />
-        </View>
-      </View>
+      {/* Simulated Background Blur Vectors */}
+      <View style={styles.purpleBlur} />
+      <View style={styles.tealBlur} />
 
-      {/* Header */}
+      {/* Header Container */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="arrow-back-ios" size={24} color={colors.textSecondary} />
+          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
         </TouchableOpacity>
 
-        <View style={styles.stepIndicator}>
-          <Text style={[styles.stepText, { color: colors.primary }]}>
-            STEP 1 OF 4
-          </Text>
-          <View style={styles.progressDots}>
-            <View style={[styles.dot, styles.dotActive, { backgroundColor: colors.primary }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-          </View>
-        </View>
+        <Text style={styles.headerTitle}>HyperLocal</Text>
 
-        <View style={styles.spacer} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Content */}
+      {/* Main Content Area */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Choose Your Language
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Select your preferred language for news updates
+        {/* Headline Section */}
+        <View style={styles.headlineSection}>
+          <Text style={styles.mainTitle}>Choose your language</Text>
+          <Text style={styles.subtitle}>
+            Select your preferred language to read stories.
           </Text>
         </View>
 
-        {/* Language Cards */}
-        <View style={styles.languageList}>
-          {LANGUAGES.map((language) => {
-            const isSelected = selectedLanguage === language.id;
-            
-            return (
-              <TouchableOpacity
-                key={language.id}
-                style={[
-                  styles.languageCard,
-                  {
-                    backgroundColor: isSelected ? colors.primaryLight : colors.surface,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setSelectedLanguage(language.id)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.languageIcon,
-                    {
-                      backgroundColor: isSelected ? colors.primary : colors.background,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name={language.icon}
-                    size={24}
-                    color={isSelected ? '#FFF' : colors.textSecondary}
-                  />
-                </View>
-
-                <View style={styles.languageInfo}>
-                  <Text style={[styles.languageName, { color: colors.text }]}>
-                    {language.name}
-                    {language.nativeName ? ` (${language.nativeName})` : ''}
-                  </Text>
-                  <Text style={[styles.languageDesc, { color: colors.textSecondary }]}>
-                    {language.description}
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.radioOuter,
-                    { borderColor: isSelected ? colors.primary : colors.border },
-                  ]}
-                >
-                  {isSelected && (
-                    <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+        {/* Bento Grid of Language Cards */}
+        <View style={styles.gridContainer}>
+          {LANGUAGES.map((language) => (
+            <LanguageCard
+              key={language.id}
+              name={language.name}
+              glyph={language.glyph}
+              isSelected={selectedLanguage === language.id}
+              onPress={() => setSelectedLanguage(language.id)}
+            />
+          ))}
         </View>
       </ScrollView>
 
-      {/* Footer */}
+      {/* Bottom Action Footer */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
-            style={[
-              styles.continueButton,
-              { backgroundColor: colors.primary },
-              Shadows.primaryGlow,
-            ]}
+            style={styles.continueButton}
             onPress={handleContinue}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPressIn={handleContinuePressIn}
+            onPressOut={handleContinuePressOut}
           >
             <Text style={styles.continueButtonText}>Continue</Text>
-            <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
+            <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.continueIcon} />
           </Pressable>
         </Animated.View>
-
-        <Text style={[styles.footerNote, { color: colors.textTertiary }]}>
-          You can change your language preferences later in the application settings.
-        </Text>
       </View>
-
-      {/* Home Indicator */}
-      <View style={styles.homeIndicatorContainer}>
-        <View
-          style={[
-            styles.homeIndicator,
-            { backgroundColor: colorScheme === 'dark' ? colors.border : colors.divider },
-          ]}
-        />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FF',
   },
-  statusBar: {
-    height: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
+  purpleBlur: {
+    position: 'absolute',
+    right: -39,
+    top: -98,
+    width: 156,
+    height: 393.59,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
+    zIndex: -1,
   },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  statusIcons: {
-    flexDirection: 'row',
-    gap: 6,
+  tealBlur: {
+    position: 'absolute',
+    left: -19.5,
+    bottom: -49.19,
+    width: 117,
+    height: 295.19,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(0, 106, 97, 0.05)',
+    zIndex: -1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
   },
   backButton: {
     width: 40,
@@ -255,129 +245,166 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  stepIndicator: {
-    alignItems: 'center',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#4648D4',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: -0.5,
   },
-  stepText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  progressDots: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  dot: {
-    width: 24,
-    height: 4,
-    borderRadius: BorderRadius.full,
-  },
-  dotActive: {
-    // Active styles applied inline
-  },
-  spacer: {
+  headerSpacer: {
     width: 40,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
-  titleSection: {
-    marginBottom: Spacing['2xl'],
+  headlineSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+    gap: 8,
   },
-  title: {
-    fontSize: 28,
+  mainTitle: {
+    fontSize: 32,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: Spacing.sm,
+    color: '#0B1C30',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: -0.64,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontWeight: '400',
+    color: '#464554',
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  languageList: {
-    gap: Spacing.md,
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  cardContainer: {
+    width: '47.5%',
+    height: 130,
   },
   languageCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 2,
-  },
-  languageIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  languageInfo: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderStyle: 'solid',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  languageCardSelected: {
+    backgroundColor: '#E6E7FB',
+    borderColor: '#4648D4',
+    borderStyle: 'solid',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  languageCardUnselected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
+    borderStyle: 'solid',
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  glyphCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 40,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E6E7FB',
+  },
+  glyphCircleSelected: {
+    borderColor: '#4648D4',
+    backgroundColor: '#4648D4',
+    shadowOpacity: 0.15,
+  },
+  glyphText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  glyphTextSelected: {
+    color: '#FFFFFF',
+  },
+  glyphTextUnselected: {
+    color: '#4648D4',
   },
   languageName: {
-    fontSize: 18,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0B1C30',
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.4,
+    textAlign: 'center',
+  },
+  languageNameSelected: {
+    color: '#4648D4',
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
-    marginBottom: 2,
-  },
-  languageDesc: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  radioOuter: {
-    width: 24,
-    height: 24,
-    borderRadius: BorderRadius.full,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: BorderRadius.full,
   },
   footer: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 16,
+    backgroundColor: '#F8F9FF',
   },
   continueButton: {
     height: 56,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 9999,
+    backgroundColor: '#4648D4',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.sm,
+    elevation: 4,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+    lineHeight: 28,
   },
-  footerNote: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    lineHeight: 18,
-  },
-  homeIndicatorContainer: {
-    paddingBottom: Spacing.sm,
-    alignItems: 'center',
-  },
-  homeIndicator: {
-    width: 128,
-    height: 5,
-    borderRadius: 100,
+  continueIcon: {
+    marginLeft: 8,
+    marginTop: 2,
   },
 });

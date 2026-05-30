@@ -1,164 +1,164 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  useColorScheme,
-  RefreshControl,
-  Text,
-  Share,
-  Animated,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { NewsCard } from '@/components/news/NewsCard';
-import { CategoryBar } from '@/components/news/CategoryBar';
-import { useNews, usePrefetchNews } from '@/hooks/useNews';
-import { useCategories } from '@/hooks/useCategories';
-import { useStore } from '@/store/useStore';
-import { Skeleton } from '@/components/ui/Skeleton';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, FlatList, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { MOCK_NEWS } from '@/data/mockNews';
+import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
+import MenuOptions from '@/components/MenuOptions';
+import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const router = useRouter();
-  const toggleBookmark = useStore((state) => state.toggleBookmark);
+  const insets = useSafeAreaInsets();
+  const { newsId } = useLocalSearchParams<{ newsId?: string }>();
+  const flatListRef = useRef<FlatList>(null);
+  const [scrollHeight, setScrollHeight] = useState(screenHeight);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
-  const [selectedCategory, setSelectedCategory] = useState('for-you');
-  const { data: categories } = useCategories();
-  const { data: news, isLoading, refetch, isRefetching } = useNews(selectedCategory);
-  const prefetch = usePrefetchNews();
-
-  // Animation for smooth list transitions
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-
-  // Prefetch logic: Fast and clean
   useEffect(() => {
-    if (categories && selectedCategory) {
-      const currentIndex = categories.findIndex(c => c.slug === selectedCategory);
-      if (currentIndex < categories.length - 1) prefetch(categories[currentIndex + 1].slug);
-      if (currentIndex > 0) prefetch(categories[currentIndex - 1].slug);
+    if (newsId) {
+      const index = MOCK_NEWS.findIndex(item => item.id === newsId);
+      if (index !== -1 && scrollHeight > 0) {
+        const timer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true });
+        }, 100);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [selectedCategory, categories, prefetch]);
-
-  const handleCategoryChange = useCallback((slug: string) => {
-    if (slug === selectedCategory) return;
-    
-    // Immediate state update for responsiveness, with a light fade
-    Animated.timing(fadeAnim, {
-      toValue: 0.4,
-      duration: 120,
-      useNativeDriver: true,
-    }).start(() => {
-      setSelectedCategory(slug);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    });
-  }, [selectedCategory, fadeAnim]);
-
-  const handleShare = async (title: string, url: string) => {
-    try {
-      await Share.share({ message: `${title}\n\n${url}` });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <NewsCard
-      article={item}
-      onPress={() => router.push(`/news/${item.id}` as any)}
-      onBookmarkPress={() => toggleBookmark(item.id)}
-      onSharePress={() => handleShare(item.headline, item.url)}
-    />
-  ), [router, toggleBookmark]);
-
-  const renderSkeleton = () => (
-    <View style={styles.listContent}>
-      {[1, 2].map((i) => (
-        <View key={i} style={styles.skeletonContainer}>
-          <Skeleton width="100%" height={220} borderRadius={24} colorScheme={colorScheme ?? 'light'} />
-          <View style={styles.skeletonTextRow}>
-            <Skeleton width="85%" height={24} colorScheme={colorScheme ?? 'light'} />
-            <Skeleton width="45%" height={16} style={{ marginTop: 12 }} colorScheme={colorScheme ?? 'light'} />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+  }, [newsId, scrollHeight]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>LocalBuzz</Text>
-        <Text style={[styles.headerDate, { color: colors.textSecondary }]}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </Text>
-      </View>
+    <View 
+      style={styles.container}
+      onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
+    >
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      {/* ── Refactored Pager-Style Category Slider ── */}
-      {categories && (
-        <CategoryBar
-          categories={categories}
-          selectedSlug={selectedCategory}
-          onSelect={handleCategoryChange}
-          onViewFocused={handleCategoryChange}
-        />
-      )}
-
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        {isLoading && !news?.length ? (
-          renderSkeleton()
-        ) : news && news.length > 0 ? (
-          <FlatList
-            data={news}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            refreshControl={
-              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
-            }
-            showsVerticalScrollIndicator={false}
-            initialNumToRender={5}
+      {/* Main Snap Scrolling Feed */}
+      <FlatList
+        ref={flatListRef}
+        data={MOCK_NEWS}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ImmersiveNewsCard 
+            item={item} 
+            containerHeight={scrollHeight} 
           />
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📰</Text>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this area</Text>
-          </View>
         )}
-      </Animated.View>
-    </SafeAreaView>
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={scrollHeight}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        bounces={false}
+        getItemLayout={(data, index) => ({
+          length: scrollHeight,
+          offset: scrollHeight * index,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          const wait = new Promise(resolve => setTimeout(resolve, 50));
+          wait.then(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          });
+        }}
+      />
+
+      {/* Overlay Header */}
+      <LinearGradient
+        colors={['rgba(0, 0, 0, 0.65)', 'rgba(0, 0, 0, 0.3)', 'transparent']}
+        style={[styles.headerGradient, { paddingTop: insets.top + Spacing.sm }]}
+        pointerEvents="box-none"
+      >
+        <View style={styles.headerBar}>
+          {/* Left Stack */}
+          <View style={styles.leftStack}>
+            {/* Round back / menu button */}
+            <TouchableOpacity 
+              style={styles.circleButton} 
+              activeOpacity={0.7}
+              onPress={() => setIsMenuVisible(true)}
+            >
+              <Ionicons name="menu" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Reusable Menu Drawer Overlay Component */}
+      <MenuOptions 
+        isVisible={isMenuVisible} 
+        onClose={() => setIsMenuVisible(false)} 
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    backgroundColor: '#fff',
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    paddingHorizontal: Spacing.lg,
+    zIndex: 10,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  leftStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    width: 18,
+    height: 12,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -1.5,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    fontFamily: 'Inter_700Bold',
   },
-  headerDate: {
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    opacity: 0.6,
+  profileBorder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    padding: 2,
+    backgroundColor: '#DCE9FF',
+    ...Shadows.md,
+    overflow: 'hidden',
   },
-  listContent: { padding: 20 },
-  skeletonContainer: { marginBottom: 28 },
-  skeletonTextRow: { marginTop: 16 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '800' },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.full,
+  },
+  saveIcon: {
+    width: 16,
+    height: 20,
+  },
 });

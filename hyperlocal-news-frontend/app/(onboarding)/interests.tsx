@@ -1,59 +1,89 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   ScrollView,
   Pressable,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const CARD_SIZE = (width - Spacing.lg * 2 - Spacing.sm * 2) / 3;
+
+// Responsive bento grid calculation
+// Total screen padding = 40 (20 left, 20 right)
+// Gap between cards = 16
+const CARD_WIDTH = (width - 40 - 16) / 2;
 
 interface Topic {
   id: string;
   name: string;
-  emoji: string;
+  iconName: any;
+  iconType: 'feather' | 'ionicons';
+  iconColor: string;
+  iconBg: string;
+  selectedBg: string;
+  description?: string;
+  span?: boolean;
 }
 
 const TOPICS: Topic[] = [
-  { id: 'politics', name: 'Politics', emoji: '🏛️' },
-  { id: 'sports', name: 'Sports', emoji: '⚽' },
-  { id: 'business', name: 'Business', emoji: '💼' },
-  { id: 'tech', name: 'Tech', emoji: '💻' },
-  { id: 'health', name: 'Health', emoji: '🏥' },
-  { id: 'showbiz', name: 'Showbiz', emoji: '🎬' },
-  { id: 'local', name: 'Local', emoji: '📍' },
-  { id: 'national', name: 'National', emoji: '🇮🇳' },
-  { id: 'crime', name: 'Crime', emoji: '🚔' },
-  { id: 'education', name: 'Education', emoji: '📚' },
-  { id: 'weather', name: 'Weather', emoji: '🌤️' },
-  { id: 'lifestyle', name: 'Lifestyle', emoji: '✨' },
+  { id: 'tech', name: 'Tech', iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  { id: 'design', name: 'Design', iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  { id: 'sports', name: 'Sports', iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  { id: 'music', name: 'Music', iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
+  { id: 'art', name: 'Art', iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  { id: 'travel', name: 'Travel', iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  { id: 'wellness', name: 'Health & Wellness', iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE', description: 'Mindfulness and healthy living', span: true },
+  { id: 'food', name: 'Food', iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  { id: 'gaming', name: 'Gaming', iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
 ];
 
 const MIN_SELECTIONS = 3;
 
 export default function InterestsScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
+  // Pre-select 'sports' and 'art' as shown in the Figma mockup (making it 2/3 selected initially)
   const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    'politics',
     'sports',
-    'local',
+    'art',
   ]);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const cardScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
+
+  // Initialize scale animations for all bento cards
+  TOPICS.forEach(topic => {
+    if (!cardScaleAnims[topic.id]) {
+      cardScaleAnims[topic.id] = new Animated.Value(1);
+    }
+  });
+
+  const handleCardPressIn = (topicId: string) => {
+    Animated.spring(cardScaleAnims[topicId], {
+      toValue: 0.94,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
+
+  const handleCardPressOut = (topicId: string) => {
+    Animated.spring(cardScaleAnims[topicId], {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 12,
+    }).start();
+  };
 
   const toggleTopic = (topicId: string) => {
     setSelectedTopics((prev) => {
@@ -64,121 +94,149 @@ export default function InterestsScreen() {
     });
   };
 
-  const handlePressIn = () => {
+  const animateButton = (toValue: number) => {
     Animated.spring(buttonScale, {
-      toValue: 0.98,
+      toValue,
       useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
   const handleContinue = () => {
     if (selectedTopics.length >= MIN_SELECTIONS) {
-      router.push('/(onboarding)/complete');
+      router.push('/(auth)/login');
     }
   };
 
   const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-      {/* Background Decoration */}
-      <View style={[styles.bgDecoration1, { backgroundColor: colors.primaryLight }]} />
-      <View style={[styles.bgDecoration2, { backgroundColor: colors.primaryLight }]} />
-
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background + 'E6' }]}>
+      {/* Header - Top AppBar */}
+      <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
+          style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="arrow-back" size={24} color={colors.textSecondary} />
+          <Ionicons name="arrow-back" size={24} color="#4648D4" />
         </TouchableOpacity>
 
-        <Text style={[styles.stepText, { color: colors.textTertiary }]}>
-          Step 3 of 4
-        </Text>
-
-        <View style={styles.spacer} />
+        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <View style={styles.headerPlaceholder} />
       </View>
 
-      {/* Content */}
+      {/* Main Content Area */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            What interests you?
+        {/* Headline Section */}
+        <View style={styles.headlineSection}>
+          <Text style={styles.mainTitle}>
+            What are you{'\n'}interested in?
           </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Select at least {MIN_SELECTIONS} topics to personalize your hyperlocal feed.
+          <Text style={styles.subtitle}>
+            Select at least {MIN_SELECTIONS} to customize your feed
           </Text>
         </View>
 
-        {/* Topics Grid */}
-        <View style={styles.topicsGrid}>
+        {/* Bento Grid */}
+        <View style={styles.bentoGrid}>
           {TOPICS.map((topic) => {
             const isSelected = selectedTopics.includes(topic.id);
+            const scale = cardScaleAnims[topic.id];
 
             return (
-              <TouchableOpacity
+              <Pressable
                 key={topic.id}
-                style={[
-                  styles.topicCard,
-                  {
-                    backgroundColor: isSelected ? colors.primaryLight : colors.surface,
-                    borderColor: isSelected ? colors.primary : 'transparent',
-                  },
-                  !isSelected && Shadows.sm,
-                ]}
+                onPressIn={() => handleCardPressIn(topic.id)}
+                onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-                activeOpacity={0.7}
+                style={topic.span ? styles.bentoCardSpan : styles.bentoCardSingle}
               >
-                {isSelected && (
-                  <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
-                    <MaterialIcons name="check" size={12} color="#FFF" />
-                  </View>
-                )}
-                <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                <Text
+                <Animated.View
                   style={[
-                    styles.topicName,
-                    { color: isSelected ? colors.primary : colors.text },
+                    styles.cardInner,
+                    isSelected 
+                      ? [
+                          styles.cardSelected,
+                          {
+                            backgroundColor: topic.selectedBg,
+                            borderColor: topic.iconColor,
+                            shadowColor: topic.iconColor,
+                          }
+                        ]
+                      : styles.cardUnselected,
+                    { transform: [{ scale }] }
                   ]}
                 >
-                  {topic.name}
-                </Text>
-              </TouchableOpacity>
+                  {topic.span ? (
+                    // Wellness Spanning Layout
+                    <View style={styles.spanRow}>
+                      <View style={[
+                        styles.iconContainer,
+                        isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
+                      ]}>
+                        {topic.iconType === 'feather' ? (
+                          <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                        ) : (
+                          <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                        )}
+                      </View>
+                      
+                      <View style={styles.spanTextContainer}>
+                        <View style={styles.spanTitleRow}>
+                          <Text style={styles.cardTitle}>{topic.name}</Text>
+                          {isSelected && (
+                            <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
+                          )}
+                        </View>
+                        <Text style={styles.cardDesc}>{topic.description}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    // Single Bento Box Layout
+                    <View style={styles.singleLayout}>
+                      <View style={styles.singleTopRow}>
+                        <View style={[
+                          styles.iconContainer,
+                          isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
+                        ]}>
+                          {topic.iconType === 'feather' ? (
+                            <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                          ) : (
+                            <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                          )}
+                        </View>
+                      </View>
+                      
+                      <View style={styles.singleTitleRow}>
+                        <Text style={styles.cardTitle}>{topic.name}</Text>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </Animated.View>
+              </Pressable>
             );
           })}
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar - Fixed at bottom */}
-      <View style={[styles.bottomBar, { backgroundColor: colors.background }]}>
-        {/* Counter */}
-        <View
-          style={[
-            styles.counterBadge,
-            {
-              backgroundColor: colors.primaryLight,
-              borderColor: colors.primary + '30',
-            },
-          ]}
-        >
-          <Text style={[styles.counterText, { color: colors.primary }]}>
-            {selectedTopics.length} selected
-          </Text>
+      {/* Fixed Bottom Action Footer */}
+      <View style={styles.bottomBar}>
+        {/* Progress Stepper Indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.activeStepIndicator} />
+          <View style={styles.inactiveStepIndicator} />
+          <View style={styles.inactiveStepIndicator} />
         </View>
 
         {/* Continue Button */}
@@ -186,178 +244,232 @@ export default function InterestsScreen() {
           <Pressable
             style={[
               styles.continueButton,
-              {
-                backgroundColor: isButtonDisabled ? colors.textTertiary : colors.primary,
-              },
-              !isButtonDisabled && Shadows.primaryGlow,
+              isButtonDisabled ? styles.continueButtonDisabled : styles.continueButtonActive,
             ]}
+            onPressIn={() => animateButton(0.96)}
+            onPressOut={() => animateButton(1)}
             onPress={handleContinue}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
             disabled={isButtonDisabled}
           >
-            <Text style={styles.continueButtonText}>Continue</Text>
+            <Text style={styles.continueButtonText}>
+              {isButtonDisabled
+                ? `Continue (${selectedTopics.length}/${MIN_SELECTIONS} selected)`
+                : 'Continue'
+              }
+            </Text>
+            <Feather name="chevron-right" size={16} color="#FFF" style={styles.btnChevron} />
           </Pressable>
         </Animated.View>
-
-        {/* Home Indicator */}
-        <View style={styles.homeIndicatorContainer}>
-          <View
-            style={[
-              styles.homeIndicator,
-              { backgroundColor: colorScheme === 'dark' ? colors.border : colors.divider },
-            ]}
-          />
-        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  bgDecoration1: {
-    position: 'absolute',
-    top: -100,
-    left: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    opacity: 0.5,
-  },
-  bgDecoration2: {
-    position: 'absolute',
-    bottom: -50,
-    right: -50,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    opacity: 0.5,
+    backgroundColor: '#F8F9FF',
   },
   header: {
+    height: 64,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.md,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8F9FF',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
+    padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.sm,
   },
-  stepText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4648D4',
+    fontFamily: 'Inter_700Bold',
   },
-  spacer: {
-    width: 40,
+  headerPlaceholder: {
+    width: 32,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xl,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 160, // Large space for the fixed footer overlay!
   },
-  titleSection: {
-    marginBottom: Spacing.xl,
+  headlineSection: {
+    marginBottom: 40,
+    width: '100%',
   },
-  title: {
-    fontSize: 28,
+  mainTitle: {
+    fontSize: 32,
     fontWeight: '700',
+    color: '#0B1C30',
+    letterSpacing: -0.64,
+    lineHeight: 40,
     fontFamily: 'Inter_700Bold',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontWeight: '400',
+    color: '#464554',
     lineHeight: 24,
+    fontFamily: 'Inter_400Regular',
   },
-  topicsGrid: {
+  bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
+    gap: 16,
+    width: '100%',
   },
-  topicCard: {
-    width: CARD_SIZE,
-    height: CARD_SIZE,
-    borderRadius: BorderRadius.xl,
+  bentoCardSingle: {
+    width: CARD_WIDTH,
+    height: 140,
+  },
+  bentoCardSpan: {
+    width: '100%',
+    height: 100,
+  },
+  cardInner: {
+    flex: 1,
+    borderRadius: 16,
     borderWidth: 2,
-    justifyContent: 'center',
+    padding: 20,
+  },
+  cardUnselected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(199, 196, 215, 0.3)',
+  },
+  cardSelected: {
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  singleLayout: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  singleTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.md,
+    width: '100%',
   },
-  checkBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  topicEmoji: {
-    fontSize: 32,
-    marginBottom: Spacing.sm,
+  iconContainerSelected: {
+    backgroundColor: '#4648D4',
   },
-  topicName: {
-    fontSize: 12,
+  cardTitle: {
+    fontSize: 20,
     fontWeight: '600',
+    color: '#0B1C30',
     fontFamily: 'Inter_600SemiBold',
-    textAlign: 'center',
+  },
+  singleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  spanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    height: '100%',
+  },
+  spanTextContainer: {
+    flex: 1,
+  },
+  spanTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  cardDesc: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#464554',
+    fontFamily: 'Inter_400Regular',
   },
   bottomBar: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(248, 249, 255, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(199, 196, 215, 0.3)',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     alignItems: 'center',
+    gap: 12,
   },
-  counterBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    marginBottom: Spacing.md,
+  progressContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  counterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+  activeStepIndicator: {
+    backgroundColor: '#4648D4',
+    width: 40,
+    height: 6,
+    borderRadius: 3,
+  },
+  inactiveStepIndicator: {
+    backgroundColor: '#C7C4D7',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   buttonWrapper: {
     width: '100%',
   },
   continueButton: {
     height: 56,
-    borderRadius: BorderRadius.xl,
-    justifyContent: 'center',
+    borderRadius: 28,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  continueButtonDisabled: {
+    backgroundColor: '#A5A6F6', // Beautiful premium translucent indigo
+  },
+  continueButtonActive: {
+    backgroundColor: '#4648D4',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   continueButtonText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    fontFamily: 'Inter_600SemiBold',
   },
-  homeIndicatorContainer: {
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    alignItems: 'center',
-    width: '100%',
-  },
-  homeIndicator: {
-    width: 128,
-    height: 5,
-    borderRadius: 100,
+  btnChevron: {
+    marginTop: 1,
   },
 });

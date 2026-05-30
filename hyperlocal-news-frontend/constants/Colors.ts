@@ -23,9 +23,9 @@ export interface ColorsType {
 
 export const Colors: ColorsType = {
   light: {
-    primary: '#6567F1',
-    primaryLight: 'rgba(101, 103, 241, 0.1)',
-    primaryGlow: 'rgba(101, 103, 241, 0.5)',
+    primary: '#4648D4',
+    primaryLight: 'rgba(70, 72, 212, 0.1)',
+    primaryGlow: 'rgba(70, 72, 212, 0.5)',
     
     background: '#F6F6F8',
     surface: '#FFFFFF',
@@ -43,9 +43,9 @@ export const Colors: ColorsType = {
   },
   
   dark: {
-    primary: '#6567F1',
-    primaryLight: 'rgba(101, 103, 241, 0.2)',
-    primaryGlow: 'rgba(101, 103, 241, 0.5)',
+    primary: '#4648D4',
+    primaryLight: 'rgba(70, 72, 212, 0.2)',
+    primaryGlow: 'rgba(70, 72, 212, 0.5)',
     
     background: '#111122',
     surface: '#1A1A2E',

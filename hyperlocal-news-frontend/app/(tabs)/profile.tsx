@@ -1,486 +1,483 @@
 import React, { useState } from 'react';
-import {
-  View, ScrollView, StyleSheet, useColorScheme, Text, Image,
-  ActivityIndicator, Share, Pressable, TextInput, Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Colors } from '@/constants/Colors';
-import { NotificationItem } from '@/components/common/NotificationItem';
-import { NewsCard } from '@/components/news/NewsCard';
-import { useNotifications } from '@/hooks/useNotifications';
-import { useBookmarkedNews } from '@/hooks/useNews';
-import { useStore } from '@/store/useStore';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import MenuOptions from '@/components/MenuOptions';
 
 export default function ProfileScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const toggleBookmark = useStore((state) => state.toggleBookmark);
-  const user = useStore((state) => state.user);
-  const publisherRequestStatus = useStore((state) => state.publisherRequestStatus);
-  const requestPublisherAccess = useStore((state) => state.requestPublisherAccess);
-  const approvePublisherRequest = useStore((state) => state.approvePublisherRequest);
+  
+  const { user, logout } = useAuthStore();
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
-  const { data: notifications, isLoading: isLoadingNotifs } = useNotifications();
-  const { data: bookmarkedNews, isLoading: isLoadingNews } = useBookmarkedNews();
-  const isLoading = isLoadingNotifs || isLoadingNews;
-
-  // Publisher request email state
-  const [publisherEmail, setPublisherEmail] = useState(user.email ?? '');
-
-  // Derived states
-  const isPhoneVerified = !!user.phone;
-  const isEmailVerified = !!user.email;
-  const canRequestPublisher =
-    isPhoneVerified &&
-    isEmailVerified &&
-    !user.isPublisher &&
-    publisherRequestStatus === 'none';
-
-  const handlePublisherRequest = () => {
-    if (!publisherEmail.trim() || !publisherEmail.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address to request publisher status.');
-      return;
-    }
-    requestPublisherAccess();
+  const handleSignOut = () => {
     Alert.alert(
-      'Request Submitted',
-      'Your publisher request has been sent to the admin for review. You will be notified once approved.',
-      [{ text: 'OK' }]
+      'Log Out',
+      'Are you sure you want to log out of HyperLocal?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
     );
   };
 
-  const handleShare = async (title: string, url: string) => {
-    try {
-      await Share.share({ message: `${title}\n\nRead more at: ${url}`, url, title });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const displayName = user?.name || 'Alex Rivers';
+  const displayPhone = user?.phoneNumber || '+1 (555) 012-3456';
+  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'; 
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      
+      {/* Header - Top App Bar */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={styles.headerIconButton} 
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+        <TouchableOpacity 
+          style={styles.headerIconButton} 
+          onPress={() => router.push('/(tabs)/discover')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search" size={22} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ── Profile Card ── */}
-        <View style={[styles.profileCard, { backgroundColor: colors.surface }]}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.userName, { color: colors.text }]}>{user.name}</Text>
-            {user.handle && (
-              <Text style={[styles.userHandle, { color: colors.textSecondary }]}>@{user.handle}</Text>
-            )}
-            {user.isPublisher && (
-              <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
-                <MaterialIcons name="verified" size={14} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>Publisher</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* ── Account Details ── */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Details</Text>
-
-          <View style={styles.detailRow}>
-            <MaterialIcons name="phone" size={20} color={colors.textSecondary} />
-            <View style={styles.detailContent}>
-              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Phone</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{user.phone}</Text>
-            </View>
-            <View style={[styles.verifiedChip, { backgroundColor: '#dcfce7' }]}>
-              <MaterialIcons name="check-circle" size={14} color="#16a34a" />
-              <Text style={[styles.verifiedText, { color: '#16a34a' }]}>Verified</Text>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.detailRow}>
-            <MaterialIcons name="email" size={20} color={colors.textSecondary} />
-            <View style={styles.detailContent}>
-              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Email</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{user.email ?? 'Not set'}</Text>
-            </View>
-            {isEmailVerified ? (
-              <View style={[styles.verifiedChip, { backgroundColor: '#dcfce7' }]}>
-                <MaterialIcons name="check-circle" size={14} color="#16a34a" />
-                <Text style={[styles.verifiedText, { color: '#16a34a' }]}>Verified</Text>
-              </View>
-            ) : (
-              <View style={[styles.verifiedChip, { backgroundColor: '#fef3c7' }]}>
-                <MaterialIcons name="error-outline" size={14} color="#d97706" />
-                <Text style={[styles.verifiedText, { color: '#d97706' }]}>Unverified</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.detailRow}>
-            <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
-            <View style={styles.detailContent}>
-              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Location</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>
-                {user.location.city}, {user.location.district}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.detailRow}>
-            <MaterialIcons name="interests" size={20} color={colors.textSecondary} />
-            <View style={styles.detailContent}>
-              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Interests</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>
-                {user.interests.map((i) => i.charAt(0).toUpperCase() + i.slice(1)).join(' · ')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Publisher Section ── */}
-        {user.isPublisher ? (
-          /* ── Publisher Dashboard Access ── */
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Publisher Dashboard</Text>
-            <Text style={[styles.publisherDesc, { color: colors.textSecondary }]}>
-              You have publisher access. Create and manage articles for your community.
-            </Text>
-
-            <Pressable
-              style={[styles.dashboardButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(publisher)/dashboard' as any)}
-            >
-              <MaterialIcons name="dashboard" size={20} color="#fff" />
-              <Text style={styles.dashboardButtonText}>Open Publisher Dashboard</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.createButton, { borderColor: colors.primary }]}
-              onPress={() => router.push('/(publisher)/create' as any)}
-            >
-              <MaterialIcons name="edit" size={20} color={colors.primary} />
-              <Text style={[styles.createButtonText, { color: colors.primary }]}>Write New Article</Text>
-            </Pressable>
-          </View>
-        ) : (
-          /* ── Become a Publisher ── */
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Become a Publisher</Text>
-            <Text style={[styles.publisherDesc, { color: colors.textSecondary }]}>
-              Publish news stories for your local community. Both your phone and email must be verified to apply.
-            </Text>
-
-            <View style={styles.verificationStatus}>
-              <View style={styles.verificationItem}>
-                <MaterialIcons
-                  name={isPhoneVerified ? 'check-circle' : 'radio-button-unchecked'}
-                  size={18}
-                  color={isPhoneVerified ? '#16a34a' : colors.textTertiary}
-                />
-                <Text
-                  style={[
-                    styles.verificationLabel,
-                    { color: isPhoneVerified ? '#16a34a' : colors.textSecondary },
-                  ]}
-                >
-                  Phone verified
-                </Text>
-              </View>
-              <View style={styles.verificationItem}>
-                <MaterialIcons
-                  name={isEmailVerified ? 'check-circle' : 'radio-button-unchecked'}
-                  size={18}
-                  color={isEmailVerified ? '#16a34a' : colors.textTertiary}
-                />
-                <Text
-                  style={[
-                    styles.verificationLabel,
-                    { color: isEmailVerified ? '#16a34a' : colors.textSecondary },
-                  ]}
-                >
-                  Email verified
-                </Text>
-              </View>
-            </View>
-
-            {!isEmailVerified && (
-              <TextInput
-                style={[
-                  styles.emailInput,
-                  { borderColor: colors.border, color: colors.text, backgroundColor: colors.background },
-                ]}
-                placeholder="Enter your email address"
-                placeholderTextColor={colors.textTertiary}
-                value={publisherEmail}
-                onChangeText={setPublisherEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            )}
-
-            {publisherRequestStatus === 'pending' ? (
-              <View>
-                <View style={[styles.requestSentBanner, { backgroundColor: '#dcfce7' }]}>
-                  <MaterialIcons name="hourglass-top" size={20} color="#16a34a" />
-                  <Text style={[styles.requestSentText, { color: '#15803d' }]}>
-                    Request submitted — awaiting admin review.
-                  </Text>
-                </View>
-                {/* Dev shortcut: simulate admin approval */}
-                <Pressable
-                  style={[styles.devApproveButton, { borderColor: '#16a34a' }]}
-                  onPress={() => {
-                    approvePublisherRequest();
-                    Alert.alert('✅ Approved!', 'You are now a publisher. Access the dashboard from your profile.');
-                  }}
-                >
-                  <MaterialIcons name="admin-panel-settings" size={16} color="#16a34a" />
-                  <Text style={[styles.devApproveText, { color: '#16a34a' }]}>
-                    Simulate Admin Approval
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                style={[
-                  styles.publisherButton,
-                  { backgroundColor: canRequestPublisher ? colors.primary : colors.border },
-                ]}
-                onPress={handlePublisherRequest}
-                disabled={!canRequestPublisher}
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
+        
+        {/* Profile Card Section */}
+        <View style={styles.profileSection}>
+          {/* Glassmorphic Background Decor */}
+          <View style={[styles.glassDecor, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.15)' : 'rgba(96, 99, 238, 0.1)' }]} />
+          
+          <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Double Bordered Linear Gradient Avatar */}
+            <View style={styles.avatarContainer}>
+              <LinearGradient
+                colors={['#4648D4', '#86F2E4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarGradient}
               >
-                <MaterialIcons
-                  name="edit"
-                  size={18}
-                  color={canRequestPublisher ? '#fff' : colors.textTertiary}
-                />
-                <Text
-                  style={[
-                    styles.publisherButtonText,
-                    { color: canRequestPublisher ? '#fff' : colors.textTertiary },
-                  ]}
-                >
-                  Request Publisher Access
-                </Text>
-              </Pressable>
-            )}
+                <View style={[styles.avatarInner, { borderColor: colors.surface }]}>
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                </View>
+              </LinearGradient>
+              
+              {/* Teal Verified Badge */}
+              <View style={[styles.verifiedBadge, { borderColor: colors.surface }]}>
+                <Ionicons name="checkmark-sharp" size={12} color="#FFFFFF" />
+              </View>
+            </View>
 
-            {publisherRequestStatus === 'none' && !canRequestPublisher && (
-              <Text style={[styles.publisherHint, { color: colors.textTertiary }]}>
-                Verify both phone and email to enable this button.
-              </Text>
-            )}
-          </View>
-        )}
+            {/* User Details */}
+            <View style={styles.detailsContainer}>
+              <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
+              
+              <View style={styles.badgeWrapper}>
+                <View style={styles.premiumBadge}>
+                  <Text style={styles.premiumBadgeText}>Premium Member</Text>
+                </View>
+              </View>
 
-        {/* ── Notifications ── */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Notifications</Text>
-          {notifications?.length ? (
-            notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onPress={() => console.log('Notification pressed', notification.id)}
-              />
-            ))
-          ) : (
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No new notifications.</Text>
-          )}
-        </View>
-
-        {/* ── Saved Articles ── */}
-        <View style={styles.savedSection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Saved Articles</Text>
-            <Text style={[styles.countText, { color: colors.textSecondary }]}>
-              {bookmarkedNews?.length ?? 0} saved
-            </Text>
-          </View>
-          {bookmarkedNews?.length ? (
-            bookmarkedNews.map((article) => (
-              <NewsCard
-                key={article.id}
-                article={article}
-                onPress={() => router.push(`/news/${article.id}` as any)}
-                onBookmarkPress={() => toggleBookmark(article.id)}
-                onSharePress={() => handleShare(article.headline, article.url)}
-              />
-            ))
-          ) : (
-            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-              <MaterialIcons name="bookmark-border" size={48} color={colors.border} />
-              <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No saved articles yet</Text>
-              <Text style={[styles.emptyStateDesc, { color: colors.textSecondary }]}>
-                Tap the bookmark icon on any article to save it here.
+              <Text style={[styles.userBio, { color: isDark ? colors.textSecondary : '#464554' }]}>
+                Tech enthusiast & daily reader. Always seeking the deeper story behind the headlines.
               </Text>
             </View>
-          )}
+
+            {/* Stats Row */}
+            <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.2)' }]}>
+              <View style={styles.statColumn}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>124</Text>
+                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories Read</Text>
+              </View>
+              
+              <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.3)' }]} />
+              
+              <View style={styles.statColumn}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
+                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Active Lists</Text>
+              </View>
+            </View>
+
+          </View>
         </View>
+
+        {/* Bento Menu Grid / List Items */}
+        <View style={styles.menuGrid}>
+          
+          {/* My Interests */}
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            onPress={() => router.push('/(onboarding)/interests')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.25)' : 'rgba(70, 72, 212, 0.1)' }]}>
+              <MaterialIcons name="favorite" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>My Interests</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>8 categories selected</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+
+
+          {/* Reading History */}
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            onPress={() => Alert.alert('Reading History', 'Your reading history feature is coming soon!')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.25)' : 'rgba(134, 242, 228, 0.3)' }]}>
+              <MaterialIcons name="history" size={24} color="#0D9488" />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Reading History</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>View your activity</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          {/* Account Settings */}
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            onPress={() => router.push('/(tabs)/settings')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(70, 69, 84, 0.1)' }]}>
+              <MaterialIcons name="settings" size={24} color={isDark ? colors.textSecondary : '#464554'} />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Account Settings</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>Security, Privacy & Email</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Subscription Banner */}
+        <View style={styles.subscriptionBanner}>
+          {/* Decorative Translucent Circles */}
+          <View style={styles.decorCircleLarge} />
+          <View style={styles.decorCircleSmall} />
+
+          <View style={styles.subBannerContent}>
+            <Text style={styles.subBannerTitle}>Your Premium Plan</Text>
+            <Text style={styles.subBannerSubtitle}>Renews on Oct 12, 2024</Text>
+            
+            <TouchableOpacity 
+              style={styles.billingButton} 
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Manage Subscription', 'Billing portals will be loaded securely shortly.')}
+            >
+              <Text style={styles.billingButtonText}>Manage Billing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Logout Trigger */}
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleSignOut}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="logout" size={18} color="#ba1a1a" />
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+
       </ScrollView>
-    </SafeAreaView>
+
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+  },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  headerTitle: { fontSize: 24, fontWeight: '700' },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    marginBottom: 12,
-  },
-  avatar: { width: 72, height: 72, borderRadius: 36, marginRight: 16, backgroundColor: '#E2E8F0' },
-  profileInfo: { flex: 1 },
-  userName: { fontSize: 20, fontWeight: '700', marginBottom: 2 },
-  userHandle: { fontSize: 14, marginBottom: 6 },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-
-  section: {
-    marginBottom: 12,
-    padding: 16,
-  },
-  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 14 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 10 },
-
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    gap: 12,
-  },
-  detailContent: { flex: 1 },
-  detailLabel: { fontSize: 12, marginBottom: 2 },
-  detailValue: { fontSize: 15, fontWeight: '500' },
-  verifiedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  verifiedText: { fontSize: 11, fontWeight: '600' },
-
-  publisherDesc: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  verificationStatus: { flexDirection: 'row', gap: 20, marginBottom: 16 },
-  verificationItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  verificationLabel: { fontSize: 14, fontWeight: '500' },
-  emailInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 14,
-  },
-  publisherButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: 12,
-  },
-  publisherButtonText: { fontSize: 15, fontWeight: '700' },
-  publisherHint: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-  requestSentBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  requestSentText: { fontSize: 14, fontWeight: '600', flex: 1 },
-
-  // Publisher dashboard buttons
-  dashboardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  dashboardButtonText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  createButtonText: { fontSize: 15, fontWeight: '700' },
-
-  // Dev approval
-  devApproveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  devApproveText: { fontSize: 13, fontWeight: '600' },
-
-  emptyText: { textAlign: 'center', paddingVertical: 16 },
-
-  savedSection: { padding: 16 },
-  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    height: 64,
+    borderBottomWidth: 1,
   },
-  countText: { fontSize: 13 },
-  emptyState: {
+  headerIconButton: {
+    padding: 8,
+    borderRadius: 9999,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
-    borderRadius: 16,
   },
-  emptyStateTitle: { fontSize: 16, fontWeight: '700', marginTop: 12, marginBottom: 6 },
-  emptyStateDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 32,
+  },
+  profileSection: {
+    position: 'relative',
+    width: '100%',
+  },
+  glassDecor: {
+    position: 'absolute',
+    right: -30,
+    top: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    zIndex: 0,
+  },
+  profileCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#3E3E46',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 3,
+    zIndex: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+    width: 96,
+    height: 96,
+    marginBottom: 16,
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 48,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 48,
+    borderWidth: 4,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 48,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#006A61',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  detailsContainer: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    fontFamily: 'Poppins_700Bold',
+  },
+  badgeWrapper: {
+    alignItems: 'center',
+  },
+  premiumBadge: {
+    backgroundColor: '#86F2E4',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 9999,
+  },
+  premiumBadgeText: {
+    color: '#006F66',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  userBio: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingTop: 20,
+    width: '100%',
+  },
+  statColumn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+  },
+  menuGrid: {
+    gap: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 96,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    shadowColor: '#3E3E46',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  menuIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  menuTextContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  menuSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+  },
+  subscriptionBanner: {
+    backgroundColor: '#4648D4',
+    borderRadius: 12,
+    padding: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  decorCircleLarge: {
+    position: 'absolute',
+    bottom: -32,
+    right: -32,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircleSmall: {
+    position: 'absolute',
+    right: 48,
+    top: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  subBannerContent: {
+    gap: 4,
+  },
+  subBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  subBannerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  billingButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    alignSelf: 'flex-start',
+  },
+  billingButtonText: {
+    color: '#4648D4',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+    alignSelf: 'center',
+  },
+  logoutText: {
+    color: '#ba1a1a',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
