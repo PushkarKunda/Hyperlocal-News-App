@@ -35,6 +35,7 @@ export const MOCK_NEWS: NewsArticle[] = [
     url: 'https://example.com/article/1',
     isBreaking: false,
     isBookmarked: false,
+    status: 'published',
     stats: {
       views: 12500,
       likes: 1200,
@@ -72,6 +73,7 @@ export const MOCK_NEWS: NewsArticle[] = [
     url: 'https://example.com/article/2',
     isBreaking: false,
     isBookmarked: false,
+    status: 'published',
     stats: {
       views: 8900,
       likes: 890,
@@ -109,6 +111,7 @@ export const MOCK_NEWS: NewsArticle[] = [
     url: 'https://example.com/article/3',
     isBreaking: false,
     isBookmarked: true,
+    status: 'published',
     stats: {
       views: 15600,
       likes: 2100,
@@ -145,6 +148,7 @@ export const MOCK_NEWS: NewsArticle[] = [
     url: 'https://example.com/article/4',
     isBreaking: false,
     isBookmarked: false,
+    status: 'published',
     stats: {
       views: 45000,
       likes: 5400,
@@ -182,6 +186,7 @@ export const MOCK_NEWS: NewsArticle[] = [
     url: 'https://example.com/article/5',
     isBreaking: false,
     isBookmarked: false,
+    status: 'published',
     stats: {
       views: 6700,
       likes: 780,
@@ -218,6 +223,7 @@ export const MOCK_BREAKING_NEWS: NewsArticle[] = [
     url: 'https://example.com/breaking/1',
     isBreaking: true,
     isBookmarked: false,
+    status: 'published',
     stats: {
       views: 25000,
       likes: 3400,

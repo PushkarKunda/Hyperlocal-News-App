@@ -3,6 +3,7 @@ export interface User {
   phone: string;
   email?: string;
   name?: string;
+  handle?: string;
   avatar?: string;
   location: UserLocation;
   language: string;

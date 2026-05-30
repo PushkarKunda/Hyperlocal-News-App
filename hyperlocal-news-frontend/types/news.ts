@@ -1,3 +1,5 @@
+export type ArticleStatus = 'pending' | 'published' | 'rejected';
+
 export interface NewsArticle {
   id: string;
   headline: string;
@@ -18,6 +20,10 @@ export interface NewsArticle {
   isBookmarked?: boolean;
   stats: ArticleStats;
   tags?: string[];
+  /** Article lifecycle status — added by publisher, verified by admin */
+  status: ArticleStatus;
+  /** ID of the publisher who submitted the article (undefined for legacy/imported articles) */
+  publisherId?: string;
 }
 
 export interface Category {
