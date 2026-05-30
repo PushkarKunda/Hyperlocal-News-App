@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ApiResponse, State, District, City, Language, Interest, NewsArticle, Category, ShortVideo, ImmersiveArticle } from '@/types';
+import { ApiResponse, State, District, City, Language, Interest, NewsArticle, Category, ShortVideo, ImmersiveArticle, Notification, Poll } from '@/types';
 
 // Simulating database storage for runtime modifications (like creating articles or events)
 export const API_DATABASE = {
@@ -376,7 +376,93 @@ export const API_DATABASE = {
       image: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800',
       bulletIcon: 'ellipse'
     }
-  ]
+  ],
+
+  notifications: [
+    {
+      id: 'n1',
+      type: 'alert',
+      title: 'Heavy Rain Alert',
+      message: 'Heavy rainfall expected in your area for the next 4 hours. Stay safe.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      isRead: false,
+    },
+    {
+      id: 'n2',
+      type: 'event',
+      title: 'Upcoming Event',
+      message: 'Tech Meetup 2026 is happening tomorrow! Check your tickets.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      isRead: false,
+      actionUrl: 'event/e1',
+    },
+    {
+      id: 'n3',
+      type: 'poll',
+      title: 'New Community Poll',
+      message: 'A new poll about the metro extension needs your vote.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      isRead: true,
+      actionUrl: 'poll/p1',
+    },
+    {
+      id: 'n4',
+      type: 'news',
+      title: 'Breaking News',
+      message: 'Local Startups Secure Record $500M in Series B Funding.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+      isRead: true,
+      actionUrl: 'article/2',
+    },
+  ] as Notification[],
+
+  polls: [
+    {
+      id: 'p1',
+      question: 'Should the city council approve the new metro line extension?',
+      options: [
+        { id: 'o1', text: 'Yes, we need better transit', votes: 1250 },
+        { id: 'o2', text: 'No, it will cause too much disruption', votes: 430 },
+        { id: 'o3', text: 'Undecided', votes: 120 },
+      ],
+      totalVotes: 1800,
+      author: {
+        id: 'a1',
+        name: 'City Planning Dept',
+        isVerified: true,
+      },
+      category: {
+        id: 'c4',
+        name: 'Infrastructure',
+        color: '#3B82F6',
+      },
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      hasVoted: false,
+    },
+    {
+      id: 'p2',
+      question: 'What is your favorite local street food spot?',
+      options: [
+        { id: 'o4', text: 'Ramas Dosa', votes: 540 },
+        { id: 'o5', text: 'Gokul Chat', votes: 890 },
+        { id: 'o6', text: 'DLF Street', votes: 1100 },
+        { id: 'o7', text: 'Sindhi Colony', votes: 320 },
+      ],
+      totalVotes: 2850,
+      author: {
+        id: 'a2',
+        name: 'Foodies of Hyderabad',
+        isVerified: false,
+      },
+      category: {
+        id: 'c2',
+        name: 'Food & Drink',
+        color: '#F59E0B',
+      },
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      hasVoted: false,
+    },
+  ] as Poll[]
 };
 
 // Axios Client instance (pointing to a configurable API Base URL)
@@ -648,6 +734,38 @@ export const ApiService = {
         success: false,
         data: null,
         error: { code: 'AUTH_ERROR', message: 'Failed to verify OTP' }
+      };
+    }
+  },
+
+  getNotifications: async (): Promise<ApiResponse<Notification[]>> => {
+    try {
+      await delay(300);
+      return {
+        success: true,
+        data: API_DATABASE.notifications,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: [],
+        error: { code: 'FETCH_ERROR', message: 'Failed to fetch notifications' }
+      };
+    }
+  },
+
+  getPolls: async (): Promise<ApiResponse<Poll[]>> => {
+    try {
+      await delay(300);
+      return {
+        success: true,
+        data: API_DATABASE.polls,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: [],
+        error: { code: 'FETCH_ERROR', message: 'Failed to fetch polls' }
       };
     }
   }
