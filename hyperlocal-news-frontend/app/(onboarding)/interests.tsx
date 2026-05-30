@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useInterestsList } from '@/hooks/useApi';
 import { Colors } from '@/constants/Colors';
-import { useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width } = Dimensions.get('window');
 
@@ -61,7 +61,7 @@ const MIN_SELECTIONS = 3;
 
 export default function InterestsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
@@ -205,7 +205,7 @@ export default function InterestsScreen() {
                       ? [
                           styles.cardSelected,
                           {
-                            backgroundColor: isDark ? 'rgba(70, 72, 212, 0.15)' : topic.selectedBg,
+                            backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
                             borderColor: topic.iconColor,
                             shadowColor: topic.iconColor,
                           }

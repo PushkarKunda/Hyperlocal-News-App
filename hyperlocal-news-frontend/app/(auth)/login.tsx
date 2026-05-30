@@ -47,6 +47,7 @@ export default function LoginScreen() {
   // Animated values
   const primaryButtonScale = useRef(new Animated.Value(1)).current;
   const emailButtonScale = useRef(new Animated.Value(1)).current;
+  const googleButtonScale = useRef(new Animated.Value(1)).current;
   const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
 
   // Handles phone number input and formats to (555) 000-0000
@@ -162,6 +163,35 @@ export default function LoginScreen() {
 
   const handleEmailLogin = () => {
     Alert.alert('Continue with Email', 'Email login will be implemented in a future update.');
+  };
+
+  const handleGoogleLogin = () => {
+    setIsLoading(true);
+    
+    // Simulate authenticating user with Google credentials
+    setTimeout(() => {
+      setIsLoading(false);
+      
+      useAuthStore.setState({
+        user: {
+          id: 'google-' + Math.random().toString(36).substr(2, 9),
+          name: 'Sujana Kumar',
+          email: 'sujana.kumar@gmail.com',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
+          theme: 'system',
+          textSize: 'medium',
+        },
+        isAuthenticated: true,
+        isOnboarded: true,
+      });
+
+      Alert.alert('Google Sign-In', 'Signed in successfully via Google!');
+
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: '(tabs)' }],
+      });
+    }, 1200);
   };
 
   return (
@@ -325,6 +355,19 @@ export default function LoginScreen() {
                 >
                   <Feather name="mail" size={18} color={colors.text} style={styles.mailIcon} />
                   <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Continue with Email</Text>
+                </Pressable>
+              </Animated.View>
+
+              {/* "Continue with Google" Button */}
+              <Animated.View style={{ transform: [{ scale: googleButtonScale }] }}>
+                <Pressable
+                  style={[styles.secondaryButton, { borderColor: colors.border, marginTop: 8 }]}
+                  onPressIn={() => animateButton(googleButtonScale, 0.96)}
+                  onPressOut={() => animateButton(googleButtonScale, 1)}
+                  onPress={handleGoogleLogin}
+                >
+                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
+                  <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Continue with Google</Text>
                 </Pressable>
               </Animated.View>
             </View>
@@ -604,6 +647,9 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   mailIcon: {
+    marginTop: 1,
+  },
+  googleIcon: {
     marginTop: 1,
   },
   footer: {

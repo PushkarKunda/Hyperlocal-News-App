@@ -12,6 +12,7 @@ export interface User {
   language?: string;
   theme?: 'light' | 'dark' | 'system';
   textSize?: 'small' | 'medium' | 'large';
+  email?: string;
 }
 
 interface AuthState {
@@ -23,7 +24,7 @@ interface AuthState {
   verifyOtp: (phoneNumber: string, otp: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => void;
-  updateProfile: (name: string, avatar?: string) => void;
+  updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
   updateTextSize: (textSize: 'small' | 'medium' | 'large') => void;
@@ -81,7 +82,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateProfile: (name: string, avatar?: string) => {
+      updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string) => {
         set((state) => {
           if (!state.user) return {};
           return {
@@ -89,6 +90,8 @@ export const useAuthStore = create<AuthState>()(
               ...state.user,
               name,
               avatar: avatar || state.user.avatar,
+              email: email || state.user.email,
+              phoneNumber: phoneNumber || state.user.phoneNumber,
             },
           };
         });

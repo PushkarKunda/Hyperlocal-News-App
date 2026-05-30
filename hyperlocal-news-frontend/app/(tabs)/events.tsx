@@ -7,6 +7,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { CreateEventModal } from '@/components/CreateEventModal';
+import MenuOptions from '@/components/MenuOptions';
 
 interface CustomEventItem {
   id: string;
@@ -34,6 +35,7 @@ export default function EventsScreen() {
   const { data: apiEvents = [], isLoading } = useEventsList();
   const [eventsList, setEventsList] = useState<CustomEventItem[]>([]);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'week'>('all');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [interested, setInterested] = useState<Record<string, boolean>>({});
@@ -114,13 +116,13 @@ export default function EventsScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.back()}
+          style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setIsMenuVisible(true)}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="menu" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Local Events</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.primaryLight }]}
           activeOpacity={0.7}
@@ -283,6 +285,12 @@ export default function EventsScreen() {
         onClose={() => setIsCreateModalVisible(false)}
         onSubmit={handleAddEvent}
       />
+
+      {/* Reusable Menu Drawer Overlay Component */}
+      <MenuOptions 
+        isVisible={isMenuVisible} 
+        onClose={() => setIsMenuVisible(false)} 
+      />
     </View>
   );
 }
@@ -299,7 +307,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  backButton: {
+  menuButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

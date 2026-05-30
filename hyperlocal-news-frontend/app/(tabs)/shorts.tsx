@@ -166,6 +166,10 @@ export default function ShortsScreen() {
         pointerEvents="box-none"
       >
         <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setIsMenuVisible(true)} style={styles.menuLeftButton}>
+            <Ionicons name="menu" size={28} color="white" />
+          </TouchableOpacity>
+
           <View style={styles.tabsContainer}>
             <TouchableOpacity onPress={() => setActiveTab('Following')} style={styles.tabItem}>
               <Text style={[styles.tabText, activeTab === 'Following' && styles.activeTabText]}>Following</Text>
@@ -177,9 +181,6 @@ export default function ShortsScreen() {
               {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
-            <Ionicons name="menu" size={28} color="white" />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -213,14 +214,21 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    paddingTop: Spacing.sm,
+    height: 48,
+  },
+  menuLeftButton: {
+    position: 'absolute',
+    left: 0,
     paddingTop: Spacing.sm,
   },
   tabsContainer: {
     flexDirection: 'row',
     gap: Spacing.lg,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   tabItem: {
     alignItems: 'center',

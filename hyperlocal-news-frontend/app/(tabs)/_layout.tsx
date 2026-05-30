@@ -5,11 +5,25 @@ import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/authStore';
 
 export default function TabLayout() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, isOnboarded } = useAuthStore();
+
+  useEffect(() => {
+    if (useAuthStore.persist.hasHydrated()) {
+      if (!isAuthenticated) {
+        router.replace('/(auth)/login');
+      } else if (!isOnboarded) {
+        router.replace('/(onboarding)/language');
+      }
+    }
+  }, [isAuthenticated, isOnboarded]);
 
   useEffect(() => {
     const onBackPress = () => {

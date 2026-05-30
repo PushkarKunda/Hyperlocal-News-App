@@ -1,11 +1,11 @@
 import { Stack, useRouter, usePathname } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
 import { useEffect } from 'react';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 export default function OnboardingLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const pathname = usePathname();

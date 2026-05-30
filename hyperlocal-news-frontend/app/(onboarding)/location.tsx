@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   ScrollView,
   Pressable,
   Animated,
@@ -20,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +39,7 @@ interface StateCardProps {
 }
 
 function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
@@ -72,8 +72,11 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       <Animated.View
         style={[
           styles.regionCard,
+          isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
           {
-            backgroundColor: isSelected ? colors.primaryLight : colors.card,
+            backgroundColor: isSelected 
+              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+              : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
@@ -108,7 +111,7 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
 }
 
 export default function LocationScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 

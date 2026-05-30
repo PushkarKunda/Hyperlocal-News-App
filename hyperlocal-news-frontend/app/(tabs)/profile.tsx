@@ -40,9 +40,9 @@ export default function ProfileScreen() {
     );
   };
 
-  const displayName = user?.name || 'Alex Rivers';
-  const displayPhone = user?.phoneNumber || '+1 (555) 012-3456';
-  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'; 
+  const isGuest = user?.isGuest;
+  const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
+  const displayPhone = user?.phoneNumber || (isGuest ? 'No phone added' : 'Setup Phone');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -50,15 +50,17 @@ export default function ProfileScreen() {
       {/* Header - Top App Bar */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity 
-          style={styles.headerIconButton} 
+          style={styles.headerLeftButton} 
           onPress={() => setIsMenuVisible(true)}
           activeOpacity={0.7}
         >
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
+        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+        
         <TouchableOpacity 
-          style={styles.headerIconButton} 
+          style={styles.headerRightButton} 
           onPress={() => router.push('/(tabs)/discover')}
           activeOpacity={0.7}
         >
@@ -82,15 +84,21 @@ export default function ProfileScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.avatarGradient}
               >
-                <View style={[styles.avatarInner, { borderColor: colors.surface }]}>
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                <View style={[styles.avatarInner, { borderColor: colors.surface, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#1C1C2E' : '#EFF4FF' }]}>
+                  {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={40} color={colors.primary} />
+                  )}
                 </View>
               </LinearGradient>
               
               {/* Teal Verified Badge */}
-              <View style={[styles.verifiedBadge, { borderColor: colors.surface }]}>
-                <Ionicons name="checkmark-sharp" size={12} color="#FFFFFF" />
-              </View>
+              {!isGuest && (
+                <View style={[styles.verifiedBadge, { borderColor: colors.surface }]}>
+                  <Ionicons name="checkmark-sharp" size={12} color="#FFFFFF" />
+                </View>
+              )}
             </View>
 
             {/* User Details */}
@@ -98,30 +106,37 @@ export default function ProfileScreen() {
               <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
               
               <View style={styles.badgeWrapper}>
-                <View style={styles.premiumBadge}>
-                  <Text style={styles.premiumBadgeText}>Premium Member</Text>
+                <View style={[styles.premiumBadge, isGuest && { backgroundColor: isDark ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Text style={[styles.premiumBadgeText, isGuest && { color: colors.primary }]}>
+                    {isGuest ? 'Guest Mode' : 'Member'}
+                  </Text>
                 </View>
               </View>
 
               <Text style={[styles.userBio, { color: isDark ? colors.textSecondary : '#464554' }]}>
-                Tech enthusiast & daily reader. Always seeking the deeper story behind the headlines.
+                {isGuest 
+                  ? 'Enjoying HyperLocal? Log in to personalize your profile, customize your news feed, and save reading preferences.'
+                  : 'Tech enthusiast & daily reader. Always seeking the deeper story behind the headlines.'
+                }
               </Text>
             </View>
 
             {/* Stats Row */}
-            <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.2)' }]}>
-              <View style={styles.statColumn}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>124</Text>
-                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories Read</Text>
+            {!isGuest && (
+              <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.2)' }]}>
+                <View style={styles.statColumn}>
+                  <Text style={[styles.statNumber, { color: colors.primary }]}>124</Text>
+                  <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories Read</Text>
+                </View>
+                
+                <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.3)' }]} />
+                
+                <View style={styles.statColumn}>
+                  <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
+                  <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Active Lists</Text>
+                </View>
               </View>
-              
-              <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.3)' }]} />
-              
-              <View style={styles.statColumn}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
-                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Active Lists</Text>
-              </View>
-            </View>
+            )}
 
           </View>
         </View>
@@ -144,8 +159,6 @@ export default function ProfileScreen() {
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
-
-
 
           {/* Reading History */}
           <TouchableOpacity 
@@ -181,25 +194,30 @@ export default function ProfileScreen() {
 
         </View>
 
-        {/* Subscription Banner */}
-        <View style={styles.subscriptionBanner}>
-          {/* Decorative Translucent Circles */}
-          <View style={styles.decorCircleLarge} />
-          <View style={styles.decorCircleSmall} />
+        {/* Guest Authentication Call to Action Banner */}
+        {isGuest ? (
+          <View style={[styles.subscriptionBanner, { backgroundColor: colors.primary }]}>
+            {/* Decorative Translucent Circles */}
+            <View style={styles.decorCircleLarge} />
+            <View style={styles.decorCircleSmall} />
 
-          <View style={styles.subBannerContent}>
-            <Text style={styles.subBannerTitle}>Your Premium Plan</Text>
-            <Text style={styles.subBannerSubtitle}>Renews on Oct 12, 2024</Text>
-            
-            <TouchableOpacity 
-              style={styles.billingButton} 
-              activeOpacity={0.8}
-              onPress={() => Alert.alert('Manage Subscription', 'Billing portals will be loaded securely shortly.')}
-            >
-              <Text style={styles.billingButtonText}>Manage Billing</Text>
-            </TouchableOpacity>
+            <View style={styles.subBannerContent}>
+              <Text style={styles.subBannerTitle}>Unlock Full Access</Text>
+              <Text style={styles.subBannerSubtitle}>Log in or register to customize your news feed, bookmark stories, and unlock all features.</Text>
+              
+              <TouchableOpacity 
+                style={styles.billingButton} 
+                activeOpacity={0.8}
+                onPress={() => {
+                  logout();
+                  router.replace('/(auth)/login');
+                }}
+              >
+                <Text style={styles.billingButtonText}>Log In / Sign Up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Logout Trigger */}
         <TouchableOpacity 
@@ -225,12 +243,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     height: 64,
     borderBottomWidth: 1,
+    position: 'relative',
   },
-  headerIconButton: {
+  headerLeftButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRightButton: {
+    position: 'absolute',
+    right: 16,
     padding: 8,
     borderRadius: 9999,
     justifyContent: 'center',

@@ -80,9 +80,9 @@ export default function SettingsScreen() {
     ? user.textSize.charAt(0).toUpperCase() + user.textSize.slice(1) 
     : 'Medium';
 
-  const displayName = user?.name || 'Rahul Kumar';
-  const displayPhone = user?.phoneNumber || '+91 98765 43210';
-  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400';
+  const isGuest = user?.isGuest;
+  const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
+  const displayPhone = user?.phoneNumber || (isGuest ? 'No phone added' : 'Setup Phone');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -93,7 +93,7 @@ export default function SettingsScreen() {
       {/* Symmetrical Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.primaryLight }]}
+          style={styles.headerLeftButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -101,8 +101,6 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
-        
-        <View style={styles.headerPlaceholder} />
       </View>
 
       <ScrollView 
@@ -123,24 +121,37 @@ export default function SettingsScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarGradient}
                 >
-                  <View style={[styles.avatarInner, { borderColor: colors.card }]}>
-                    <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  <View style={[styles.avatarInner, { borderColor: colors.card, justifyContent: 'center', alignItems: 'center', backgroundColor: darkModeEnabled ? '#1C1C2E' : '#EFF4FF' }]}>
+                    {user?.avatar ? (
+                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <Ionicons name="person" size={32} color={colors.primary} />
+                    )}
                   </View>
                 </LinearGradient>
                 
                 {/* Verified Check Badge */}
-                <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
-                  <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
-                </View>
+                {!isGuest && (
+                  <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
+                    <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
+                  </View>
+                )}
               </View>
 
               <View style={styles.profileDetails}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
                 <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>{displayPhone}</Text>
+                {user?.email ? (
+                  <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
+                ) : (
+                  user?.isGuest && <Text style={[styles.profilePhone, { color: colors.textTertiary, fontSize: 11, marginTop: 2 }]}>No email added</Text>
+                )}
                 
                 <View style={styles.premiumBadgeContainer}>
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumBadgeText}>Premium Member</Text>
+                  <View style={[styles.premiumBadge, isGuest && { backgroundColor: darkModeEnabled ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
+                    <Text style={[styles.premiumBadgeText, isGuest && { color: colors.primary }]}>
+                      {isGuest ? 'Guest Account' : 'Member'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -333,7 +344,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Premium Capsule Logout Button */}
+        {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -375,13 +386,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    height: 64,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
+    position: 'relative',
   },
-  backButton: {
+  headerLeftButton: {
+    position: 'absolute',
+    left: 20,
     width: 40,
     height: 40,
     borderRadius: 20,

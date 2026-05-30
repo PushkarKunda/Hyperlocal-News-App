@@ -70,9 +70,22 @@ export default function DiscoverScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      {/* Search Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.background, flex: 1 }]}>
+      {/* Header Section */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={styles.headerLeftButton} 
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+        
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Discover</Text>
+      </View>
+
+      {/* Search Bar Container */}
+      <View style={styles.searchBarContainer}>
+        <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
           <MaterialIcons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -82,13 +95,6 @@ export default function DiscoverScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity 
-          style={{ padding: 8 }} 
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={26} color={colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -185,10 +191,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    height: 64,
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
+  headerLeftButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  searchBarContainer: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   searchBar: {
     flexDirection: 'row',

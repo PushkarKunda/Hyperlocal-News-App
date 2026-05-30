@@ -15,7 +15,6 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Alert,
-  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -24,16 +23,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const { user, updateProfile } = useAuthStore();
 
-  const [name, setName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [name, setName] = useState(user?.name || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
   const [isFocused, setIsFocused] = useState(false);
 
   // Animations
@@ -170,8 +172,8 @@ export default function ProfileCompletionScreen() {
   const handleFinishSetup = () => {
     if (name.trim().length >= 2) {
       // Update profile in store
-      const finalAvatar = selectedAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400';
-      updateProfile(name.trim(), finalAvatar);
+      const finalAvatar = selectedAvatar || undefined;
+      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim());
 
       // Trigger navigation loader state
       router.push('/(onboarding)/setup-feed' as any);
@@ -285,6 +287,53 @@ export default function ProfileCompletionScreen() {
                   />
                   <Feather name="user" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
                 </Animated.View>
+              </View>
+
+              {/* Phone Number Field */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PHONE NUMBER</Text>
+                
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.card, borderColor: colors.border }
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.textInput, { color: colors.text }]}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
+                  <Feather name="phone" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                </View>
+              </View>
+
+              {/* Email Address Field */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>EMAIL ADDRESS</Text>
+                
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.card, borderColor: colors.border }
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.textInput, { color: colors.text }]}
+                    placeholder="Enter email address"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    maxLength={50}
+                  />
+                  <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                </View>
               </View>
 
               {/* Asymmetric Info Card */}
@@ -521,7 +570,6 @@ const styles = StyleSheet.create({
   inputWrapper: {
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: 'rgba(199, 196, 215, 0.3)',
     flexDirection: 'row',
@@ -530,7 +578,6 @@ const styles = StyleSheet.create({
   },
   inputWrapperFocused: {
     borderColor: '#4648D4',
-    backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
         shadowColor: '#4648D4',

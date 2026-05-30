@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   ScrollView,
   Pressable,
   Animated,
@@ -18,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { useLanguagesList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 import { Language } from '@/types';
 
@@ -31,7 +31,7 @@ interface LanguageCardProps {
 }
 
 function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
@@ -64,8 +64,11 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
       <Animated.View
         style={[
           styles.languageCard,
+          isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
           {
-            backgroundColor: isSelected ? colors.primaryLight : colors.card,
+            backgroundColor: isSelected 
+              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+              : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
@@ -73,7 +76,7 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
       >
         {/* Sleek Selection Indicator in Top Right Corner */}
         {isSelected && (
-          <View style={[styles.checkBadge, { backgroundColor: colors.card }]}>
+          <View style={[styles.checkBadge, { backgroundColor: 'transparent' }]}>
             <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
           </View>
         )}
@@ -110,7 +113,7 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
 }
 
 export default function LanguageScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
@@ -149,7 +152,7 @@ export default function LanguageScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <LoadingSpinner fullScreen text="Loading premium languages..." colorScheme={colorScheme ?? 'light'} />
+        <LoadingSpinner fullScreen text="Loading languages..." colorScheme={colorScheme ?? 'light'} />
       </View>
     );
   }

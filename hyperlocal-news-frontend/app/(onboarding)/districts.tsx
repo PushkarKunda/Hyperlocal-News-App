@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   ScrollView,
   Pressable,
   Animated,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useDistrictsList } from '@/hooks/useApi';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +28,7 @@ interface DistrictCardProps {
 }
 
 function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
@@ -61,8 +61,11 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
       <Animated.View
         style={[
           styles.card,
+          isSelected ? styles.cardSelected : styles.cardUnselected,
           {
-            backgroundColor: isSelected ? colors.primaryLight : colors.card,
+            backgroundColor: isSelected 
+              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+              : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
@@ -97,7 +100,7 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
 }
 
 export default function DistrictsScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { state } = useLocalSearchParams<{ state?: string }>();

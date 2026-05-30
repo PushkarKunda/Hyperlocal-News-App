@@ -244,7 +244,9 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
           {/* User detail info headings */}
           <View style={styles.userInfoContainer}>
             <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
-            <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Premium Subscriber</Text>
+            <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>
+              {user?.isGuest ? 'Guest Account' : 'Member'}
+            </Text>
           </View>
 
           {/* Navigation Links Scroll List */}

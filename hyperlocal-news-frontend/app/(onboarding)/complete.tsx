@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  useColorScheme,
   Pressable,
   Animated,
   BackHandler,
@@ -14,6 +13,7 @@ import { useRouter, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useAuthStore } from '@/store/authStore';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface SummaryItem {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -22,7 +22,7 @@ interface SummaryItem {
 }
 
 export default function CompleteScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const navigation = useNavigation();
@@ -164,6 +164,8 @@ export default function CompleteScreen() {
         style={[
           styles.summaryCard,
           {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           },
@@ -332,8 +334,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing['2xl'],
     borderRadius: BorderRadius.xl,
     borderWidth: 1.5,
-    borderColor: 'rgba(70, 72, 212, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     padding: Spacing.lg,
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 12 },

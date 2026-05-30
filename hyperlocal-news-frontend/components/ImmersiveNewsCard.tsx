@@ -4,6 +4,8 @@ import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { NewsArticle } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -13,6 +15,10 @@ interface ImmersiveNewsCardProps {
 }
 
 export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardProps) {
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
+
   // Local interaction states
   const [liked, setLiked] = useState(item.isBookmarked ?? false);
   const [bookmarked, setBookmarked] = useState(item.isBookmarked ?? false);
@@ -44,13 +50,15 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
 
   // Icon mapping for action buttons based on interaction state
   const likeIconName = liked ? 'heart' : 'heart-outline';
-  const likeIconColor = liked ? '#FF4A6B' : '#464554';
+  const likeIconColor = liked ? '#FF4A6B' : (isDark ? '#94A3B8' : '#464554');
   
   const saveIconName = bookmarked ? 'bookmark' : 'bookmark-outline';
-  const saveIconColor = bookmarked ? '#FFAC33' : '#464554';
+  const saveIconColor = bookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
+
+  const actionIconColor = isDark ? '#94A3B8' : '#464554';
 
   return (
-    <View style={[styles.cardContainer, { height: containerHeight }]}>
+    <View style={[styles.cardContainer, { height: containerHeight, backgroundColor: colors.background }]}>
       {/* Top 45% Image Section */}
       <View style={styles.imageContainer}>
         <Image
@@ -66,17 +74,17 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
       </View>
 
       {/* Bottom 55% Content Section */}
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
         <View style={styles.textWrapper}>
           {/* Headline */}
-          <Text style={styles.headline}>{item.headline}</Text>
+          <Text style={[styles.headline, { color: colors.text }]}>{item.headline}</Text>
 
           {/* Bullet Points List */}
           <View style={styles.pointsList}>
             {points.map((point, index) => (
               <View key={index} style={styles.pointRow}>
                 {getBulletIcon(item.category.name, item.category.color || '#4648D4')}
-                <Text style={styles.pointText}>{point}</Text>
+                <Text style={[styles.pointText, { color: colors.textSecondary }]}>{point}</Text>
               </View>
             ))}
           </View>
@@ -85,36 +93,42 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
         {/* Footer Area */}
         <View style={styles.footerWrapper}>
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.footerRow}>
             {/* Reading Time */}
             <View style={styles.readTimeContainer}>
-              <Ionicons name="time-outline" size={16} color="#767586" />
-              <Text style={styles.readTimeText}>{item.readTime}</Text>
+              <Ionicons name="time-outline" size={16} color={colors.textTertiary} />
+              <Text style={[styles.readTimeText, { color: colors.textSecondary }]}>{item.readTime}</Text>
             </View>
 
             {/* Action Buttons Stack */}
             <View style={styles.actionsContainer}>
               <TouchableOpacity 
-                style={styles.actionButton} 
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
                 activeOpacity={0.65}
                 onPress={() => setLiked(!liked)}
               >
                 <Ionicons name={likeIconName} size={16} color={likeIconColor} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} activeOpacity={0.65}>
-                <Ionicons name="share-social-outline" size={16} color="#464554" />
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+                activeOpacity={0.65}
+              >
+                <Ionicons name="share-social-outline" size={16} color={actionIconColor} />
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.actionButton} 
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
                 activeOpacity={0.65}
                 onPress={() => setBookmarked(!bookmarked)}
               >
                 <Ionicons name={saveIconName} size={16} color={saveIconColor} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} activeOpacity={0.65}>
-                <Feather name="more-vertical" size={16} color="#464554" />
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+                activeOpacity={0.65}
+              >
+                <Feather name="more-vertical" size={16} color={actionIconColor} />
               </TouchableOpacity>
             </View>
           </View>
@@ -127,7 +141,6 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
 const styles = StyleSheet.create({
   cardContainer: {
     width: screenWidth,
-    backgroundColor: '#F8F9FF',
   },
   imageContainer: {
     width: '100%',
@@ -157,7 +170,6 @@ const styles = StyleSheet.create({
     height: '55%',
     padding: Spacing.lg,
     justifyContent: 'space-between',
-    backgroundColor: '#F8F9FF',
   },
   textWrapper: {
     flex: 1,
@@ -165,7 +177,6 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#0B1C30',
     fontFamily: 'Inter_700Bold',
     marginBottom: Spacing.lg,
     lineHeight: 32,
@@ -184,7 +195,6 @@ const styles = StyleSheet.create({
   pointText: {
     flex: 1,
     fontSize: 15,
-    color: '#464554',
     fontFamily: 'Inter_500Medium',
     lineHeight: 22,
   },
@@ -193,7 +203,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(199, 196, 215, 0.3)',
     width: '100%',
     marginBottom: Spacing.md,
   },
@@ -210,7 +219,6 @@ const styles = StyleSheet.create({
   },
   readTimeText: {
     fontSize: 13,
-    color: '#767586',
     fontFamily: 'Inter_500Medium',
   },
   actionsContainer: {
@@ -222,7 +230,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E5EEFF',
     justifyContent: 'center',
     alignItems: 'center',
   },

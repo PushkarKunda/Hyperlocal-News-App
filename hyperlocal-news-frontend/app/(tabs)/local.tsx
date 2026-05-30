@@ -69,18 +69,19 @@ export default function LocalScreen() {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       
       {/* Header Section */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerTop}>
-          <Text style={[styles.headerTitle, { color: colors.text }, scaledFontSize(30)]}>Local News</Text>
-          <TouchableOpacity 
-            style={[styles.headerButton, { backgroundColor: colors.border }]}
-            onPress={() => setIsMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={styles.headerLeftButton} 
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
         
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Local News</Text>
+      </View>
+
+      <View style={styles.headerLocationContainer}>
         <TouchableOpacity style={[styles.locationPicker, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
           <Text style={[styles.locationText, { color: colors.text }, scaledFontSize(14)]}>Kukatpally, Hyderabad</Text>
@@ -170,28 +171,32 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
   },
-  headerContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 8,
-    gap: 16,
-  },
-  headerTop: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    height: 64,
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
+  headerLeftButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+    borderRadius: 9999,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 30,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.75,
+    fontFamily: 'Poppins_700Bold',
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerLocationContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   locationPicker: {
     flexDirection: 'row',

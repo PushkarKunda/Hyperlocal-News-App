@@ -8,19 +8,19 @@ import {
   Easing,
   Platform,
   BackHandler,
-  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width } = Dimensions.get('window');
 
 export default function FeedSetupLoaderScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
