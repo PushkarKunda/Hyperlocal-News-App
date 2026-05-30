@@ -5,9 +5,10 @@ import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_NEWS } from '@/data/mockNews';
+import { useNewsFeed } from '@/hooks/useApi';
 import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
 import MenuOptions from '@/components/MenuOptions';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -19,9 +20,12 @@ export default function HomeScreen() {
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
+  // Load news dynamically from our simulated backend using React Query
+  const { data: news = [], isLoading } = useNewsFeed();
+
   useEffect(() => {
-    if (newsId) {
-      const index = MOCK_NEWS.findIndex(item => item.id === newsId);
+    if (newsId && news.length > 0) {
+      const index = news.findIndex(item => item.id === newsId);
       if (index !== -1 && scrollHeight > 0) {
         const timer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index, animated: true });
@@ -29,7 +33,16 @@ export default function HomeScreen() {
         return () => clearTimeout(timer);
       }
     }
-  }, [newsId, scrollHeight]);
+  }, [newsId, scrollHeight, news]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.darkLoaderContainer}>
+        <StatusBar style="light" translucent backgroundColor="transparent" />
+        <LoadingSpinner fullScreen text="Curating your local news..." color="#4648D4" colorScheme="dark" />
+      </View>
+    );
+  }
 
   return (
     <View 
@@ -41,7 +54,7 @@ export default function HomeScreen() {
       {/* Main Snap Scrolling Feed */}
       <FlatList
         ref={flatListRef}
-        data={MOCK_NEWS}
+        data={news}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ImmersiveNewsCard 
@@ -102,6 +115,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  darkLoaderContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerGradient: {
     position: 'absolute',

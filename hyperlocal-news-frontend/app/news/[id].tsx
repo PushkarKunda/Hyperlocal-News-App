@@ -7,11 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import { MOCK_NEWS } from '@/data/mockNews';
+import { useArticleDetails } from '@/hooks/useApi';
 import { formatDate } from '@/utils/formatters';
 import { Badge } from '@/components/ui/Badge';
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const { width } = Dimensions.get('window');
 
@@ -23,18 +24,30 @@ export default function NewsDetailScreen() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
-  const article = MOCK_NEWS.find((item) => item.id === id);
+  // Load article dynamically using React Query Hook
+  const { data: article, isLoading } = useArticleDetails(id as string);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+        <LoadingSpinner fullScreen text="Loading story details..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   if (!article) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text }}>Article not found</Text>
+        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+        <Text style={{ color: colors.text, fontFamily: 'Inter_500Medium', fontSize: 16 }}>Article not found</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={{ color: colors.primary }}>Go Back</Text>
+          <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>

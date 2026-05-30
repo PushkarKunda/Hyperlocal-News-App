@@ -16,23 +16,12 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { useLanguagesList } from '@/hooks/useApi';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+
+import { Language } from '@/types';
 
 const { width } = Dimensions.get('window');
-
-interface Language {
-  id: string;
-  name: string;
-  glyph: string;
-}
-
-const LANGUAGES: Language[] = [
-  { id: 'en', name: 'English', glyph: 'Aa' },
-  { id: 'hi', name: 'Hindi', glyph: 'अ' },
-  { id: 'te', name: 'Telugu', glyph: 'అ' },
-  { id: 'ta', name: 'Tamil', glyph: 'அ' },
-  { id: 'es', name: 'Spanish', glyph: 'Es' },
-  { id: 'fr', name: 'French', glyph: 'Fr' },
-];
 
 interface LanguageCardProps {
   name: string;
@@ -42,6 +31,9 @@ interface LanguageCardProps {
 }
 
 function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -72,26 +64,44 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
       <Animated.View
         style={[
           styles.languageCard,
-          isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
+          {
+            backgroundColor: isSelected ? colors.primaryLight : colors.card,
+            borderColor: isSelected ? colors.primary : colors.border,
+          },
           { transform: [{ scale }] },
         ]}
       >
         {/* Sleek Selection Indicator in Top Right Corner */}
         {isSelected && (
-          <View style={styles.checkBadge}>
-            <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+          <View style={[styles.checkBadge, { backgroundColor: colors.card }]}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
           </View>
         )}
 
         {/* Large Script Preview Circle */}
-        <View style={[styles.glyphCircle, isSelected && styles.glyphCircleSelected]}>
-          <Text style={[styles.glyphText, isSelected ? styles.glyphTextSelected : styles.glyphTextUnselected]}>
+        <View 
+          style={[
+            styles.glyphCircle, 
+            { 
+              backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
+              borderColor: isSelected ? colors.primary : colors.border,
+            }
+          ]}
+        >
+          <Text style={[styles.glyphText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
             {glyph}
           </Text>
         </View>
 
         {/* Language Name */}
-        <Text style={[styles.languageName, isSelected && styles.languageNameSelected]} numberOfLines={1}>
+        <Text 
+          style={[
+            styles.languageName, 
+            { color: isSelected ? colors.primary : colors.text },
+            isSelected && styles.languageNameSelected
+          ]} 
+          numberOfLines={1}
+        >
           {name}
         </Text>
       </Animated.View>
@@ -104,6 +114,7 @@ export default function LanguageScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
+  const { data: languagesList = [], isLoading } = useLanguagesList();
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const buttonScale = useRef(new Animated.Value(1)).current;
 
@@ -128,58 +139,66 @@ export default function LanguageScreen() {
   const { updateLanguage } = useAuthStore();
 
   const handleContinue = () => {
-    const matchedLanguage = LANGUAGES.find(l => l.id === selectedLanguage);
+    const matchedLanguage = languagesList.find(l => l.id === selectedLanguage);
     if (matchedLanguage) {
       updateLanguage(matchedLanguage.name);
     }
     router.push('/(onboarding)/location');
   };
 
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <LoadingSpinner fullScreen text="Loading premium languages..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Simulated Background Blur Vectors */}
-      <View style={styles.purpleBlur} />
-      <View style={styles.tealBlur} />
+      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.05)' }]} />
+      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.05)' }]} />
 
       {/* Header Container */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.divider }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Main Content Area */}
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Headline Section */}
         <View style={styles.headlineSection}>
-          <Text style={styles.mainTitle}>Choose your language</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>Choose your language</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Select your preferred language to read stories.
           </Text>
         </View>
 
         {/* Bento Grid of Language Cards */}
         <View style={styles.gridContainer}>
-          {LANGUAGES.map((language) => (
+          {languagesList.map((language) => (
             <LanguageCard
               key={language.id}
               name={language.name}
-              glyph={language.glyph}
+              glyph={language.glyph ?? ''}
               isSelected={selectedLanguage === language.id}
               onPress={() => setSelectedLanguage(language.id)}
             />
@@ -188,7 +207,7 @@ export default function LanguageScreen() {
       </ScrollView>
 
       {/* Bottom Action Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background }]}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
             style={styles.continueButton}

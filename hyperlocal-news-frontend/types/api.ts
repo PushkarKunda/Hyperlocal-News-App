@@ -45,6 +45,7 @@ export interface District {
   id: string;
   name: string;
   stateId: string;
+  code?: string;
 }
 
 export interface City {
@@ -56,10 +57,11 @@ export interface City {
 // Language Types
 export interface Language {
   id: string;
-  code: string;
+  code?: string;
   name: string;
-  nativeName: string;
-  isRTL: boolean;
+  nativeName?: string;
+  isRTL?: boolean;
+  glyph?: string;
 }
 
 // Interest/Topic Types

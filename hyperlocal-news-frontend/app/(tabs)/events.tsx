@@ -21,44 +21,9 @@ interface CustomEventItem {
   dateDay: string;
 }
 
-const EVENTS_DATA: CustomEventItem[] = [
-  {
-    id: '1',
-    category: 'Music Festival',
-    title: 'Downtown Jazz Festival',
-    description: 'Experience over 50 unique stalls featuring live jazz performances, artisanal crafts, and international street food...',
-    distance: '0.5 km away',
-    schedule: 'Sat, May 25 • 6:00 PM - 10:00 PM',
-    locationName: 'Downtown Amphitheater',
-    imageUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=600',
-    dateMonth: 'MAY',
-    dateDay: '25',
-  },
-  {
-    id: '2',
-    category: 'Sports & Charity',
-    title: 'Annual Kukatpally Charity Run',
-    description: 'Join the neighborhood charity marathon starting from JNTU Ground to raise funds for the local children hospital...',
-    distance: '2.5 km away',
-    schedule: 'Sun, May 26 • 7:00 AM',
-    locationName: 'JNTU Ground Kukatpally',
-    imageUrl: 'https://images.unsplash.com/photo-1502224562085-639556652f33?w=600',
-    dateMonth: 'MAY',
-    dateDay: '26',
-  },
-  {
-    id: '3',
-    category: 'Community Meetup',
-    title: 'Artisanal Crafts & Farmers Market',
-    description: 'Browse fresh organic produce, locally hand-crafted goods, pottery, and enjoy home-grown acoustic live performances...',
-    distance: '1.2 km away',
-    schedule: 'Wed, May 29 • 10:00 AM - 4:00 PM',
-    locationName: 'Forum Mall Ground',
-    imageUrl: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?w=600',
-    dateMonth: 'MAY',
-    dateDay: '29',
-  },
-];
+import { useEventsList } from '@/hooks/useApi';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useEffect } from 'react';
 
 export default function EventsScreen() {
   const colorScheme = useAppColorScheme();
@@ -66,11 +31,18 @@ export default function EventsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [eventsList, setEventsList] = useState<CustomEventItem[]>(EVENTS_DATA);
+  const { data: apiEvents = [], isLoading } = useEventsList();
+  const [eventsList, setEventsList] = useState<CustomEventItem[]>([]);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'week'>('all');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [interested, setInterested] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (apiEvents && apiEvents.length > 0) {
+      setEventsList(apiEvents);
+    }
+  }, [apiEvents]);
 
   const handleAddEvent = (eventData: {
     title: string;
@@ -103,13 +75,21 @@ export default function EventsScreen() {
       distance: '0.1 km away',
       schedule: `${eventData.date} • ${eventData.time}`,
       locationName: `${eventData.locationName}, ${eventData.neighborhood}`,
-      imageUrl: eventData.imageUrl,
+      imageUrl: eventData.imageUrl || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=600',
       dateMonth,
       dateDay,
     };
 
-    setEventsList((prev) => [newEvent, ...prev]);
+    setEventsList(prev => [newEvent, ...prev]);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <LoadingSpinner fullScreen text="Discovering nearby community meetups..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   const toggleReminder = (id: string) => {
     setReminders((prev) => ({ ...prev, [id]: !prev[id] }));

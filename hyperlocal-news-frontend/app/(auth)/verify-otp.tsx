@@ -13,12 +13,14 @@ import {
   Image,
   Dimensions,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 const OTP_LENGTH = 6;
@@ -31,6 +33,9 @@ const ResendTimer = React.memo(({ onResend }: ResendTimerProps) => {
   const [timer, setTimer] = useState(59);
   const [isResending, setIsResending] = useState(false);
   const timerOpacity = useRef(new Animated.Value(0)).current;
+  
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   // Soft fade-in for resend timer on mount
   useEffect(() => {
@@ -70,13 +75,17 @@ const ResendTimer = React.memo(({ onResend }: ResendTimerProps) => {
 
   return (
     <Animated.View style={[styles.timerContainer, { opacity: timerOpacity }]}>
-      <Text style={styles.timerQuestion}>Didn't receive the code?</Text>
+      <Text style={[styles.timerQuestion, { color: colors.textSecondary }]}>Didn't receive the code?</Text>
       <TouchableOpacity
         onPress={handleResendPress}
         disabled={timer > 0 || isResending}
         activeOpacity={0.7}
       >
-        <Text style={[styles.timerButtonText, (timer > 0 || isResending) && styles.timerDisabled]}>
+        <Text style={[
+          styles.timerButtonText, 
+          { color: colors.primary }, 
+          (timer > 0 || isResending) && { color: colors.textSecondary, opacity: 0.6 }
+        ]}>
           {isResending ? 'Sending...' : `Resend Code ${timer > 0 ? `(${formatTime(timer)})` : ''}`}
         </Text>
       </TouchableOpacity>
@@ -87,6 +96,10 @@ const ResendTimer = React.memo(({ onResend }: ResendTimerProps) => {
 const SecurityBadge = React.memo(() => {
   const badgeSlideY = useRef(new Animated.Value(40)).current;
   const badgeOpacity = useRef(new Animated.Value(0)).current;
+
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     Animated.parallel([
@@ -115,13 +128,13 @@ const SecurityBadge = React.memo(() => {
         }
       ]}
     >
-      <View style={styles.securityBadge}>
-        <View style={styles.badgeIconContainer}>
-          <Ionicons name="shield-checkmark" size={20} color="#0B1C30" />
+      <View style={[styles.securityBadge, { backgroundColor: isDark ? colors.surface : 'rgba(220, 233, 255, 0.5)' }]}>
+        <View style={[styles.badgeIconContainer, { backgroundColor: colors.primaryLight }]}>
+          <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
         </View>
         <View style={styles.badgeTextContainer}>
-          <Text style={styles.badgeTitle}>Secure Verification</Text>
-          <Text style={styles.badgeSubtitle}>
+          <Text style={[styles.badgeTitle, { color: colors.text }]}>Secure Verification</Text>
+          <Text style={[styles.badgeSubtitle, { color: colors.textSecondary }]}>
             Your data is protected with 256-bit encryption
           </Text>
         </View>
@@ -132,6 +145,9 @@ const SecurityBadge = React.memo(() => {
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const params = useLocalSearchParams();
   const rawPhone = params.phone as string || '';
   
@@ -256,19 +272,19 @@ export default function VerifyOTPScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Header - Top Navigation Anchor */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#4648D4" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verify Phone</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>Verify Phone</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -285,7 +301,7 @@ export default function VerifyOTPScreen() {
 
             {/* Illustration Section */}
             <View style={styles.illustrationSection}>
-              <View style={styles.circleBg}>
+              <View style={[styles.circleBg, { backgroundColor: colors.primaryLight }]}>
                 <View style={styles.blurGlow} />
                 <Image
                   source={require('../../assets/immersive_feed/7a2bfa72521322198e3f6feb94eb5c2786c2de01.png')}
@@ -296,10 +312,10 @@ export default function VerifyOTPScreen() {
 
             {/* Content Section */}
             <View style={styles.headingSection}>
-              <Text style={styles.welcomeTitle}>Verify Phone</Text>
-              <Text style={styles.welcomeSubtitle}>
+              <Text style={[styles.welcomeTitle, { color: colors.text }]}>Verify Phone</Text>
+              <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                 Enter the 6-digit code sent to{'\n'}
-                <Text style={styles.phoneHighlight}>{displayPhone}</Text>
+                <Text style={[styles.phoneHighlight, { color: colors.text }]}>{displayPhone}</Text>
               </Text>
             </View>
 
@@ -311,13 +327,14 @@ export default function VerifyOTPScreen() {
                     key={index}
                     style={[
                       styles.otpBox,
-                      focusedIndex === index && styles.otpBoxFocused,
-                      digit !== '' && styles.otpBoxFilled,
+                      { backgroundColor: isDark ? colors.surface : '#EFF4FF' },
+                      focusedIndex === index && { borderColor: colors.primary, backgroundColor: colors.card },
+                      digit !== '' && { backgroundColor: isDark ? colors.surface : '#EFF4FF' },
                     ]}
                   >
                     <TextInput
                       ref={(ref) => (inputRefs.current[index] = ref)}
-                      style={styles.otpInput}
+                      style={[styles.otpInput, { color: colors.text }]}
                       keyboardType="number-pad"
                       maxLength={1}
                       value={digit}
@@ -326,7 +343,7 @@ export default function VerifyOTPScreen() {
                       onFocus={() => setFocusedIndex(index)}
                       secureTextEntry={false}
                       placeholder="•"
-                      placeholderTextColor="#6B7280"
+                      placeholderTextColor={colors.textSecondary}
                     />
                   </View>
                 ))}
@@ -342,6 +359,7 @@ export default function VerifyOTPScreen() {
                 <Pressable
                   style={[
                     styles.primaryButton,
+                    { backgroundColor: colors.primary },
                     otp.join('').length !== OTP_LENGTH && styles.primaryButtonDisabled
                   ]}
                   onPressIn={() => animateButton(0.96)}
@@ -364,9 +382,9 @@ export default function VerifyOTPScreen() {
 
             {/* Footer Terms */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 By verifying, you agree to our{' '}
-                <Text style={styles.footerLink} onPress={() => Alert.alert('Terms of Service', 'Redirecting to Terms...')}>
+                <Text style={[styles.footerLink, { color: colors.primary }]} onPress={() => Alert.alert('Terms of Service', 'Redirecting to Terms...')}>
                   Terms of Service
                 </Text>
                 .

@@ -33,7 +33,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
   const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const displayName = user?.name || 'Alex Rivera';
 
   // Tracks native modal visibility during slide close animations
@@ -191,8 +191,10 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
       }),
     ]).start(() => {
       onClose();
-      // Gracefully redirect back to onboarding language selector
-      router.replace('/(onboarding)/language' as any);
+      // Clear authenticated state and persisted AsyncStorage tokens
+      logout();
+      // Gracefully redirect back to auth flow
+      router.replace('/(auth)/login' as any);
     });
   };
 

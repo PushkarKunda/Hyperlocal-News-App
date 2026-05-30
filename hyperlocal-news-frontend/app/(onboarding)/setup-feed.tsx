@@ -8,16 +8,21 @@ import {
   Easing,
   Platform,
   BackHandler,
+  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 
 export default function FeedSetupLoaderScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
 
   // Progress bar animation
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -188,12 +193,12 @@ export default function FeedSetupLoaderScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Simulated Background Blur Vectors */}
-      <View style={styles.purpleBlur} />
-      <View style={styles.tealBlur} />
+      <View style={[styles.purpleBlur, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(96, 99, 238, 0.15)' }]} />
+      <View style={[styles.tealBlur, { backgroundColor: isDark ? 'rgba(0, 106, 97, 0.1)' : 'rgba(134, 242, 228, 0.15)' }]} />
 
       <View style={styles.mainCanvas}>
         
@@ -205,6 +210,7 @@ export default function FeedSetupLoaderScreen() {
             <Animated.View
               style={[
                 styles.rippleRing,
+                { borderColor: colors.primary },
                 {
                   transform: [{ scale: rippleScale2 }],
                   opacity: rippleOpacity2,
@@ -216,6 +222,7 @@ export default function FeedSetupLoaderScreen() {
             <Animated.View
               style={[
                 styles.rippleRing,
+                { borderColor: colors.primary },
                 {
                   transform: [{ scale: rippleScale1 }],
                   opacity: rippleOpacity1,
@@ -224,7 +231,7 @@ export default function FeedSetupLoaderScreen() {
             />
 
             {/* Base Background Circle */}
-            <View style={styles.loaderBaseCircle} />
+            <View style={[styles.loaderBaseCircle, { backgroundColor: colors.primaryLight }]} />
 
             {/* Rotating Orbit Container for Particles */}
             <Animated.View
@@ -241,37 +248,38 @@ export default function FeedSetupLoaderScreen() {
             </Animated.View>
 
             {/* Central White Newspaper Badge */}
-            <View style={styles.centerIconContainer}>
-              <Ionicons name="newspaper-outline" size={38} color="#4648D4" />
+            <View style={[styles.centerIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Ionicons name="newspaper-outline" size={38} color={colors.primary} />
             </View>
           </View>
         </View>
 
         {/* Text Content */}
         <View style={styles.textContent}>
-          <Text style={styles.mainTitle}>Setting up your feed...</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>Setting up your feed...</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             We're curating the best stories based on{'\n'}your interests.
           </Text>
         </View>
 
         {/* Loading Indicator */}
         <View style={styles.progressSection}>
-          <View style={styles.progressTrack}>
+          <View style={[styles.progressTrack, { backgroundColor: isDark ? '#2A2A3C' : '#DCE9FF' }]}>
             <Animated.View
               style={[
                 styles.progressBar,
+                { backgroundColor: colors.primary, shadowColor: colors.primary },
                 { width: barWidthInterpolation }
               ]}
             />
           </View>
 
           <View style={styles.indicatorSubRow}>
-            <Text style={styles.finalizingText}>FINALIZING YOUR HYPERLOCAL</Text>
+            <Text style={[styles.finalizingText, { color: colors.primary }]}>FINALIZING YOUR HYPERLOCAL</Text>
             <View style={styles.dotRow}>
-              <Animated.View style={[styles.loadingDot, { opacity: dot1Opacity }]} />
-              <Animated.View style={[styles.loadingDot, { opacity: dot2Opacity }]} />
-              <Animated.View style={[styles.loadingDot, { opacity: dot3Opacity }]} />
+              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot1Opacity }]} />
+              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot2Opacity }]} />
+              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot3Opacity }]} />
             </View>
           </View>
         </View>
@@ -284,19 +292,19 @@ export default function FeedSetupLoaderScreen() {
           ]}
         >
           {/* Card Left */}
-          <View style={styles.skeletonCard}>
+          <View style={[styles.skeletonCard, { backgroundColor: isDark ? '#2A2A3C' : '#E5EEFF' }]}>
             <View style={styles.skeletonMargin}>
-              <View style={styles.skeletonShortLine} />
+              <View style={[styles.skeletonShortLine, { backgroundColor: isDark ? '#464554' : '#C7C4D7' }]} />
             </View>
-            <View style={styles.skeletonLongLine} />
+            <View style={[styles.skeletonLongLine, { backgroundColor: isDark ? 'rgba(199, 196, 215, 0.2)' : 'rgba(199, 196, 215, 0.5)' }]} />
           </View>
 
           {/* Card Right */}
-          <View style={styles.skeletonCard}>
+          <View style={[styles.skeletonCard, { backgroundColor: isDark ? '#2A2A3C' : '#E5EEFF' }]}>
             <View style={styles.skeletonMargin}>
-              <View style={[styles.skeletonShortLine, { width: '60%' }]} />
+              <View style={[styles.skeletonShortLine, { backgroundColor: isDark ? '#464554' : '#C7C4D7', width: '60%' }]} />
             </View>
-            <View style={[styles.skeletonLongLine, { width: '85%' }]} />
+            <View style={[styles.skeletonLongLine, { backgroundColor: isDark ? 'rgba(199, 196, 215, 0.2)' : 'rgba(199, 196, 215, 0.5)', width: '85%' }]} />
           </View>
         </Animated.View>
 

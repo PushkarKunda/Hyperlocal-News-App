@@ -15,16 +15,21 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const { user, updateProfile } = useAuthStore();
 
   const [name, setName] = useState('');
@@ -175,24 +180,24 @@ export default function ProfileCompletionScreen() {
 
   const isButtonDisabled = name.trim().length < 2;
 
-  // Intercepting border colors
+  // Intercepting border colors dynamically based on active theme
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(199, 196, 215, 0.3)', '#4648D4'],
+    outputRange: [colors.border, colors.primary],
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Radial Gradient Backdrops (Simulated) */}
-      <View style={styles.topRadial} />
-      <View style={styles.bottomRadial} />
+      <View style={[styles.topRadial, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(225, 224, 255, 0.65)' }]} />
+      <View style={[styles.bottomRadial, { backgroundColor: isDark ? 'rgba(0, 106, 97, 0.1)' : 'rgba(229, 238, 255, 0.7)' }]} />
 
       {/* Header - Top Navigation Anchor */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
         <View style={styles.headerPlaceholder} />
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -202,7 +207,7 @@ export default function ProfileCompletionScreen() {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            style={styles.scrollView}
+            style={[styles.scrollView, { backgroundColor: colors.background }]}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -211,15 +216,15 @@ export default function ProfileCompletionScreen() {
               
               {/* Progress Indicator */}
               <View style={styles.progressContainer}>
-                <View style={styles.activeStepIndicatorShort} />
-                <View style={styles.activeStepIndicatorShort} />
-                <View style={styles.activeStepIndicatorLong} />
+                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                <View style={[styles.activeStepIndicatorLong, { backgroundColor: colors.primary }]} />
               </View>
 
               {/* Headline & Subtext */}
               <View style={styles.headlineSection}>
-                <Text style={styles.mainTitle}>Complete your profile</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.mainTitle, { color: colors.text }]}>Complete your profile</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   Add a photo and your name so we{'\n'}can personalize your experience.
                 </Text>
               </View>
@@ -235,6 +240,7 @@ export default function ProfileCompletionScreen() {
                   <Animated.View
                     style={[
                       styles.avatarCircle,
+                      { backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF', borderColor: colors.border },
                       { transform: [{ scale: avatarScale }] }
                     ]}
                   >
@@ -242,33 +248,33 @@ export default function ProfileCompletionScreen() {
                        <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
                     ) : (
                       <View style={styles.cameraIconContainer}>
-                        <Feather name="camera" size={32} color="#4648D4" />
+                        <Feather name="camera" size={32} color={colors.primary} />
                       </View>
                     )}
 
-                    <View style={styles.plusBadge}>
+                    <View style={[styles.plusBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
                       <Ionicons name="add" size={20} color="#FFFFFF" />
                     </View>
                   </Animated.View>
                 </Pressable>
-                <Text style={styles.uploadPrompt}>TAP TO UPLOAD</Text>
+                <Text style={[styles.uploadPrompt, { color: colors.primary }]}>TAP TO UPLOAD</Text>
               </View>
 
               {/* Input Field Container */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>FULL NAME</Text>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FULL NAME</Text>
                 
                 <Animated.View
                   style={[
                     styles.inputWrapper,
-                    { borderColor: borderInterpolation },
+                    { backgroundColor: colors.card, borderColor: borderInterpolation },
                     isFocused && styles.inputWrapperFocused
                   ]}
                 >
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { color: colors.text }]}
                     placeholder="Enter your name"
-                    placeholderTextColor="rgba(118, 117, 134, 0.5)"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
                     value={name}
                     onChangeText={setName}
                     onFocus={handleInputFocus}
@@ -277,18 +283,18 @@ export default function ProfileCompletionScreen() {
                     maxLength={30}
                     returnKeyType="done"
                   />
-                  <Feather name="user" size={20} color="rgba(118, 117, 134, 0.5)" style={styles.inputIcon} />
+                  <Feather name="user" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
                 </Animated.View>
               </View>
 
               {/* Asymmetric Info Card */}
-              <View style={styles.infoCard}>
-                <View style={styles.infoIconContainer}>
-                  <Ionicons name="shield-checkmark-outline" size={28} color="#4648D4" />
+              <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.infoIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
                 </View>
                 <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoTitle}>Your data is safe</Text>
-                  <Text style={styles.infoDesc}>
+                  <Text style={[styles.infoTitle, { color: colors.text }]}>Your data is safe</Text>
+                  <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
                     We only use your name to personalize your daily news briefings and community interactions.
                   </Text>
                 </View>
@@ -300,7 +306,7 @@ export default function ProfileCompletionScreen() {
       </KeyboardAvoidingView>
 
       {/* Footer - Fixed Bottom Action Area */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           style={styles.buttonWrapper}
           disabled={isButtonDisabled}
@@ -311,20 +317,22 @@ export default function ProfileCompletionScreen() {
           <Animated.View
             style={[
               styles.finishButton,
-              isButtonDisabled ? styles.finishButtonDisabled : styles.finishButtonActive,
+              isButtonDisabled 
+                ? [styles.finishButtonDisabled, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(199, 196, 215, 0.4)' }] 
+                : [styles.finishButtonActive, { backgroundColor: colors.primary }],
               { transform: [{ scale: buttonScale }] }
             ]}
           >
             <Text style={[
               styles.finishButtonText,
-              isButtonDisabled && { color: 'rgba(118, 117, 134, 0.6)' }
+              isButtonDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(118, 117, 134, 0.6)' }
             ]}>Finish Setup</Text>
-            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? "rgba(118, 117, 134, 0.4)" : "#FFFFFF"} />
+            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(118, 117, 134, 0.4)") : "#FFFFFF"} />
           </Animated.View>
         </Pressable>
 
         <View style={styles.stepTextContainer}>
-          <Text style={styles.stepText}>STEP 3 OF 3</Text>
+          <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
         </View>
       </View>
     </SafeAreaView>

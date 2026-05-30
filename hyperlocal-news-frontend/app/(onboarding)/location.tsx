@@ -23,46 +23,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
+import { useStatesList } from '@/hooks/useApi';
+
 interface StateItem {
   id: string;
   name: string;
   code: string;
 }
-
-const INDIAN_STATES: StateItem[] = [
-  { id: 'ap', name: 'Andhra Pradesh', code: 'AP' },
-  { id: 'ar', name: 'Arunachal Pradesh', code: 'AR' },
-  { id: 'as', name: 'Assam', code: 'AS' },
-  { id: 'br', name: 'Bihar', code: 'BR' },
-  { id: 'cg', name: 'Chhattisgarh', code: 'CG' },
-  { id: 'ga', name: 'Goa', code: 'GA' },
-  { id: 'gj', name: 'Gujarat', code: 'GJ' },
-  { id: 'hr', name: 'Haryana', code: 'HR' },
-  { id: 'hp', name: 'Himachal Pradesh', code: 'HP' },
-  { id: 'jh', name: 'Jharkhand', code: 'JH' },
-  { id: 'ka', name: 'Karnataka', code: 'KA' },
-  { id: 'kl', name: 'Kerala', code: 'KL' },
-  { id: 'mp', name: 'Madhya Pradesh', code: 'MP' },
-  { id: 'mh', name: 'Maharashtra', code: 'MH' },
-  { id: 'mn', name: 'Manipur', code: 'MN' },
-  { id: 'ml', name: 'Meghalaya', code: 'ML' },
-  { id: 'mz', name: 'Mizoram', code: 'MZ' },
-  { id: 'nl', name: 'Nagaland', code: 'NL' },
-  { id: 'or', name: 'Odisha', code: 'OR' },
-  { id: 'pb', name: 'Punjab', code: 'PB' },
-  { id: 'rj', name: 'Rajasthan', code: 'RJ' },
-  { id: 'sk', name: 'Sikkim', code: 'SK' },
-  { id: 'tn', name: 'Tamil Nadu', code: 'TN' },
-  { id: 'ts', name: 'Telangana', code: 'TS' },
-  { id: 'tr', name: 'Tripura', code: 'TR' },
-  { id: 'up', name: 'Uttar Pradesh', code: 'UP' },
-  { id: 'uk', name: 'Uttarakhand', code: 'UK' },
-  { id: 'wb', name: 'West Bengal', code: 'WB' },
-  { id: 'dl', name: 'Delhi', code: 'DL' },
-  { id: 'jk', name: 'Jammu & Kashmir', code: 'JK' },
-  { id: 'la', name: 'Ladakh', code: 'LA' },
-  { id: 'py', name: 'Puducherry', code: 'PY' },
-];
 
 interface StateCardProps {
   name: string;
@@ -72,6 +39,9 @@ interface StateCardProps {
 }
 
 function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -102,16 +72,36 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       <Animated.View
         style={[
           styles.regionCard,
-          isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
+          {
+            backgroundColor: isSelected ? colors.primaryLight : colors.card,
+            borderColor: isSelected ? colors.primary : colors.border,
+          },
           { transform: [{ scale }] },
         ]}
       >
-        <View style={[styles.flagCircle, isSelected && styles.flagCircleSelected]}>
-          <Text style={[styles.stateCodeText, isSelected ? styles.stateCodeTextSelected : styles.stateCodeTextUnselected]}>
+        <View 
+          style={[
+            styles.flagCircle,
+            { 
+              backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
+              borderColor: isSelected ? colors.primary : colors.border,
+            }
+          ]}
+        >
+          <Text style={[styles.stateCodeText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
             {code}
           </Text>
         </View>
-        <Text style={[styles.regionName, isSelected && styles.regionNameSelected]} numberOfLines={1}>{name}</Text>
+        <Text 
+          style={[
+            styles.regionName, 
+            { color: isSelected ? colors.primary : colors.text },
+            isSelected && styles.regionNameSelected
+          ]} 
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -121,6 +111,9 @@ export default function LocationScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+
+  // Load states list dynamically using our react query hook
+  const { data: statesList = [], isLoading: isLoadingStates } = useStatesList();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState('ts');
@@ -226,8 +219,8 @@ export default function LocationScreen() {
         const stateName = address.region || '';
         const cityName = address.city || address.subregion || address.district || '';
 
-        // Match the state name to INDIAN_STATES
-        const matchedState = INDIAN_STATES.find(s => 
+        // Match the state name to dynamic statesList
+        const matchedState = statesList.find(s => 
           s.name.toLowerCase().includes(stateName.toLowerCase()) || 
           stateName.toLowerCase().includes(s.name.toLowerCase())
         );
@@ -264,57 +257,58 @@ export default function LocationScreen() {
 
   const handleSelectState = (stateId: string) => {
     setSelectedState(stateId);
-    const state = INDIAN_STATES.find(s => s.id === stateId);
+    const state = statesList.find(s => s.id === stateId);
     if (state) {
       setSearchQuery(state.name);
     }
   };
 
-  const filteredStates = INDIAN_STATES.filter(state =>
+  const filteredStates = statesList.filter(state =>
     state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     state.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Interpolate search border colors
+  // Interpolate search border colors dynamically based on active theme
   const searchBorderColor = searchBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(199, 196, 215, 0.5)', '#4648D4'],
+    outputRange: [colors.border, colors.primary],
   });
 
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Simulated Background Blur Vectors */}
-      <View style={styles.purpleBlur} />
-      <View style={styles.tealBlur} />
+      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.05)' }]} />
+      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.05)' }]} />
 
       {/* Header Bar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.divider }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Main Content Area */}
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Hero Titles */}
         <View style={styles.headlineSection}>
-          <Text style={styles.mainTitle}>Where are you?</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>Where are you?</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Get news and updates tailored to your region.
           </Text>
         </View>
@@ -325,16 +319,17 @@ export default function LocationScreen() {
             style={[
               styles.searchBar,
               {
+                backgroundColor: colors.card,
                 borderColor: searchBorderColor,
                 shadowOpacity: isSearchFocused ? 0.15 : 0.05,
               }
             ]}
           >
-            <Ionicons name="search-outline" size={20} color="#767586" style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search state..."
-              placeholderTextColor="#767586"
+              placeholderTextColor={colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={handleSearchFocus}
@@ -349,13 +344,23 @@ export default function LocationScreen() {
             onPressOut={handleGpsPressOut}
             disabled={isLocating}
           >
-            <Animated.View style={[styles.gpsButton, { transform: [{ scale: gpsScale }] }, isLocating && styles.gpsButtonDisabled]}>
+            <Animated.View 
+              style={[
+                styles.gpsButton, 
+                { 
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  transform: [{ scale: gpsScale }] 
+                }, 
+                isLocating && styles.gpsButtonDisabled
+              ]}
+            >
               {isLocating ? (
-                <ActivityIndicator size="small" color="#4648D4" />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Ionicons name="locate-outline" size={20} color="#4648D4" />
+                <Ionicons name="locate-outline" size={20} color={colors.primary} />
               )}
-              <Text style={styles.gpsButtonText}>
+              <Text style={[styles.gpsButtonText, { color: colors.primary }]}>
                 {isLocating ? 'Locating...' : 'Use current location'}
               </Text>
             </Animated.View>
@@ -364,7 +369,7 @@ export default function LocationScreen() {
 
         {/* Popular Regions Bento Grid Section */}
         <View style={styles.popularSection}>
-          <Text style={styles.sectionHeader}>INDIAN STATES</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>INDIAN STATES</Text>
 
           <View style={styles.gridContainer}>
             {filteredStates.map((state) => (
@@ -381,7 +386,7 @@ export default function LocationScreen() {
       </ScrollView>
 
       {/* Bottom Footer Action */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background }]}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
             style={styles.continueButton}

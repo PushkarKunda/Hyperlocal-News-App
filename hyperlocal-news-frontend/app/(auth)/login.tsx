@@ -13,12 +13,14 @@ import {
   Image,
   Dimensions,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +33,9 @@ const COUNTRY_CODES = [
 
 export default function LoginScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const navigation = useNavigation();
   const { sendOtp, loginAsGuest } = useAuthStore();
 
@@ -160,27 +165,27 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Header - Top Navigation Anchor */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={handleBack}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#4648D4" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
         <TouchableOpacity
           style={styles.skipButton}
           onPress={handleGuestLogin}
           activeOpacity={0.7}
         >
-          <Text style={styles.skipButtonText}>Skip</Text>
+          <Text style={[styles.skipButtonText, { color: colors.primary }]}>Skip</Text>
         </TouchableOpacity>
       </View>
 
@@ -199,7 +204,7 @@ export default function LoginScreen() {
             {/* Hero Section */}
             <View style={styles.heroSection}>
               {/* Background Card */}
-              <View style={styles.heroCard}>
+              <View style={[styles.heroCard, { backgroundColor: colors.primaryLight }]}>
                 <Image
                   source={require('../../assets/immersive_feed/64186b35bff5b154bbf523e6dae56134a7cd7e14.png')}
                   style={styles.heroImage}
@@ -208,8 +213,8 @@ export default function LoginScreen() {
 
               {/* Headings */}
               <View style={styles.headingContainer}>
-                <Text style={styles.welcomeTitle}>Welcome Back!</Text>
-                <Text style={styles.welcomeSubtitle}>
+                <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome Back!</Text>
+                <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                   Log in to your account with your phone number to continue where you left off.
                 </Text>
               </View>
@@ -218,28 +223,28 @@ export default function LoginScreen() {
             {/* Login Form Section */}
             <View style={styles.formSection}>
               {/* Input Label */}
-              <Text style={styles.inputLabel}>PHONE NUMBER</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PHONE NUMBER</Text>
 
               {/* Input Row */}
               <View style={styles.phoneInputRow}>
                 {/* Country Selector */}
                 <TouchableOpacity
-                  style={styles.countryPicker}
+                  style={[styles.countryPicker, { backgroundColor: isDark ? colors.surface : '#EFF4FF' }]}
                   onPress={() => toggleDropdown(!showCountryPicker)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.countryPickerText}>
+                  <Text style={[styles.countryPickerText, { color: colors.text }]}>
                     {selectedCountry.flag} {selectedCountry.code}
                   </Text>
-                  <Feather name="chevron-down" size={16} color="#0B1C30" />
+                  <Feather name="chevron-down" size={16} color={colors.text} />
                 </TouchableOpacity>
 
                 {/* Number Input Field */}
-                <View style={styles.phoneInputContainer}>
+                <View style={[styles.phoneInputContainer, { backgroundColor: isDark ? colors.surface : '#EFF4FF' }]}>
                   <TextInput
-                    style={styles.phoneInput}
+                    style={[styles.phoneInput, { color: colors.text }]}
                     placeholder={selectedCountry.code === '+91' ? '98765 43210' : '(555) 000-0000'}
-                    placeholderTextColor="#C7C4D7"
+                    placeholderTextColor={isDark ? '#464554' : '#C7C4D7'}
                     keyboardType="phone-pad"
                     maxLength={selectedCountry.code === '+91' ? 11 : 14}
                     value={phoneNumber}
@@ -253,6 +258,7 @@ export default function LoginScreen() {
                 <Animated.View 
                   style={[
                     styles.countryDropdown,
+                    { backgroundColor: colors.card, borderColor: colors.border },
                     { opacity: pickerDropdownOpacity }
                   ]}
                 >
@@ -261,7 +267,8 @@ export default function LoginScreen() {
                       key={country.code}
                       style={[
                         styles.countryOption,
-                        selectedCountry.code === country.code && styles.selectedOption
+                        { borderBottomColor: colors.border },
+                        selectedCountry.code === country.code && { backgroundColor: colors.primaryLight }
                       ]}
                       onPress={() => {
                         setSelectedCountry(country);
@@ -269,11 +276,11 @@ export default function LoginScreen() {
                         handlePhoneChange(phoneNumber, country);
                       }}
                     >
-                      <Text style={styles.countryOptionText}>
+                      <Text style={[styles.countryOptionText, { color: colors.text }]}>
                         {country.flag} {country.country} ({country.code})
                       </Text>
                       {selectedCountry.code === country.code && (
-                        <Feather name="check" size={16} color="#4648D4" />
+                        <Feather name="check" size={16} color={colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -286,7 +293,7 @@ export default function LoginScreen() {
               {/* Primary "Send Code" Button */}
               <Animated.View style={{ transform: [{ scale: primaryButtonScale }] }}>
                 <Pressable
-                  style={styles.primaryButton}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary }]}
                   onPressIn={() => animateButton(primaryButtonScale, 0.96)}
                   onPressOut={() => animateButton(primaryButtonScale, 1)}
                   onPress={handleSendOTP}
@@ -303,34 +310,34 @@ export default function LoginScreen() {
 
               {/* OR Separator */}
               <View style={styles.separatorRow}>
-                <View style={styles.separatorLine} />
-                <Text style={styles.separatorText}>OR</Text>
-                <View style={styles.separatorLine} />
+                <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.separatorText, { color: colors.textSecondary }]}>OR</Text>
+                <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
               </View>
 
               {/* "Continue with Email" Button */}
               <Animated.View style={{ transform: [{ scale: emailButtonScale }] }}>
                 <Pressable
-                  style={styles.secondaryButton}
+                  style={[styles.secondaryButton, { borderColor: colors.border }]}
                   onPressIn={() => animateButton(emailButtonScale, 0.96)}
                   onPressOut={() => animateButton(emailButtonScale, 1)}
                   onPress={handleEmailLogin}
                 >
-                  <Feather name="mail" size={18} color="#0B1C30" style={styles.mailIcon} />
-                  <Text style={styles.secondaryButtonText}>Continue with Email</Text>
+                  <Feather name="mail" size={18} color={colors.text} style={styles.mailIcon} />
+                  <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Continue with Email</Text>
                 </Pressable>
               </Animated.View>
             </View>
 
             {/* Footer Legal Terms */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 By continuing, you agree to our{' '}
-                <Text style={styles.footerLink} onPress={() => handleLinkPress('terms')}>
+                <Text style={[styles.footerLink, { color: colors.primary }]} onPress={() => handleLinkPress('terms')}>
                   Terms of Service
                 </Text>
                 {' and '}
-                <Text style={styles.footerLink} onPress={() => handleLinkPress('privacy')}>
+                <Text style={[styles.footerLink, { color: colors.primary }]} onPress={() => handleLinkPress('privacy')}>
                   Privacy Policy
                 </Text>
                 .

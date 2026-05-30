@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiService } from '@/utils/apiClient';
 
 export interface User {
   id: string;
@@ -39,30 +40,26 @@ export const useAuthStore = create<AuthState>()(
 
       sendOtp: async (phoneNumber: string) => {
         set({ isLoading: true });
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await ApiService.sendOtp(phoneNumber);
         set({ isLoading: false });
-        // In a real app, you might check if the phone number is valid or blocked here
-        return true;
+        return response.success && response.data === true;
       },
 
       verifyOtp: async (phoneNumber: string, otp: string) => {
         set({ isLoading: true });
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await ApiService.verifyOtp(phoneNumber, otp);
         
-        // Mock successful verification
-        set({
-          user: {
-            id: Math.random().toString(36).substr(2, 9),
-            phoneNumber,
-            isGuest: false,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        });
+        if (response.success && response.data) {
+          set({
+            user: response.data,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        }
         
-        return true;
+        set({ isLoading: false });
+        return false;
       },
 
       loginAsGuest: () => {
