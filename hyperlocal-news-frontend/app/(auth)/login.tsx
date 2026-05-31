@@ -12,6 +12,7 @@ import {
   Pressable,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -345,8 +346,12 @@ const handleGoogleLogin = async () => {
                   </Animated.View>
 
                   {/* Center pulsing dot */}
-                  <Animated.View style={[styles.radarCenter, { backgroundColor: colors.primary, transform: [{ scale: centerPulse }] }]}>
-                    <Ionicons name="newspaper" size={18} color="#FFF" />
+                  <Animated.View style={[styles.radarCenter, { backgroundColor: '#FFFFFF', transform: [{ scale: centerPulse }] }]}>
+                    <Image 
+                      source={require('../../assets/logo.png')} 
+                      style={styles.radarLogoImage} 
+                      resizeMode="contain" 
+                    />
                   </Animated.View>
                 </View>
 
@@ -670,6 +675,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 10,
     elevation: 8,
+  },
+  radarLogoImage: {
+    width: '80%',
+    height: '80%',
+    borderRadius: 18,
   },
   liveLabel: {
     position: 'absolute',
