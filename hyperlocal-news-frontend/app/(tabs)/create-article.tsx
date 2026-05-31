@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useArticleStore } from '@/store/articleStore';
@@ -182,12 +183,13 @@ export default function CreateArticleScreen() {
 
   return (
     <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
       {/* Decorative Blurs */}
       <View style={styles.topRightBlur} />
       <View style={styles.bottomLeftBlur} />
 
       {/* Header bar */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={() => router.back()}
@@ -232,7 +234,7 @@ export default function CreateArticleScreen() {
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.uploadCard, { borderColor: colors.border }]}
+                style={[styles.uploadCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowCoverPresets(true)}
                 activeOpacity={0.7}
               >
@@ -423,7 +425,7 @@ export default function CreateArticleScreen() {
       </KeyboardAvoidingView>
 
       {/* Fixed Sticky Footer Actions */}
-      <View style={[styles.stickyFooter, { borderTopColor: colors.border, paddingBottom: Math.max(20, insets.bottom + 8) }]}>
+      <View style={[styles.stickyFooter, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(20, insets.bottom + 8) }]}>
         <View style={styles.footerContainer}>
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: colors.primary }]}
@@ -437,7 +439,7 @@ export default function CreateArticleScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.border }]}
+            style={[styles.secondaryButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => validateAndSubmit(true)}
             activeOpacity={0.7}
           >

@@ -19,6 +19,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useStore } from '@/store/useStore';
 import { Category } from '@/types';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { StatusBar } from 'expo-status-bar';
 
 // ── Validation helpers ─────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ export default function CreateArticleScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
