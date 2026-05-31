@@ -1,17 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { MOCK_NOTIFICATIONS } from '@/data';
 import { Notification } from '@/types';
+import { API_CONFIG, notificationsApi } from '@/services/api';
 
-// Simulate an API call with a delay
 const fetchNotifications = async (): Promise<Notification[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(MOCK_NOTIFICATIONS), 600);
-  });
+  if (API_CONFIG.useMocks) {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(MOCK_NOTIFICATIONS), 600);
+    });
+  }
+
+  return notificationsApi.list();
 };
 
 export const useNotifications = () => {
   return useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: fetchNotifications,
   });
 };

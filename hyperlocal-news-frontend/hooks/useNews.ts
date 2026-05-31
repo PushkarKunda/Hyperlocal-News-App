@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { NewsArticle } from '@/types';
+import { API_CONFIG, categoriesApi, newsApi } from '@/services/api';
 
 // ─── Helper: merge live bookmark state into articles ──────────────────────────
 
@@ -19,20 +20,21 @@ const useMergedNews = (newsArray: NewsArticle[] | undefined): NewsArticle[] => {
 
 // ─── API Simulation Layer (Future Supabase Integration Point) ────────────────
 
-const fetchNewsFromStore = async (
+const fetchNews = async (
   allArticles: NewsArticle[],
   categorySlug?: string
 ): Promise<NewsArticle[]> => {
-  // Simulate network latency
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  if (API_CONFIG.useMocks) {
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-  const published = allArticles.filter((a) => a.status === 'published');
-  
-  // "For You" logic: In a real app, this would be a personalized recommendation.
-  // Here we return all published articles, sorted by date (if date existed, but mockNews is randomized)
-  if (!categorySlug || categorySlug === 'for-you') return published;
-  
-  return published.filter((a) => a.category.slug === categorySlug);
+    const published = allArticles.filter((a) => a.status === 'published');
+
+    if (!categorySlug || categorySlug === 'for-you') return published;
+
+    return published.filter((a) => a.category.slug === categorySlug);
+  }
+
+  return newsApi.list(categorySlug ? { category: categorySlug } : undefined);
 };
 
 // ─── Public-facing feed ───────────────────────────────────────────────────────
@@ -40,10 +42,36 @@ const fetchNewsFromStore = async (
 export const useNews = (categorySlug?: string) => {
   // We include allArticles in the queryKey to ensure reactivity when the store updates
   const allArticles = useStore((state) => state.allArticles);
+  const categoriesQuery = useQuery({
+    queryKey: ['categories', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryFn: () => categoriesApi.list(),
+    staleTime: 1000 * 60 * 30,
+    enabled: !API_CONFIG.useMocks,
+  });
+  const resolvedCategoryId = useMemo(() => {
+    if (!categorySlug || categorySlug === 'for-you') return undefined;
+
+    const matchedCategory = categoriesQuery.data?.find(
+      (category) => category.slug === categorySlug || category.name.toLowerCase() === categorySlug.toLowerCase()
+    );
+
+    const parsedId = matchedCategory ? Number(matchedCategory.id) : Number.NaN;
+    return Number.isFinite(parsedId) ? parsedId : undefined;
+  }, [categorySlug, categoriesQuery.data]);
 
   const query = useQuery({
-    queryKey: ['news', categorySlug, allArticles.length], // Reactive to article count
-    queryFn: () => fetchNewsFromStore(allArticles, categorySlug),
+    queryKey: ['news', categorySlug, resolvedCategoryId ?? 'all', allArticles.length, API_CONFIG.useMocks ? 'mock' : 'api'], // Reactive to article count
+    queryFn: async () => {
+      if (API_CONFIG.useMocks) {
+        return fetchNews(allArticles, categorySlug);
+      }
+
+      if (!resolvedCategoryId) {
+        return newsApi.list();
+      }
+
+      return newsApi.listByCategory(resolvedCategoryId);
+    },
     staleTime: 1000 * 60 * 5,
   });
 
@@ -62,8 +90,8 @@ export const usePrefetchNews = () => {
   const prefetch = useCallback(
     (categorySlug: string) => {
       queryClient.prefetchQuery({
-        queryKey: ['news', categorySlug, allArticles.length],
-        queryFn: () => fetchNewsFromStore(allArticles, categorySlug),
+        queryKey: ['news', categorySlug, allArticles.length, API_CONFIG.useMocks ? 'mock' : 'api'],
+        queryFn: () => fetchNews(allArticles, categorySlug),
         staleTime: 1000 * 60 * 5,
       });
     },
@@ -99,15 +127,28 @@ export const useNewsArticle = (id: string) => {
   const allArticles = useStore((state) => state.allArticles);
   const bookmarkedArticleIds = useStore((state) => state.bookmarkedArticleIds);
 
+  const query = useQuery({
+    queryKey: ['news-article', id, API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryFn: async () => {
+      if (API_CONFIG.useMocks) {
+        return allArticles.find((article) => article.id === id);
+      }
+
+      return newsApi.getById(id);
+    },
+    enabled: Boolean(id),
+    staleTime: 1000 * 60 * 5,
+  });
+
   const article = useMemo(() => {
-    const found = allArticles.find((a) => a.id === id);
+    const found = query.data ?? allArticles.find((a) => a.id === id);
     if (!found) return undefined;
     return { ...found, isBookmarked: bookmarkedArticleIds.includes(found.id) };
-  }, [allArticles, bookmarkedArticleIds, id]);
+  }, [allArticles, bookmarkedArticleIds, id, query.data]);
 
   return {
     data: article,
-    isLoading: false,
+    isLoading: query.isLoading,
   };
 };
 

@@ -1,0 +1,21 @@
+export const API_ROUTES = {
+  categories: '/categories/menu',
+  events: '/content/events',
+  news: '/news/v1/feed',
+  newsById: (id: string) => `/news/v1/news/${id}`,
+  newsByCategory: (categoryId: number) => `/news/v1/news/category/${categoryId}`,
+  notifications: '/engagement/notifications',
+  polls: '/content/polls/active',
+  pollVote: '/content/polls/vote',
+  pollUndoVote: '/content/polls/vote',
+  usersMe: '/user/users/me',
+  usersMePreferences: '/user/preferences/me',
+  usersMeAvatar: '/user/users/me/avatar',
+  uploadAvatar: '/user/users/me/avatar',
+  auth: {
+    firebaseToken: '/user/auth/firebase/login',
+    linkGoogle: '/user/auth/firebase/login',
+    linkEmail: '/user/auth/firebase/login',
+    deviceToken: '/user/device/token/register',
+  },
+} as const;
