@@ -13,6 +13,9 @@ export default function OnboardingLayout() {
 
   useEffect(() => {
     if (isAuthenticated && isOnboarded) {
+      if (pathname.includes('profile')) {
+        return;
+      }
       router.replace('/(tabs)');
     } else if (isAuthenticated) {
       const isAllowedPath = 
@@ -31,7 +34,11 @@ export default function OnboardingLayout() {
   }, [isAuthenticated, isOnboarded, pathname, user]);
 
   if (isAuthenticated && isOnboarded) {
-    return null;
+    if (pathname.includes('profile')) {
+      // Allow rendering the profile screen to verify email
+    } else {
+      return null;
+    }
   }
 
   if (isAuthenticated) {

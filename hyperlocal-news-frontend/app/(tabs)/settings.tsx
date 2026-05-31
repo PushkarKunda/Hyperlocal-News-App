@@ -11,7 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
@@ -23,6 +23,7 @@ export default function SettingsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   
   const { user, logout, updateTheme, updateTextSize } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -93,7 +94,15 @@ export default function SettingsScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.headerLeftButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (from === 'articles') {
+              router.push('/(tabs)/articles');
+            } else if (from === 'events') {
+              router.push('/(tabs)/events');
+            } else {
+              router.back();
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />
@@ -146,12 +155,28 @@ export default function SettingsScreen() {
                   user?.isGuest && <Text style={[styles.profilePhone, { color: colors.textTertiary, fontSize: 11, marginTop: 2 }]}>No email added</Text>
                 )}
                 
-                <View style={styles.premiumBadgeContainer}>
-                  <View style={[styles.premiumBadge, isGuest && { backgroundColor: darkModeEnabled ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
-                    <Text style={[styles.premiumBadgeText, isGuest && { color: colors.primary }]}>
-                      {isGuest ? 'Guest Account' : 'Member'}
-                    </Text>
-                  </View>
+                 <View style={styles.premiumBadgeContainer}>
+                  {user?.isPublisher ? (
+                    <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
+                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
+                    </View>
+                  ) : (
+                    isGuest ? (
+                      <View style={[styles.premiumBadge, { backgroundColor: darkModeEnabled ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
+                        <Text style={[styles.premiumBadgeText, { color: colors.primary }]}>Guest Account</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
+                        onPress={() => router.push('/(onboarding)/profile')}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Verify Gmail to become Publisher</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                 </View>
               </View>
 
@@ -599,5 +624,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Poppins_600SemiBold',
+  },
+  publisherBadge: {
+    backgroundColor: '#006A61',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+  publisherBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  publisherVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  publisherVerifyButtonText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });

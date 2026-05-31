@@ -165,10 +165,19 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
     ]).start(() => {
       onClose();
       // Navigate to target screen using replace/push
-      if (route === '/' || route === '/shorts' || route === '/local' || route === '/discover' || route === '/profile' || route === '/settings') {
+      if (route === '/' || route === '/shorts' || route === '/local' || route === '/discover' || route === '/profile') {
         router.replace(route as any);
       } else {
-        router.push(route as any);
+        let finalRoute = route;
+        if (route === '/settings') {
+          const fromTab = pathname.replace(/^\/\(tabs\)/, '') || '/';
+          if (fromTab === '/articles') {
+            finalRoute = '/(tabs)/settings?from=articles';
+          } else if (fromTab === '/events') {
+            finalRoute = '/(tabs)/settings?from=events';
+          }
+        }
+        router.push(finalRoute as any);
       }
     });
   };
@@ -244,9 +253,16 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
           {/* User detail info headings */}
           <View style={styles.userInfoContainer}>
             <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
-            <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>
-              {user?.isGuest ? 'Guest Account' : 'Member'}
-            </Text>
+            {user?.isGuest ? (
+              <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Guest Account</Text>
+            ) : user?.isPublisher ? (
+              <View style={styles.drawerPublisherBadge}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+                <Text style={[styles.drawerPublisherText, { color: colors.primary }]}>Publisher</Text>
+              </View>
+            ) : (
+              <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Member</Text>
+            )}
           </View>
 
           {/* Navigation Links Scroll List */}
@@ -526,5 +542,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     lineHeight: 16,
     marginTop: 4,
+  },
+  drawerPublisherBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  drawerPublisherText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
 });

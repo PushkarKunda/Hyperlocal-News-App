@@ -13,6 +13,8 @@ export interface User {
   theme?: 'light' | 'dark' | 'system';
   textSize?: 'small' | 'medium' | 'large';
   email?: string;
+  isPublisher?: boolean;
+  emailVerified?: boolean;
 }
 
 interface AuthState {
@@ -24,7 +26,7 @@ interface AuthState {
   verifyOtp: (phoneNumber: string, otp: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => void;
-  updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string) => void;
+  updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string, isPublisher?: boolean, emailVerified?: boolean) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
   updateTextSize: (textSize: 'small' | 'medium' | 'large') => void;
@@ -82,7 +84,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string) => {
+      updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string, isPublisher?: boolean, emailVerified?: boolean) => {
         set((state) => {
           if (!state.user) return {};
           return {
@@ -90,8 +92,10 @@ export const useAuthStore = create<AuthState>()(
               ...state.user,
               name,
               avatar: avatar || state.user.avatar,
-              email: email || state.user.email,
+              email: email !== undefined ? email : state.user.email,
               phoneNumber: phoneNumber || state.user.phoneNumber,
+              isPublisher: isPublisher !== undefined ? isPublisher : state.user.isPublisher,
+              emailVerified: emailVerified !== undefined ? emailVerified : state.user.emailVerified,
             },
           };
         });

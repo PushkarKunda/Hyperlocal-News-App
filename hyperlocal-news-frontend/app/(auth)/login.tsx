@@ -237,13 +237,7 @@ const handleGoogleLogin = async () => {
 
         <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={handleGuestLogin}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.skipButtonText, { color: colors.primary }]}>Skip</Text>
-        </TouchableOpacity>
+        <View style={{ width: 32 }} />
       </View>
 
       <KeyboardAvoidingView

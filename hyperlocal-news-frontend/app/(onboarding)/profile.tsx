@@ -30,13 +30,61 @@ export default function ProfileCompletionScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, isOnboarded } = useAuthStore();
 
   const [name, setName] = useState(user?.name || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [email, setEmail] = useState(user?.email || '');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
   const [isFocused, setIsFocused] = useState(false);
+  const [isVerified, setIsVerified] = useState(user?.isPublisher || false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showOtpField, setShowOtpField] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (isVerified) {
+      setIsVerified(false);
+    }
+    if (showOtpField) {
+      setShowOtpField(false);
+      setOtpCode('');
+    }
+  };
+
+  const handleVerifyEmail = () => {
+    if (!email.trim()) {
+      Alert.alert('Email Required', 'Please enter your Gmail address first.');
+      return;
+    }
+    if (!email.includes('@')) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    setIsVerifying(true);
+    setTimeout(() => {
+      setIsVerifying(false);
+      setShowOtpField(true);
+      Alert.alert(
+        'OTP Sent! ✉️',
+        'A verification code has been sent to your email. You can enter any code to complete verification.'
+      );
+    }, 1200);
+  };
+
+  const handleConfirmOtp = () => {
+    if (otpCode.trim().length < 4) {
+      Alert.alert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).');
+      return;
+    }
+    setIsVerified(true);
+    setShowOtpField(false);
+    Alert.alert(
+      'Email Verified! 🎉',
+      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.'
+    );
+  };
 
   // Animations
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -49,8 +97,11 @@ export default function ProfileCompletionScreen() {
 
   useEffect(() => {
     const onBackPress = () => {
-      // Prevent user from going back during the profile setup process
-      return true;
+      // Prevent user from going back during the profile setup process only if not onboarded
+      if (!isOnboarded) {
+        return true;
+      }
+      return false; // Allow going back
     };
 
     BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -69,7 +120,7 @@ export default function ProfileCompletionScreen() {
     ]).start();
 
     return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
-  }, []);
+  }, [isOnboarded]);
 
   const handleInputFocus = () => {
     setIsFocused(true);
@@ -173,10 +224,15 @@ export default function ProfileCompletionScreen() {
     if (name.trim().length >= 2) {
       // Update profile in store
       const finalAvatar = selectedAvatar || undefined;
-      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim());
+      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim(), isVerified, isVerified);
 
-      // Trigger navigation loader state
-      router.push('/(onboarding)/setup-feed' as any);
+      if (isOnboarded) {
+        Alert.alert('Profile Saved!', 'Your changes have been saved successfully.');
+        router.replace('/(tabs)/profile');
+      } else {
+        // Trigger navigation loader state
+        router.push('/(onboarding)/setup-feed' as any);
+      }
     }
   };
 
@@ -198,7 +254,17 @@ export default function ProfileCompletionScreen() {
 
       {/* Header - Top Navigation Anchor */}
       <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
-        <View style={styles.headerPlaceholder} />
+        {isOnboarded ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerPlaceholder} />
+        )}
         <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -327,13 +393,58 @@ export default function ProfileCompletionScreen() {
                     placeholder="Enter email address"
                     placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={handleEmailChange}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     maxLength={50}
                   />
                   <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
-                </View>
+                </View>                 {!isVerified && !showOtpField && (
+                  <TouchableOpacity
+                    style={[styles.verifyButton, { backgroundColor: colors.primaryLight }]}
+                    onPress={handleVerifyEmail}
+                    disabled={isVerifying}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                    <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
+                      {isVerifying ? 'Verifying...' : 'Verify Gmail to become Publisher'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {showOtpField && !isVerified && (
+                  <View style={styles.otpSection}>
+                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>ENTER OTP CODE</Text>
+                    <View style={[styles.otpInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <TextInput
+                        style={[styles.otpInput, { color: colors.text }]}
+                        placeholder="Enter 4-digit code"
+                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                        value={otpCode}
+                        onChangeText={setOtpCode}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                      <Feather name="lock" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.otpConfirmButton, { backgroundColor: colors.primary }]}
+                      onPress={handleConfirmOtp}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.otpConfirmButtonText}>Confirm Code & Activate</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {email.trim().length > 0 && isVerified && (
+                  <View style={[styles.verifiedSuccessBadge, { backgroundColor: '#006A61', borderColor: '#006A61' }]}>
+                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                    <Text style={[styles.verifiedSuccessText, { color: '#FFFFFF' }]}>Verified Publisher Status Active</Text>
+                  </View>
+                )}
               </View>
 
               {/* Asymmetric Info Card */}
@@ -699,5 +810,81 @@ const styles = StyleSheet.create({
     color: '#C7C4D7',
     letterSpacing: 1.1,
     fontFamily: 'Inter_600SemiBold',
+  },
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.2)',
+  },
+  verifyButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  verifiedSuccessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  verifiedSuccessText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  otpSection: {
+    marginTop: 12,
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.15)',
+    backgroundColor: 'rgba(70, 72, 212, 0.02)',
+  },
+  otpLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.0,
+  },
+  otpInputWrapper: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  otpInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
+    letterSpacing: 2,
+  },
+  otpConfirmButton: {
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  otpConfirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
 });

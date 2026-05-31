@@ -10,16 +10,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useCategories } from '@/hooks/useCategories';
 import { useStore } from '@/store/useStore';
 import { Category } from '@/types';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { StatusBar } from 'expo-status-bar';
+import { useAuthStore } from '@/store/authStore';
 
 // ── Validation helpers ─────────────────────────────────────────────────────────
 
@@ -65,9 +67,12 @@ const validate = (
 export default function CreateArticleScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const submitArticle = useStore((state) => state.submitArticle);
-  const user = useStore((state) => state.user);
+  const { user } = useAuthStore();
+  const isPublisher = user?.isPublisher || false;
+  const legacyUser = useStore((state) => state.user);
   const { data: categories } = useCategories();
 
   // Form state
@@ -76,10 +81,96 @@ export default function CreateArticleScreen() {
   const [content, setContent] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [imageUrl, setImageUrl] = useState('');
-  const [city, setCity] = useState(user.location.city || '');
+  const [city, setCity] = useState(legacyUser?.location?.city || '');
   const [tags, setTags] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleGatedBack = () => {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push('/(tabs)/articles');
+      }
+    } catch (e) {
+      router.push('/(tabs)/articles');
+    }
+  };
+
+  if (!isPublisher) {
+    return (
+      <View style={[styles.gatedContainer, { backgroundColor: colors.background }]}>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+        
+        {/* Header */}
+        <View style={[styles.gatedHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleGatedBack}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitleText, { color: colors.text }]}>Publisher Access</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <ScrollView contentContainerStyle={[styles.gatedScroll, { paddingBottom: Math.max(24, insets.bottom + 24) }]}>
+          <View style={styles.gatedContent}>
+            <View style={[styles.gatedIconCircle, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="shield-checkmark" size={48} color={colors.primary} />
+            </View>
+
+            <Text style={[styles.gatedTitle, { color: colors.text }]}>Verify your Gmail</Text>
+            <Text style={[styles.gatedSubtitle, { color: colors.textSecondary }]}>
+              To write articles and host events in your local community, you must verify your Gmail address to establish your publisher identity.
+            </Text>
+
+            <View style={styles.featuresList}>
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="document-text" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={[styles.featureTitleText, { color: colors.text }]}>Write Local Stories</Text>
+                  <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Share news, updates, and stories impacting your neighborhood.</Text>
+                </View>
+              </View>
+
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="calendar" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={[styles.featureTitleText, { color: colors.text }]}>Host Local Events</Text>
+                  <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Organize and promote nearby community meetups & activities.</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.gatedButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(onboarding)/profile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.gatedButtonText}>Verify Gmail Now</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.gatedSecondaryButton}
+              onPress={handleGatedBack}
+              hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.gatedSecondaryButtonText, { color: colors.textSecondary }]}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   const handleSubmit = () => {
     const formErrors = validate(headline, summary, content, selectedCategory, imageUrl, city);
@@ -444,4 +535,113 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   submitButtonText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  
+  // Gated UI Styles
+  gatedContainer: {
+    flex: 1,
+  },
+  gatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  gatedHeaderTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  gatedScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  gatedContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  gatedIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gatedTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+  },
+  gatedSubtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  featuresList: {
+    width: '100%',
+    gap: 20,
+    marginBottom: 24,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  featureIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  featureTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  featureTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  featureDesc: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+  },
+  gatedButton: {
+    width: '100%',
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  gatedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  gatedSecondaryButton: {
+    width: '100%',
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gatedSecondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
 });

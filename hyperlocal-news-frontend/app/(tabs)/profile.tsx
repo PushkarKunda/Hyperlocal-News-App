@@ -106,11 +106,27 @@ export default function ProfileScreen() {
               <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
               
               <View style={styles.badgeWrapper}>
-                <View style={[styles.premiumBadge, isGuest && { backgroundColor: isDark ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
-                  <Text style={[styles.premiumBadgeText, isGuest && { color: colors.primary }]}>
-                    {isGuest ? 'Guest Mode' : 'Member'}
-                  </Text>
-                </View>
+                {user?.isPublisher ? (
+                  <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 16, paddingVertical: 6 }]}>
+                    <Ionicons name="shield-checkmark" size={14} color={colors.primary} style={{ marginRight: 6 }} />
+                    <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 12, fontWeight: '800' }]}>Publisher</Text>
+                  </View>
+                ) : (
+                  isGuest ? (
+                    <View style={[styles.premiumBadge, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
+                      <Text style={[styles.premiumBadgeText, { color: colors.primary }]}>Guest Mode</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 14, paddingVertical: 6 }]}
+                      onPress={() => router.push('/(onboarding)/profile')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 11 }]}>Verify Gmail to become Publisher</Text>
+                    </TouchableOpacity>
+                  )
+                )}
               </View>
 
               <Text style={[styles.userBio, { color: isDark ? colors.textSecondary : '#464554' }]}>
@@ -508,5 +524,36 @@ const styles = StyleSheet.create({
     color: '#ba1a1a',
     fontSize: 16,
     fontWeight: '700',
+  },
+  publisherBadge: {
+    backgroundColor: '#006A61',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 9999,
+    marginTop: 8,
+  },
+  publisherBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  publisherVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 9999,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  publisherVerifyButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,8 @@ import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import MenuOptions from '@/components/MenuOptions';
+import { useAuthStore } from '@/store/authStore';
+import { StatusBar } from 'expo-status-bar';
 
 interface CustomEventItem {
   id: string;
@@ -24,7 +26,6 @@ interface CustomEventItem {
 
 import { useEventsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useEffect } from 'react';
 
 export default function EventsScreen() {
   const colorScheme = useAppColorScheme();
@@ -39,6 +40,11 @@ export default function EventsScreen() {
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'week'>('all');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [interested, setInterested] = useState<Record<string, boolean>>({});
+
+  const { user } = useAuthStore();
+  const isPublisher = user?.isPublisher || false;
+  const [showGatedView, setShowGatedView] = useState(false);
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     if (apiEvents && apiEvents.length > 0) {
@@ -111,6 +117,79 @@ export default function EventsScreen() {
     return true;
   });
 
+  if (showGatedView && !isPublisher) {
+    return (
+      <View style={[styles.gatedContainer, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        
+        {/* Header */}
+        <View style={[styles.gatedHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowGatedView(false)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitleText, { color: colors.text }]}>Publisher Access</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.gatedScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.gatedContent}>
+            <View style={[styles.gatedIconCircle, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="shield-checkmark" size={48} color={colors.primary} />
+            </View>
+
+            <Text style={[styles.gatedTitle, { color: colors.text }]}>Verify your Gmail</Text>
+            <Text style={[styles.gatedSubtitle, { color: colors.textSecondary }]}>
+              To write articles and host events in your local community, you must verify your Gmail address to establish your publisher identity.
+            </Text>
+
+            <View style={styles.featuresList}>
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="document-text" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={[styles.featureTitleText, { color: colors.text }]}>Write Local Stories</Text>
+                  <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Share news, updates, and stories impacting your neighborhood.</Text>
+                </View>
+              </View>
+
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="calendar" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={[styles.featureTitleText, { color: colors.text }]}>Host Local Events</Text>
+                  <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Organize and promote nearby community meetups & activities.</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.gatedButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(onboarding)/profile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.gatedButtonText}>Verify Gmail Now</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.gatedSecondaryButton}
+              onPress={() => setShowGatedView(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.gatedSecondaryButtonText, { color: colors.textSecondary }]}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header */}
@@ -126,7 +205,13 @@ export default function EventsScreen() {
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.primaryLight }]}
           activeOpacity={0.7}
-          onPress={() => setIsCreateModalVisible(true)}
+          onPress={() => {
+            if (isPublisher) {
+              setIsCreateModalVisible(true);
+            } else {
+              setShowGatedView(true);
+            }
+          }}
         >
           <Ionicons name="add" size={22} color={colors.primary} />
         </TouchableOpacity>
@@ -481,6 +566,121 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  // Gated UI Styles
+  gatedContainer: {
+    flex: 1,
+  },
+  gatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  gatedHeaderTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  gatedScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  gatedContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  gatedIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gatedTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+  },
+  gatedSubtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  featuresList: {
+    width: '100%',
+    gap: 20,
+    marginBottom: 24,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  featureIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  featureTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  featureTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  featureDesc: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+  },
+  gatedButton: {
+    width: '100%',
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  gatedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  gatedSecondaryButton: {
+    width: '100%',
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gatedSecondaryButtonText: {
+    fontSize: 15,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
   },

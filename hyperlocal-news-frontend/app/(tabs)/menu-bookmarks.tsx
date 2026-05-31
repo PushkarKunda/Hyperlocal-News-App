@@ -113,13 +113,6 @@ export default function MenuBookmarksScreen() {
           >
              <Ionicons name="search-outline" size={22} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/(tabs)/profile')}
-            activeOpacity={0.7}
-          >
-             <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
-          </TouchableOpacity>
         </View>
       </View>
 
