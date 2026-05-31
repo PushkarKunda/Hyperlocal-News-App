@@ -261,7 +261,19 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                 <Text style={[styles.drawerPublisherText, { color: colors.primary }]}>Publisher</Text>
               </View>
             ) : (
-              <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Member</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  handleClose();
+                  setTimeout(() => {
+                    router.push('/(onboarding)/profile');
+                  }, 280);
+                }}
+                activeOpacity={0.7}
+                style={styles.drawerVerifyButton}
+              >
+                <Text style={[styles.userSubtitle, { color: colors.primary, fontWeight: '700', marginTop: 0 }]}>Not Verified</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+              </TouchableOpacity>
             )}
           </View>
 
@@ -553,5 +565,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
+  },
+  drawerVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
   },
 });

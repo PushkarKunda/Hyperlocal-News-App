@@ -173,7 +173,7 @@ export default function SettingsScreen() {
                         activeOpacity={0.8}
                       >
                         <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
-                        <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Verify Gmail to become Publisher</Text>
+                        <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
                       </TouchableOpacity>
                     )
                   )}
@@ -554,6 +554,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(70, 72, 212, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
   settingItem: {
     flexDirection: 'row',

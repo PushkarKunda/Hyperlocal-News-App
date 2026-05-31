@@ -123,7 +123,7 @@ export default function ProfileScreen() {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                      <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 11 }]}>Verify Gmail to become Publisher</Text>
+                      <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 11 }]}>Get Verified to Publish</Text>
                     </TouchableOpacity>
                   )
                 )}

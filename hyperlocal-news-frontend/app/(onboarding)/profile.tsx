@@ -408,7 +408,7 @@ export default function ProfileCompletionScreen() {
                   >
                     <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
                     <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
-                      {isVerifying ? 'Verifying...' : 'Verify Gmail to become Publisher'}
+                      {isVerifying ? 'Verifying...' : 'Get Verified to Publish'}
                     </Text>
                   </TouchableOpacity>
                 )}
