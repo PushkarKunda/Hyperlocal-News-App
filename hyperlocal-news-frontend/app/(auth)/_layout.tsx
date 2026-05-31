@@ -15,14 +15,10 @@ export default function AuthLayout() {
       if (isOnboarded) {
         router.replace('/(tabs)');
       } else {
-        if (user?.name) {
-          router.replace('/(onboarding)/complete');
-        } else {
-          router.replace('/(onboarding)/profile');
-        }
+        router.replace('/(onboarding)/language');
       }
     }
-  }, [isAuthenticated, isOnboarded, user]);
+  }, [isAuthenticated, isOnboarded]);
 
   if (isAuthenticated) {
     return null;

@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   badgeContainer: {
     paddingHorizontal: 6,
@@ -265,12 +265,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   markReadText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginLeft: 4,
   },
   listContainer: {
@@ -333,17 +333,17 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     flex: 1,
     paddingRight: 8,
   },
   timeText: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   cardBody: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 18,
   },
 });

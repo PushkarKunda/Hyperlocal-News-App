@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerRight: {
     flexDirection: 'row',
@@ -562,12 +562,12 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 9,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
   },
   metaText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   dot: {
     width: 4,
@@ -578,12 +578,12 @@ const styles = StyleSheet.create({
   verticalHeadline: {
     fontSize: 22,
     fontWeight: '700',
-    fontFamily: 'Newsreader_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 28,
   },
   verticalSummary: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 20,
   },
   publisherRow: {
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
   },
   publisherName: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   actionRow: {
     flexDirection: 'row',
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   horizontalCard: {
     flexDirection: 'row',
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   horizontalHeadline: {
     fontSize: 15,
     fontWeight: '700',
-    fontFamily: 'Newsreader_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 20,
   },
   metaRow: {
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   },
   miniActionText: {
     fontSize: 11,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   fab: {
     position: 'absolute',
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   headerTitleEmpty: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
   },
   headerRightEmpty: {
@@ -788,12 +788,12 @@ const styles = StyleSheet.create({
   titleTextEmpty: {
     fontSize: 24,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
   },
   descTextEmpty: {
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     lineHeight: 26,
   },
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   // Gated UI Styles
   gatedContainer: {
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
   gatedHeaderTitleText: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedScroll: {
     flexGrow: 1,
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
   },
   gatedSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22,
     textAlign: 'center',
     marginBottom: 16,
@@ -894,11 +894,11 @@ const styles = StyleSheet.create({
   featureTitleText: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   featureDesc: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
   gatedButton: {
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedSecondaryButton: {
     width: '100%',
@@ -925,6 +925,6 @@ const styles = StyleSheet.create({
   gatedSecondaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

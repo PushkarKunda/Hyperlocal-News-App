@@ -71,13 +71,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
     marginBottom: Spacing.sm,
   },
   description: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: Spacing.lg,

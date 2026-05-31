@@ -119,9 +119,9 @@ export const API_DATABASE = {
     { id: 'music', name: 'Music', slug: 'music', emoji: '🎵', description: 'Songs & artists' },
     { id: 'art', name: 'Art', slug: 'art', emoji: '🖌️', description: 'Visual & fine arts' },
     { id: 'travel', name: 'Travel', slug: 'travel', emoji: '🧭', description: 'Journeys & nature' },
-    { id: 'wellness', name: 'Health & Wellness', slug: 'wellness', emoji: '🏥', description: 'Mindfulness and healthy living' },
     { id: 'food', name: 'Food', slug: 'food', emoji: '🥪', description: 'Culinary & cooking' },
     { id: 'gaming', name: 'Gaming', slug: 'gaming', emoji: '🎮', description: 'E-sports & updates' },
+    { id: 'wellness', name: 'Health & Wellness', slug: 'wellness', emoji: '🏥', description: 'Mindfulness and healthy living' },
   ] as Interest[],
 
   categories: [

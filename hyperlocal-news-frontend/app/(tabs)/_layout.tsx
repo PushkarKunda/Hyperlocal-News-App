@@ -57,7 +57,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          fontFamily: 'Inter_600SemiBold',
+          fontFamily: 'Poppins_600SemiBold',
         },
         headerShown: false,
       }}
@@ -116,6 +116,42 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="menu-bookmarks"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings-language"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings-location"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile-interests"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile-reading-history"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="help"
         options={{
           href: null,
         }}

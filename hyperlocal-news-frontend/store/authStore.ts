@@ -15,6 +15,9 @@ export interface User {
   email?: string;
   isPublisher?: boolean;
   emailVerified?: boolean;
+  state?: string;
+  district?: string;
+  interests?: string[];
 }
 
 interface AuthState {

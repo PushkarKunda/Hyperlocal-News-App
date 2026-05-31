@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   leftIcon: {
     marginRight: Spacing.xs,

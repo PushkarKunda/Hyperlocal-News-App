@@ -17,6 +17,7 @@ import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useDistrictsList } from '@/hooks/useApi';
+import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -165,6 +166,12 @@ export default function DistrictsScreen() {
   };
 
   const handleContinue = () => {
+    const matchedDistrict = districts.find(d => d.id === selectedDistrict);
+    if (matchedDistrict) {
+      useAuthStore.setState(prev => ({
+        user: prev.user ? { ...prev.user, district: matchedDistrict.name } : null
+      }));
+    }
     router.push('/(onboarding)/interests');
   };
 
@@ -321,7 +328,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.5,
   },
   headerSpacer: {
@@ -379,7 +386,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   districtsSection: {
     gap: 16,
@@ -388,7 +395,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     textAlign: 'center',
   },
@@ -467,14 +474,14 @@ const styles = StyleSheet.create({
   districtName: {
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   districtNameSelected: {
     color: '#4648D4',
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   footer: {
     paddingHorizontal: 20,

@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -182,6 +183,13 @@ export default function LocationScreen() {
   };
 
   const handleContinue = () => {
+    const matchedState = statesList.find(s => s.id === selectedState);
+    if (matchedState) {
+      useAuthStore.setState(prev => ({
+        user: prev.user ? { ...prev.user, state: matchedState.name } : null
+      }));
+    }
+
     if (selectedState === 'ap' || selectedState === 'ts') {
       router.push({
         pathname: '/(onboarding)/districts',
@@ -449,7 +457,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.5,
   },
   headerSpacer: {
@@ -508,7 +516,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   gpsButton: {
     flexDirection: 'row',
@@ -528,7 +536,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.4,
   },
   popularSection: {
@@ -538,7 +546,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     textAlign: 'center',
   },
@@ -622,14 +630,14 @@ const styles = StyleSheet.create({
   regionName: {
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   regionNameSelected: {
     color: '#4648D4',
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   footer: {
     paddingHorizontal: 20,

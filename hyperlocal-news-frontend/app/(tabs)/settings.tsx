@@ -199,7 +199,7 @@ export default function SettingsScreen() {
             <TouchableOpacity 
               style={styles.settingItem} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/language')}
+              onPress={() => router.push('/(tabs)/settings-language' as any)}
             >
               <View style={styles.settingLabelContainer}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
@@ -219,7 +219,7 @@ export default function SettingsScreen() {
             <TouchableOpacity 
               style={styles.settingItem} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/location')}
+              onPress={() => router.push('/(tabs)/settings-location' as any)}
             >
               <View style={styles.settingLabelContainer}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(0, 106, 97, 0.08)' }]}>
@@ -228,29 +228,14 @@ export default function SettingsScreen() {
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Location</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>Hyderabad, Telangana</Text>
+                <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.state || 'Telangana'}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-            {/* Interests */}
-            <TouchableOpacity 
-              style={styles.settingItem} 
-              activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/interests')}
-            >
-              <View style={styles.settingLabelContainer}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(217, 119, 6, 0.08)' }]}>
-                  <Ionicons name="heart-outline" size={20} color="#D97706" />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Interests</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-            </TouchableOpacity>
 
-            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
             {/* Notifications Switch */}
             <View style={styles.settingItem}>
@@ -448,7 +433,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     marginLeft: 4,
   },
@@ -527,7 +512,7 @@ const styles = StyleSheet.create({
   profilePhone: {
     fontSize: 13,
     color: '#767586',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   premiumBadgeContainer: {
     flexDirection: 'row',
@@ -543,7 +528,7 @@ const styles = StyleSheet.create({
     color: '#006F66',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -580,7 +565,7 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   settingValueContainer: {
     flexDirection: 'row',
@@ -591,13 +576,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   versionText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#767586',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   divider: {
     height: 1,
@@ -639,7 +624,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -654,7 +639,7 @@ const styles = StyleSheet.create({
   publisherVerifyButtonText: {
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },

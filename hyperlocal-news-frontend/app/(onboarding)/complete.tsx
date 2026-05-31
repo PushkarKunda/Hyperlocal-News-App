@@ -37,8 +37,8 @@ export default function CompleteScreen() {
   // Summary data - In real app, this would come from store/context
   const summaryItems: SummaryItem[] = [
     { icon: 'language', label: 'Language', value: user?.language || 'English' },
-    { icon: 'place', label: 'Location', value: 'Hyderabad, Telangana' },
-    { icon: 'bookmark-border', label: 'Interests', value: '5 Topics Selected' },
+    { icon: 'place', label: 'Location', value: user?.district ? `${user.district}, ${user.state || ''}` : (user?.state || 'Hyderabad, Telangana') },
+    { icon: 'bookmark-border', label: 'Interests', value: `${user?.interests?.length || 0} Topic${(user?.interests?.length || 0) !== 1 ? 's' : ''} Selected` },
   ];
 
   useEffect(() => {
@@ -105,16 +105,6 @@ export default function CompleteScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-
-      {/* Status Bar */}
-      <View style={styles.statusBar}>
-        <Text style={[styles.statusTime, { color: colors.text }]}>9:41</Text>
-        <View style={styles.statusIcons}>
-          <MaterialIcons name="signal-cellular-alt" size={18} color={colors.text} />
-          <MaterialIcons name="wifi" size={18} color={colors.text} />
-          <MaterialIcons name="battery-full" size={18} color={colors.text} />
-        </View>
-      </View>
 
       {/* Success Icon Section */}
       <View style={styles.successSection}>
@@ -250,7 +240,7 @@ const styles = StyleSheet.create({
   statusTime: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   statusIcons: {
     flexDirection: 'row',
@@ -320,12 +310,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 18,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     lineHeight: 26,
   },
@@ -366,14 +356,14 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 11,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     letterSpacing: 1,
     marginBottom: 2,
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   spacer: {
     flex: 1,
@@ -394,12 +384,12 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   versionText: {
     fontSize: 12,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginTop: Spacing.md,
   },
   homeIndicatorContainer: {

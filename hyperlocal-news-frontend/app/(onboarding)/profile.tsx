@@ -15,6 +15,7 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -42,6 +45,31 @@ export default function ProfileCompletionScreen() {
   const [showOtpField, setShowOtpField] = useState(false);
   const [otpCode, setOtpCode] = useState('');
 
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'info' | 'error' | 'warning';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showCustomAlert = (title: string, message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeCustomAlert = () => {
+    setDialogConfig(prev => ({ ...prev, visible: false }));
+  };
+
   const handleEmailChange = (val: string) => {
     setEmail(val);
     if (isVerified) {
@@ -55,34 +83,36 @@ export default function ProfileCompletionScreen() {
 
   const handleVerifyEmail = () => {
     if (!email.trim()) {
-      Alert.alert('Email Required', 'Please enter your Gmail address first.');
+      showCustomAlert('Email Required', 'Please enter your Gmail address first.', 'warning');
       return;
     }
     if (!email.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      showCustomAlert('Invalid Email', 'Please enter a valid email address.', 'error');
       return;
     }
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
       setShowOtpField(true);
-      Alert.alert(
+      showCustomAlert(
         'OTP Sent! ✉️',
-        'A verification code has been sent to your email. You can enter any code to complete verification.'
+        'A verification code has been sent to your email. You can enter any code to complete verification.',
+        'success'
       );
     }, 1200);
   };
 
   const handleConfirmOtp = () => {
     if (otpCode.trim().length < 4) {
-      Alert.alert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).');
+      showCustomAlert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).', 'error');
       return;
     }
     setIsVerified(true);
     setShowOtpField(false);
-    Alert.alert(
+    showCustomAlert(
       'Email Verified! 🎉',
-      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.'
+      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.',
+      'success'
     );
   };
 
@@ -144,9 +174,10 @@ export default function ProfileCompletionScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        showCustomAlert(
           'Permission Denied',
-          'We need access to your photo library to let you upload a custom profile picture.'
+          'We need access to your photo library to let you upload a custom profile picture.',
+          'warning'
         );
         return;
       }
@@ -180,7 +211,7 @@ export default function ProfileCompletionScreen() {
       }
     } catch (error) {
       console.error('Image picking error:', error);
-      Alert.alert('Upload Error', 'Could not select your photo. Please try again.');
+      showCustomAlert('Upload Error', 'Could not select your photo. Please try again.', 'error');
     }
   };
 
@@ -495,6 +526,43 @@ export default function ProfileCompletionScreen() {
           <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
         </View>
       </View>
+
+      {/* Premium Custom Alert Modal */}
+      {dialogConfig.visible && (
+        <View style={styles.modalBackdrop}>
+          <TouchableWithoutFeedback onPress={closeCustomAlert}>
+            <View style={styles.modalOverlay} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Top Decorative Icon */}
+            <View 
+              style={[
+                styles.modalIconContainer, 
+                dialogConfig.type === 'success' && { backgroundColor: 'rgba(16, 185, 129, 0.12)' },
+                dialogConfig.type === 'error' && { backgroundColor: 'rgba(239, 68, 68, 0.12)' },
+                dialogConfig.type === 'warning' && { backgroundColor: 'rgba(245, 158, 11, 0.12)' },
+                dialogConfig.type === 'info' && { backgroundColor: colors.primaryLight },
+              ]}
+            >
+              {dialogConfig.type === 'success' && <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />}
+              {dialogConfig.type === 'error' && <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />}
+              {dialogConfig.type === 'warning' && <Ionicons name="warning-outline" size={32} color="#F59E0B" />}
+              {dialogConfig.type === 'info' && <Ionicons name="information-circle-outline" size={32} color={colors.primary} />}
+            </View>
+
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{dialogConfig.title}</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{dialogConfig.message}</Text>
+
+            <TouchableOpacity 
+              style={[styles.modalButton, { backgroundColor: colors.primary }]}
+              onPress={closeCustomAlert}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -543,7 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: {
     width: 40,
@@ -584,7 +652,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 40,
     letterSpacing: -0.64,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -593,7 +661,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
   },
   uploaderSection: {
@@ -663,7 +731,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4648D4',
     letterSpacing: 0.3,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   inputContainer: {
     marginBottom: 24,
@@ -673,7 +741,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#464554',
     letterSpacing: 0.6,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 8,
     paddingLeft: 4,
   },
@@ -704,7 +772,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   inputIcon: {
     marginLeft: 12,
@@ -746,7 +814,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 4,
   },
   infoDesc: {
@@ -754,7 +822,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 20,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   footer: {
     backgroundColor: '#F8F9FF',
@@ -799,7 +867,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   stepTextContainer: {
     marginTop: 4,
@@ -809,7 +877,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#C7C4D7',
     letterSpacing: 1.1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   verifyButton: {
     flexDirection: 'row',
@@ -826,7 +894,7 @@ const styles = StyleSheet.create({
   verifyButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   verifiedSuccessBadge: {
     flexDirection: 'row',
@@ -842,7 +910,7 @@ const styles = StyleSheet.create({
   verifiedSuccessText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   otpSection: {
     marginTop: 12,
@@ -856,7 +924,7 @@ const styles = StyleSheet.create({
   otpLabel: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1.0,
   },
   otpInputWrapper: {
@@ -870,7 +938,7 @@ const styles = StyleSheet.create({
   otpInput: {
     flex: 1,
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     fontWeight: '600',
     letterSpacing: 2,
   },
@@ -885,6 +953,70 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    width: width - 48,
+    maxWidth: 340,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '400',
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

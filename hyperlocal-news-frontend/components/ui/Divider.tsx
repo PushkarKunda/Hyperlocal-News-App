@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1,
     marginHorizontal: Spacing.md,
     textTransform: 'uppercase',

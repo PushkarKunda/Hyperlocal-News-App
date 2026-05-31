@@ -41,9 +41,9 @@ export default function NewsDetailScreen() {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
-        <Text style={{ color: colors.text, fontFamily: 'Inter_500Medium', fontSize: 16 }}>Article not found</Text>
+        <Text style={{ color: colors.text, fontFamily: 'Poppins_500Medium', fontSize: 16 }}>Article not found</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Go Back</Text>
+          <Text style={{ color: colors.primary, fontFamily: 'Poppins_600SemiBold' }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -223,11 +223,11 @@ const styles = StyleSheet.create({
   },
   readTime: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   headline: {
     fontSize: 32,
-    fontFamily: 'Newsreader_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 40,
     marginBottom: Spacing.xl,
     letterSpacing: -0.5,
@@ -250,11 +250,11 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   publishedDate: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 2,
   },
   followBtn: {
@@ -265,21 +265,21 @@ const styles = StyleSheet.create({
   },
   followBtnText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   articleBody: {
     marginTop: Spacing.sm,
   },
   leadIn: {
     fontSize: 20,
-    fontFamily: 'Newsreader_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     lineHeight: 30,
     marginBottom: Spacing.lg,
     opacity: 0.9,
   },
   bodyText: {
     fontSize: 19,
-    fontFamily: 'Newsreader_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 32,
     letterSpacing: 0.3,
     marginBottom: Spacing.lg,

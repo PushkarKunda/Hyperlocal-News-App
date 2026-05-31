@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: Spacing.md,
   },
 });

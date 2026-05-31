@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   gatedHeaderTitleText: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerSpacer: {
     width: 40,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   gatedSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22,
     textAlign: 'center',
     marginBottom: 16,
@@ -611,11 +611,11 @@ const styles = StyleSheet.create({
   featureTitleText: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   featureDesc: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
   gatedButton: {
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedSecondaryButton: {
     width: '100%',
@@ -642,6 +642,6 @@ const styles = StyleSheet.create({
   gatedSecondaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

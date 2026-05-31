@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   filtersWrapper: {
     marginBottom: 24,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   bookmarksList: {
     paddingHorizontal: 20,
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.8,
   },
   bookmarkIconButton: {
@@ -419,13 +419,13 @@ const styles = StyleSheet.create({
   articleTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 28,
     marginBottom: 8,
   },
   articleDesc: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22.75,
     marginBottom: 16,
   },
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   },
   metaItemText: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emptyStateContainer: {
     paddingHorizontal: 32,
@@ -461,11 +461,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   emptySubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
     lineHeight: 20,
   },

@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerSpacer: {
     width: 40,
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   sectionGroup: {
     gap: 8,
@@ -682,13 +682,13 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     paddingLeft: 4,
   },
   charCounter: {
     fontSize: 11,
     color: '#94A3B8',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   uploadCard: {
     width: '100%',
@@ -718,12 +718,12 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   uploadDesc: {
     fontSize: 12,
     color: '#94A3B8',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 2,
   },
   coverPreviewContainer: {
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   presetsWrapper: {
     marginTop: 8,
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   presetTitle: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   presetsList: {
     gap: 12,
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   inputCard: {
     borderRadius: 16,
@@ -815,13 +815,13 @@ const styles = StyleSheet.create({
   headlineInput: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 26,
     minHeight: 60,
   },
   summaryInput: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22,
     minHeight: 50,
   },
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   },
   editorInput: {
     fontSize: 15,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 24,
     minHeight: 200,
     paddingHorizontal: 16,
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#94A3B8',
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.5,
   },
   metadataGrid: {
@@ -903,11 +903,11 @@ const styles = StyleSheet.create({
   },
   dropdownValue: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   tagInput: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   stickyFooter: {
     position: 'absolute',
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   secondaryButton: {
     height: 56,
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   pickerOverlay: {
     flex: 1,
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   pickerOptionsList: {
     padding: 8,
@@ -1002,7 +1002,7 @@ const styles = StyleSheet.create({
   pickerOptionRowActive: {},
   pickerOptionLabel: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   pickerOptionLabelActive: {
     fontWeight: '600',
@@ -1023,7 +1023,7 @@ const styles = StyleSheet.create({
   gatedHeaderTitleText: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedScroll: {
     flexGrow: 1,
@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
   },
   gatedSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22,
     textAlign: 'center',
     marginBottom: 16,
@@ -1080,11 +1080,11 @@ const styles = StyleSheet.create({
   featureTitleText: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   featureDesc: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
   gatedButton: {
@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedSecondaryButton: {
     width: '100%',
@@ -1111,6 +1111,6 @@ const styles = StyleSheet.create({
   gatedSecondaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

@@ -163,7 +163,7 @@ export default function ProfileScreen() {
           {/* My Interests */}
           <TouchableOpacity 
             style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            onPress={() => router.push('/(onboarding)/interests')}
+            onPress={() => router.push('/(tabs)/profile-interests' as any)}
             activeOpacity={0.7}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.25)' : 'rgba(70, 72, 212, 0.1)' }]}>
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuTextContainer}>
               <Text style={[styles.menuTitle, { color: colors.text }]}>My Interests</Text>
-              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>8 categories selected</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>Customize your news feed topics</Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -179,7 +179,7 @@ export default function ProfileScreen() {
           {/* Reading History */}
           <TouchableOpacity 
             style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            onPress={() => Alert.alert('Reading History', 'Your reading history feature is coming soon!')}
+            onPress={() => router.push('/(tabs)/profile-reading-history' as any)}
             activeOpacity={0.7}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.25)' : 'rgba(134, 242, 228, 0.3)' }]}>
@@ -187,7 +187,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuTextContainer}>
               <Text style={[styles.menuTitle, { color: colors.text }]}>Reading History</Text>
-              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>View your activity</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories you've read recently</Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>

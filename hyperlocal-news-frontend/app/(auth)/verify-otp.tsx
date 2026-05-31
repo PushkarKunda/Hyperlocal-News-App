@@ -10,7 +10,6 @@ import {
   ScrollView,
   Animated,
   Pressable,
-  Image,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -152,15 +151,22 @@ export default function VerifyOTPScreen() {
   const params = useLocalSearchParams();
   const rawPhone = params.phone as string || '';
   
-  // Format phone number for readability in heading (e.g., +1 (555) 000-0000)
+  // Format phone number for readability in heading
   const formatDisplayPhone = (phone: string) => {
     if (!phone) return 'your number';
-    
-    // Check if it has +1 or +91 and separate
-    const match = phone.match(/^(\+\d+)(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `${match[1]} (${match[2]}) ${match[3]}-${match[4]}`;
+
+    // Indian format: +91 XXXXX XXXXX
+    const indianMatch = phone.match(/^\+91(\d{5})(\d{5})$/);
+    if (indianMatch) {
+      return `+91 ${indianMatch[1]} ${indianMatch[2]}`;
     }
+
+    // US/other format: +X (XXX) XXX-XXXX
+    const usMatch = phone.match(/^(\+\d{1,3})(\d{3})(\d{3})(\d{4})$/);
+    if (usMatch) {
+      return `${usMatch[1]} (${usMatch[2]}) ${usMatch[3]}-${usMatch[4]}`;
+    }
+
     return phone;
   };
   
@@ -175,6 +181,65 @@ export default function VerifyOTPScreen() {
   
   // Animated values
   const buttonScale = useRef(new Animated.Value(1)).current;
+
+  // Illustration animations
+  const wave1 = useRef(new Animated.Value(0)).current;
+  const wave2 = useRef(new Animated.Value(0)).current;
+  const wave3 = useRef(new Animated.Value(0)).current;
+  const shieldPulse = useRef(new Animated.Value(1)).current;
+  const dot1Angle = useRef(new Animated.Value(0)).current;
+  const dot2Angle = useRef(new Animated.Value(2.09)).current; // 120deg offset
+  const dot3Angle = useRef(new Animated.Value(4.19)).current; // 240deg offset
+
+  useEffect(() => {
+    // Wave ring 1
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(wave1, { toValue: 1, duration: 1600, useNativeDriver: true }),
+        Animated.timing(wave1, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
+    // Wave ring 2 (delayed)
+    setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(wave2, { toValue: 1, duration: 1600, useNativeDriver: true }),
+          Animated.timing(wave2, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      ).start();
+    }, 533);
+    // Wave ring 3 (more delayed)
+    setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(wave3, { toValue: 1, duration: 1600, useNativeDriver: true }),
+          Animated.timing(wave3, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      ).start();
+    }, 1066);
+    // Shield pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shieldPulse, { toValue: 1.08, duration: 1000, useNativeDriver: true }),
+        Animated.timing(shieldPulse, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+    // Orbiting dots
+    Animated.loop(
+      Animated.timing(dot1Angle, { toValue: Math.PI * 2, duration: 3000, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.timing(dot2Angle, { toValue: dot2Angle.__getValue() + Math.PI * 2, duration: 3000, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.timing(dot3Angle, { toValue: dot3Angle.__getValue() + Math.PI * 2, duration: 3000, useNativeDriver: true })
+    ).start();
+  }, []);
+
+  const makeWaveStyle = (anim: Animated.Value) => ({
+    transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
+    opacity: anim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.6, 0.2, 0] }),
+  });
 
   const handleOtpChange = (value: string, index: number) => {
     const cleaned = value.replace(/\D/g, '');
@@ -239,7 +304,7 @@ export default function VerifyOTPScreen() {
     try {
       const success = await verifyOtp(rawPhone, otpValue);
       if (success) {
-        router.replace('/(onboarding)/profile');
+        router.replace('/(onboarding)/language');
       } else {
         Alert.alert('Verification Failed', 'The code you entered is incorrect.');
       }
@@ -302,12 +367,69 @@ export default function VerifyOTPScreen() {
 
             {/* Illustration Section */}
             <View style={styles.illustrationSection}>
-              <View style={[styles.circleBg, { backgroundColor: colors.primaryLight }]}>
-                <View style={styles.blurGlow} />
-                <Image
-                  source={require('../../assets/immersive_feed/7a2bfa72521322198e3f6feb94eb5c2786c2de01.png')}
-                  style={styles.lockImage}
-                />
+              <View style={styles.otpIllustrationWrap}>
+                {/* Wave rings */}
+                <Animated.View style={[styles.waveRing, { borderColor: colors.primary }, makeWaveStyle(wave1)]} />
+                <Animated.View style={[styles.waveRing, { borderColor: colors.primary }, makeWaveStyle(wave2)]} />
+                <Animated.View style={[styles.waveRing, { borderColor: colors.primary }, makeWaveStyle(wave3)]} />
+
+                {/* Outer orbit ring with 3 dots */}
+                <View style={styles.orbitRing}>
+                  <Animated.View
+                    style={[
+                      styles.orbitDot,
+                      { backgroundColor: '#6366F1' },
+                      {
+                        transform: [
+                          { rotate: dot1Angle.interpolate({ inputRange: [0, Math.PI * 2], outputRange: ['0deg', '360deg'] }) },
+                          { translateX: 68 },
+                        ],
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.orbitDot,
+                      { backgroundColor: '#10B981' },
+                      {
+                        transform: [
+                          { rotate: dot2Angle.interpolate({ inputRange: [2.09, 2.09 + Math.PI * 2], outputRange: ['120deg', '480deg'] }) },
+                          { translateX: 68 },
+                        ],
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.orbitDot,
+                      { backgroundColor: '#F59E0B' },
+                      {
+                        transform: [
+                          { rotate: dot3Angle.interpolate({ inputRange: [4.19, 4.19 + Math.PI * 2], outputRange: ['240deg', '600deg'] }) },
+                          { translateX: 68 },
+                        ],
+                      },
+                    ]}
+                  />
+                </View>
+
+                {/* Center shield circle */}
+                <Animated.View
+                  style={[
+                    styles.shieldCircle,
+                    { backgroundColor: isDark ? '#1A1A3E' : '#EEF2FF', transform: [{ scale: shieldPulse }] },
+                  ]}
+                >
+                  <View style={[styles.shieldIconBg, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="shield-checkmark" size={36} color="#FFF" />
+                  </View>
+                  {/* Digit placeholders */}
+                  <View style={styles.digitRow}>
+                    {[0,1,2,3].map(i => (
+                      <View key={i} style={[styles.digitDot, { backgroundColor: otp[i] ? colors.primary : (isDark ? '#2D2D6B' : '#C7D0FF') }]} />
+                    ))}
+                  </View>
+                </Animated.View>
               </View>
             </View>
 
@@ -448,25 +570,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circleBg: {
-    backgroundColor: '#E5EEFF',
-    width: 192,
-    height: 192,
-    borderRadius: 96,
+  otpIllustrationWrap: {
+    width: 200,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  blurGlow: {
+  waveRing: {
     position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(70,72,212,0.05)',
-    borderRadius: 96,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
   },
-  lockImage: {
-    width: 128,
-    height: 128,
-    resizeMode: 'contain',
+  orbitRing: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbitDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  shieldCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  shieldIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  digitRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  digitDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   headingSection: {
     marginBottom: 32,

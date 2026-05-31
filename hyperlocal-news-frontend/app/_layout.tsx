@@ -86,17 +86,17 @@ export default function RootLayout() {
 
   const [fontsLoaded, fontError] = useFonts({
     // Map Inter font names to Poppins equivalents
-    'Inter_400Regular': Poppins_400Regular,
-    'Inter_500Medium': Poppins_500Medium,
-    'Inter_600SemiBold': Poppins_600SemiBold,
-    'Inter_700Bold': Poppins_700Bold,
+    'Poppins_400Regular': Poppins_400Regular,
+    'Poppins_500Medium': Poppins_500Medium,
+    'Poppins_600SemiBold': Poppins_600SemiBold,
+    'Poppins_700Bold': Poppins_700Bold,
 
     // Map Newsreader font names to Poppins equivalents
-    'Newsreader_400Regular': Poppins_400Regular,
-    'Newsreader_500Medium': Poppins_500Medium,
-    'Newsreader_600SemiBold': Poppins_600SemiBold,
-    'Newsreader_700Bold': Poppins_700Bold,
-    'Newsreader_400Regular_Italic': Poppins_400Regular,
+    'Poppins_400Regular': Poppins_400Regular,
+    'Poppins_500Medium': Poppins_500Medium,
+    'Poppins_600SemiBold': Poppins_600SemiBold,
+    'Poppins_700Bold': Poppins_700Bold,
+    'Poppins_400Regular': Poppins_400Regular,
 
     // Load Poppins fonts
     Poppins_400Regular,
@@ -112,7 +112,13 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
 useEffect(() => {
-  Appearance.setColorScheme(colorScheme ?? 'light');
+  const theme = useAuthStore.getState().user?.theme;
+  if (theme === 'dark' || theme === 'light') {
+    Appearance.setColorScheme(theme);
+  } else {
+    // Keep standard dynamic system appearance listener active by resetting/avoiding setColorScheme lock
+    Appearance.setColorScheme(null);
+  }
 }, [colorScheme]);
   if (!fontsLoaded && !fontError) {
     return null;

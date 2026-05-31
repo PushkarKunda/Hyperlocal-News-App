@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { NewsArticle } from '@/types';
@@ -22,31 +22,6 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
   // Local interaction states
   const [liked, setLiked] = useState(item.isBookmarked ?? false);
   const [bookmarked, setBookmarked] = useState(item.isBookmarked ?? false);
-  
-  // Split the summary into sentences for bullet points
-  const points = item.summary
-    .split('. ')
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-    .map(s => s.endsWith('.') ? s : s + '.');
-  
-  // Dynamic category bullet icon with corresponding colors
-  const getBulletIcon = (categoryName: string, color: string) => {
-    switch (categoryName.toUpperCase()) {
-      case 'TECHNOLOGY':
-        return <Ionicons name="flash" size={16} color={color} style={styles.bulletIcon} />;
-      case 'BUSINESS':
-        return <Ionicons name="trending-up" size={16} color={color} style={styles.bulletIcon} />;
-      case 'LOCAL':
-        return <Ionicons name="location" size={16} color={color} style={styles.bulletIcon} />;
-      case 'SPORTS':
-        return <Ionicons name="football" size={16} color={color} style={styles.bulletIcon} />;
-      case 'HEALTH':
-        return <Ionicons name="heart" size={16} color={color} style={styles.bulletIcon} />;
-      default:
-        return <Ionicons name="ellipse" size={8} color={color} style={styles.bulletIcon} />;
-    }
-  };
 
   // Icon mapping for action buttons based on interaction state
   const likeIconName = liked ? 'heart' : 'heart-outline';
@@ -56,6 +31,19 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
   const saveIconColor = bookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
 
   const actionIconColor = isDark ? '#94A3B8' : '#464554';
+
+  const handleShare = async () => {
+    try {
+      const shareUrl = item.url || 'https://hyperlocal.app';
+      await Share.share({
+        message: `Check out this article: ${item.headline}\n\n${item.summary}\n\nRead more here: ${shareUrl}\n\nShared via HyperLocal News App.`,
+        url: shareUrl,
+        title: item.headline,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
+  };
 
   return (
     <View style={[styles.cardContainer, { height: containerHeight, backgroundColor: colors.background }]}>
@@ -79,15 +67,10 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
           {/* Headline */}
           <Text style={[styles.headline, { color: colors.text }]}>{item.headline}</Text>
 
-          {/* Bullet Points List */}
-          <View style={styles.pointsList}>
-            {points.map((point, index) => (
-              <View key={index} style={styles.pointRow}>
-                {getBulletIcon(item.category.name, item.category.color || '#4648D4')}
-                <Text style={[styles.pointText, { color: colors.textSecondary }]}>{point}</Text>
-              </View>
-            ))}
-          </View>
+          {/* News Summary Paragraph */}
+          <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+            {item.summary}
+          </Text>
         </View>
 
         {/* Footer Area */}
@@ -114,6 +97,7 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
               <TouchableOpacity 
                 style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
                 activeOpacity={0.65}
+                onPress={handleShare}
               >
                 <Ionicons name="share-social-outline" size={16} color={actionIconColor} />
               </TouchableOpacity>
@@ -164,7 +148,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Popi_600SemiBold',
   },
   contentContainer: {
     height: '55%',
@@ -175,28 +159,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headline: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Popi_600SemiBold',
     marginBottom: Spacing.lg,
-    lineHeight: 32,
+    lineHeight: 24,
   },
-  pointsList: {
-    gap: Spacing.md,
-  },
-  pointRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  bulletIcon: {
-    marginTop: 3,
-  },
-  pointText: {
-    flex: 1,
+  summaryText: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
-    lineHeight: 22,
+    fontFamily: 'Popi_400Regular',
+    lineHeight: 24,
   },
   footerWrapper: {
     marginTop: 'auto',
@@ -219,7 +191,7 @@ const styles = StyleSheet.create({
   },
   readTimeText: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Popi_400Regular',
   },
   actionsContainer: {
     flexDirection: 'row',

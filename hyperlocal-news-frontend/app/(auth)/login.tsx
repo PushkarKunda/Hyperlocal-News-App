@@ -10,7 +10,6 @@ import {
   ScrollView,
   Animated,
   Pressable,
-  Image,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -93,6 +92,60 @@ export default function LoginScreen() {
   const emailButtonScale = useRef(new Animated.Value(1)).current;
   const googleButtonScale = useRef(new Animated.Value(1)).current;
   const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
+
+  // Hero Radar animations
+  const sweepRotation = useRef(new Animated.Value(0)).current;
+  const ring1Rotation = useRef(new Animated.Value(0)).current;
+  const ring2Rotation = useRef(new Animated.Value(0)).current;
+  const ping1 = useRef(new Animated.Value(0)).current;
+  const ping2 = useRef(new Animated.Value(0)).current;
+  const ping3 = useRef(new Animated.Value(0)).current;
+  const ping4 = useRef(new Animated.Value(0)).current;
+  const ping5 = useRef(new Animated.Value(0)).current;
+  const centerPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Radar sweep
+    Animated.loop(
+      Animated.timing(sweepRotation, { toValue: 1, duration: 2400, useNativeDriver: true })
+    ).start();
+    // Ring 1 slow clockwise
+    Animated.loop(
+      Animated.timing(ring1Rotation, { toValue: 1, duration: 8000, useNativeDriver: true })
+    ).start();
+    // Ring 2 slow counter-clockwise
+    Animated.loop(
+      Animated.timing(ring2Rotation, { toValue: -1, duration: 12000, useNativeDriver: true })
+    ).start();
+    // Center pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(centerPulse, { toValue: 1.12, duration: 900, useNativeDriver: true }),
+        Animated.timing(centerPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+    // Ping dots blinking at different offsets
+    const makePing = (anim: Animated.Value, delay: number) =>
+      setTimeout(() => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.delay(900),
+            Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: true }),
+            Animated.delay(1400),
+          ])
+        ).start();
+      }, delay);
+    makePing(ping1, 0);
+    makePing(ping2, 700);
+    makePing(ping3, 1300);
+    makePing(ping4, 2000);
+    makePing(ping5, 2700);
+  }, []);
+
+  const sweepDeg = sweepRotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const ring1Deg = ring1Rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const ring2Deg = ring2Rotation.interpolate({ inputRange: [-1, 0], outputRange: ['-360deg', '0deg'] });
 
   // Handles phone number input and formats to (555) 000-0000
   const handlePhoneChange = (text: string, country = selectedCountry) => {
@@ -227,17 +280,7 @@ const handleGoogleLogin = async () => {
 
       {/* Header - Top Navigation Anchor */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-
         <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
-
-        <View style={{ width: 32 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -254,13 +297,66 @@ const handleGoogleLogin = async () => {
             
             {/* Hero Section */}
             <View style={styles.heroSection}>
-              {/* Background Card */}
-              <View style={[styles.heroCard, { backgroundColor: colors.primaryLight }]}>
-                <Image
-                  source={require('../../assets/immersive_feed/64186b35bff5b154bbf523e6dae56134a7cd7e14.png')}
-                  style={styles.heroImage}
-                />
+              {/* Radar Illustration Card */}
+              <View style={[styles.heroCard, { backgroundColor: isDark ? '#0F0F2E' : '#0D0D2B' }]}>
+                {/* Radar base circle + grid */}
+                <View style={styles.radarBase}>
+                  {/* Concentric rings */}
+                  <View style={[styles.radarRing, styles.radarRingLg, { borderColor: 'rgba(99,102,241,0.25)' }]} />
+                  <View style={[styles.radarRing, styles.radarRingMd, { borderColor: 'rgba(99,102,241,0.35)' }]} />
+                  <View style={[styles.radarRing, styles.radarRingSm, { borderColor: 'rgba(99,102,241,0.5)' }]} />
+
+                  {/* Cross-hair lines */}
+                  <View style={[styles.crossH, { backgroundColor: 'rgba(99,102,241,0.2)' }]} />
+                  <View style={[styles.crossV, { backgroundColor: 'rgba(99,102,241,0.2)' }]} />
+
+                  {/* Rotating outer dashed ring 1 */}
+                  <Animated.View style={[styles.radarRing, styles.radarRingXl, { borderColor: 'rgba(99,102,241,0.15)', transform: [{ rotate: ring1Deg }] }]} />
+
+                  {/* Rotating outer dashed ring 2 */}
+                  <Animated.View style={[styles.radarRing, styles.radarRingXl2, { borderColor: 'rgba(139,92,246,0.2)', borderStyle: 'dashed', transform: [{ rotate: ring2Deg }] }]} />
+
+                  {/* Radar sweep arm */}
+                  <Animated.View style={[styles.sweepWrap, { transform: [{ rotate: sweepDeg }] }]}>
+                    <View style={styles.sweepArm} />
+                    <View style={styles.sweepGlow} />
+                  </Animated.View>
+
+                  {/* Ping dots at fixed positions */}
+                  <Animated.View style={[styles.ping, { top: 28, left: 52, opacity: ping1 }]}>
+                    <View style={[styles.pingDot, { backgroundColor: '#34D399' }]} />
+                    <View style={[styles.pingRipple, { borderColor: '#34D399' }]} />
+                  </Animated.View>
+                  <Animated.View style={[styles.ping, { top: 60, right: 38, opacity: ping2 }]}>
+                    <View style={[styles.pingDot, { backgroundColor: '#F59E0B' }]} />
+                    <View style={[styles.pingRipple, { borderColor: '#F59E0B' }]} />
+                  </Animated.View>
+                  <Animated.View style={[styles.ping, { bottom: 44, left: 44, opacity: ping3 }]}>
+                    <View style={[styles.pingDot, { backgroundColor: '#818CF8' }]} />
+                    <View style={[styles.pingRipple, { borderColor: '#818CF8' }]} />
+                  </Animated.View>
+                  <Animated.View style={[styles.ping, { bottom: 30, right: 56, opacity: ping4 }]}>
+                    <View style={[styles.pingDot, { backgroundColor: '#F472B6' }]} />
+                    <View style={[styles.pingRipple, { borderColor: '#F472B6' }]} />
+                  </Animated.View>
+                  <Animated.View style={[styles.ping, { top: '45%', left: 22, opacity: ping5 }]}>
+                    <View style={[styles.pingDot, { backgroundColor: '#38BDF8' }]} />
+                    <View style={[styles.pingRipple, { borderColor: '#38BDF8' }]} />
+                  </Animated.View>
+
+                  {/* Center pulsing dot */}
+                  <Animated.View style={[styles.radarCenter, { backgroundColor: colors.primary, transform: [{ scale: centerPulse }] }]}>
+                    <Ionicons name="newspaper" size={18} color="#FFF" />
+                  </Animated.View>
+                </View>
+
+                {/* LIVE label */}
+                <View style={styles.liveLabel}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveLabelText}>LIVE  LOCAL  NEWS</Text>
+                </View>
               </View>
+
 
               {/* Headings */}
               <View style={styles.headingContainer}>
@@ -412,7 +508,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     backgroundColor: '#F8F9FF',
     borderBottomWidth: 0,
@@ -423,10 +519,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 30,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     color: '#4648D4',
+    textAlign: 'center',
   },
   skipButton: {
     paddingHorizontal: 8,
@@ -468,13 +565,134 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  heroImage: {
+  // Radar illustration
+  radarBase: {
     position: 'absolute',
-    width: '100%',
-    height: '180%',
-    top: '-40%',
+    top: 0,
     left: 0,
-    resizeMode: 'cover',
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radarRing: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderRadius: 999,
+  },
+  radarRingSm: {
+    width: 64,
+    height: 64,
+  },
+  radarRingMd: {
+    width: 108,
+    height: 108,
+  },
+  radarRingLg: {
+    width: 152,
+    height: 152,
+  },
+  radarRingXl: {
+    width: 188,
+    height: 188,
+    borderWidth: 1,
+  },
+  radarRingXl2: {
+    width: 210,
+    height: 210,
+    borderWidth: 1,
+  },
+  crossH: {
+    position: 'absolute',
+    width: 210,
+    height: 1,
+  },
+  crossV: {
+    position: 'absolute',
+    width: 1,
+    height: 192,
+  },
+  sweepWrap: {
+    position: 'absolute',
+    width: 192,
+    height: 192,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sweepArm: {
+    position: 'absolute',
+    width: 96,
+    height: 1.5,
+    backgroundColor: 'rgba(99,102,241,0.9)',
+    left: '50%',
+    top: '50%',
+    transformOrigin: 'left center',
+  },
+  sweepGlow: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(99,102,241,0.06)',
+    right: 10,
+    top: '50%',
+    transform: [{ translateY: -30 }],
+  },
+  ping: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+  },
+  pingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    position: 'absolute',
+  },
+  pingRipple: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    position: 'absolute',
+    opacity: 0.5,
+  },
+  radarCenter: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  liveLabel: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34D399',
+  },
+  liveLabelText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 2.5,
   },
   headingContainer: {
     marginTop: 16,

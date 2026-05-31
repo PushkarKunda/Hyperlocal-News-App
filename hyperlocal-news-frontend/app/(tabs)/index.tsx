@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const router = useRouter();
+  const { user } = useAuthStore();
 
   const insets = useSafeAreaInsets();
   const { newsId } = useLocalSearchParams<{ newsId?: string }>();
@@ -97,7 +99,9 @@ export default function HomeScreen() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>HyperLocal</Text>
           <View style={styles.locationContainer}>
             <Ionicons name="location-sharp" size={12} color={colors.primary} style={styles.locationIcon} />
-            <Text style={[styles.locationText, { color: colors.textSecondary }]}>NEW YORK, NY</Text>
+            <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+              {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'HYDERABAD, TS')}
+            </Text>
           </View>
         </View>
 
@@ -251,7 +255,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
   },
   notificationDot: {
@@ -283,7 +287,7 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.2,
   },
   activeIndicator: {
@@ -304,13 +308,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
   },
 });

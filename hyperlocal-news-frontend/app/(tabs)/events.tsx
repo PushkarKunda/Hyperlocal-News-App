@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   createButton: {
     width: 40,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   listContent: {
     paddingHorizontal: 20,
@@ -491,14 +491,14 @@ const styles = StyleSheet.create({
     color: '#4648D4',
     fontSize: 10,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
   },
   dateDay: {
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginTop: -2,
   },
   distanceBadge: {
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   cardContent: {
     padding: 16,
@@ -523,18 +523,18 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 10,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
   },
   eventTitle: {
     fontSize: 17,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 24,
   },
   eventDescription: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 18,
   },
   detailRow: {
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     flex: 1,
   },
   cardFooter: {
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   // Gated UI Styles
   gatedContainer: {
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   gatedHeaderTitleText: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   closeButton: {
     width: 40,
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   gatedSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 22,
     textAlign: 'center',
     marginBottom: 16,
@@ -651,11 +651,11 @@ const styles = StyleSheet.create({
   featureTitleText: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   featureDesc: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
   gatedButton: {
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gatedSecondaryButton: {
     width: '100%',
@@ -682,6 +682,6 @@ const styles = StyleSheet.create({
   gatedSecondaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

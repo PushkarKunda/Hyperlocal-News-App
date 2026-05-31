@@ -12,42 +12,24 @@ export default function OnboardingLayout() {
   const { isAuthenticated, isOnboarded, user } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated && isOnboarded) {
+    if (!isAuthenticated) {
+      router.replace('/(auth)/login');
+    } else if (isOnboarded) {
       if (pathname.includes('profile')) {
         return;
       }
       router.replace('/(tabs)');
-    } else if (isAuthenticated) {
-      const isAllowedPath = 
-        pathname.includes('complete') || 
-        pathname.includes('setup-feed') || 
-        pathname.includes('profile');
-        
-      if (!isAllowedPath) {
-        if (user?.name) {
-          router.replace('/(onboarding)/complete');
-        } else {
-          router.replace('/(onboarding)/profile');
-        }
-      }
     }
-  }, [isAuthenticated, isOnboarded, pathname, user]);
+  }, [isAuthenticated, isOnboarded, pathname]);
 
-  if (isAuthenticated && isOnboarded) {
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isOnboarded) {
     if (pathname.includes('profile')) {
       // Allow rendering the profile screen to verify email
     } else {
-      return null;
-    }
-  }
-
-  if (isAuthenticated) {
-    const isAllowedPath = 
-      pathname.includes('complete') || 
-      pathname.includes('setup-feed') || 
-      pathname.includes('profile');
-      
-    if (!isAllowedPath) {
       return null;
     }
   }

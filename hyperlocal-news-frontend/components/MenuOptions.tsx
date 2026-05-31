@@ -234,12 +234,16 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
         >
           {/* Header row: profile picture + close button */}
           <View style={styles.headerRow}>
-            <View style={[styles.avatarContainer, { borderColor: colors.primary }]}>
-              <Image
-                source={require('@/assets/immersive_feed/f8a7444eb4e0445e94186837bf33bd7f2f8b5681.png')}
-                style={styles.avatarImage}
-                contentFit="cover"
-              />
+            <View style={[styles.avatarContainer, { borderColor: colors.primary, backgroundColor: isDark ? '#1C1C2E' : '#EFF4FF' }]}>
+              {user?.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={30} color={colors.primary} />
+              )}
             </View>
             <TouchableOpacity
               style={styles.closeButton}
@@ -362,7 +366,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
               {/* Help & Support */}
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => handleNavigate('/settings')}
+                onPress={() => handleNavigate('/help')}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -466,14 +470,14 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#4648D4',
     lineHeight: 32,
   },
   userSubtitle: {
     fontSize: 14,
     fontWeight: '400',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#464554',
     lineHeight: 20,
     marginTop: 4,
@@ -510,7 +514,7 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.6,
   },
   activeMenuLabel: {
@@ -540,7 +544,7 @@ const styles = StyleSheet.create({
   footerBrand: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: 'rgba(96, 99, 238, 0.4)',
     letterSpacing: 0.6,
     lineHeight: 28,
@@ -548,7 +552,7 @@ const styles = StyleSheet.create({
   footerVersion: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#767586',
     letterSpacing: 1.0,
     textTransform: 'uppercase',
@@ -564,7 +568,7 @@ const styles = StyleSheet.create({
   drawerPublisherText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   drawerVerifyButton: {
     flexDirection: 'row',

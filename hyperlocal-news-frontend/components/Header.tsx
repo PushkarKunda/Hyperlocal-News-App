@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     fontWeight: '700',
     letterSpacing: -0.5,
   },

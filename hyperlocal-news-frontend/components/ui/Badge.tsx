@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },

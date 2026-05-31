@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useInterestsList } from '@/hooks/useApi';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -52,9 +53,9 @@ const TOPIC_STYLES: Record<string, {
   music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
   art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
   travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE', span: true },
   food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
   gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
 };
 
 const MIN_SELECTIONS = 3;
@@ -64,6 +65,8 @@ export default function InterestsScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
+
+  const user = useAuthStore(state => state.user);
 
   // Load onboarding topics list dynamically from simulated backend
   const { data: interestsList = [], isLoading } = useInterestsList();
@@ -86,10 +89,9 @@ export default function InterestsScreen() {
   });
 
   // Pre-select 'sports' and 'art' as shown in the Figma mockup (making it 2/3 selected initially)
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    'sports',
-    'art',
-  ]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(
+    user?.interests && user.interests.length > 0 ? user.interests : ['sports', 'art']
+  );
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const cardScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
@@ -140,7 +142,10 @@ export default function InterestsScreen() {
 
   const handleContinue = () => {
     if (selectedTopics.length >= MIN_SELECTIONS) {
-      router.push('/(auth)/login');
+      useAuthStore.setState((prev) => ({
+        user: prev.user ? { ...prev.user, interests: selectedTopics } : null
+      }));
+      router.push('/(onboarding)/profile');
     }
   };
 
@@ -333,7 +338,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: {
     width: 32,
@@ -355,7 +360,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.64,
     lineHeight: 40,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 8,
   },
   subtitle: {
@@ -363,7 +368,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   bentoGrid: {
     flexDirection: 'row',
@@ -420,7 +425,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   singleTitleRow: {
     flexDirection: 'row',
@@ -447,7 +452,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     color: '#464554',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   bottomBar: {
     position: 'absolute',
@@ -510,7 +515,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   btnChevron: {
     marginTop: 1,

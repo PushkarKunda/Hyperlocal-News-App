@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
   },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     height: '100%',
   },
   inputWithLeftIcon: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: Spacing.xs,
     marginLeft: Spacing.xs,
   },

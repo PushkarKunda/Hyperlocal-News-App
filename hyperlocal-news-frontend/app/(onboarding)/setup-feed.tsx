@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 40,
     letterSpacing: -0.8,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
   },
   subtitle: {
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 29.25,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     opacity: 0.9,
   },
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4648D4',
     letterSpacing: 1.2,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   dotRow: {
     flexDirection: 'row',
