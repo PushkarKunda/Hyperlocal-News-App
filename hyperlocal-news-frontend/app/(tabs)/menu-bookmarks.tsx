@@ -6,9 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -78,47 +75,9 @@ export default function MenuBookmarksScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
-  // Add Custom Bookmark Modal states
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newCategory, setNewCategory] = useState<'TECH' | 'HEALTH' | 'BUSINESS'>('TECH');
-
   // Remove individual bookmark
   const toggleBookmark = (id: string) => {
     setBookmarks((prev) => prev.filter((b) => b.id !== id));
-  };
-
-  // Add dynamic custom bookmark
-  const handleAddBookmark = () => {
-    if (!newTitle.trim() || !newDesc.trim()) return;
-
-    // Pick random relevant high-quality image based on category choice
-    let imgUrl = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600';
-    if (newCategory === 'TECH') {
-      imgUrl = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600';
-    } else if (newCategory === 'HEALTH') {
-      imgUrl = 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=600';
-    } else if (newCategory === 'BUSINESS') {
-      imgUrl = 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600';
-    }
-
-    const newItem: MenuBookmarkItem = {
-      id: Date.now().toString(),
-      category: newCategory,
-      title: newTitle.trim(),
-      description: newDesc.trim(),
-      imageUrl: imgUrl,
-      timeAgo: 'Just now',
-      reads: '100 reads',
-    };
-
-    setBookmarks((prev) => [newItem, ...prev]);
-    // Reset modal inputs
-    setNewTitle('');
-    setNewDesc('');
-    setNewCategory('TECH');
-    setIsAddModalVisible(false);
   };
 
   // Filtered bookmark list logic
@@ -337,128 +296,7 @@ export default function MenuBookmarksScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Button (FAB) for custom bookmark creation */}
-      <TouchableOpacity
-        style={styles.fabButton}
-        onPress={() => setIsAddModalVisible(true)}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
 
-      {/* Add New Custom Bookmark Modal Form */}
-      <Modal
-        visible={isAddModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsAddModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalKeyboardAvoiding}
-          >
-            <View style={[styles.modalSheet, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Add to Bookmarks</Text>
-                <TouchableOpacity
-                  onPress={() => setIsAddModalVisible(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color={isDark ? '#94A3B8' : '#464554'} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Title Input field */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#464554' }]}>Title</Text>
-                <TextInput
-                  style={[styles.formInput, {
-                    color: colors.text,
-                    backgroundColor: isDark ? '#111122' : '#F1F5F9',
-                    borderColor: isDark ? '#2E2E48' : '#E2E8F0'
-                  }]}
-                  placeholder="Enter story title..."
-                  placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  value={newTitle}
-                  onChangeText={setNewTitle}
-                />
-              </View>
-
-              {/* Description Input field */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#464554' }]}>Description Summary</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textAreaInput, {
-                    color: colors.text,
-                    backgroundColor: isDark ? '#111122' : '#F1F5F9',
-                    borderColor: isDark ? '#2E2E48' : '#E2E8F0'
-                  }]}
-                  placeholder="Enter a brief summary description..."
-                  placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  value={newDesc}
-                  onChangeText={setNewDesc}
-                  multiline={true}
-                  numberOfLines={3}
-                />
-              </View>
-
-              {/* Category selector row */}
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#464554' }]}>Category</Text>
-                <View style={styles.modalCategoryRow}>
-                  {(['TECH', 'HEALTH', 'BUSINESS'] as const).map((cat) => {
-                    const isSel = newCategory === cat;
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        style={[
-                          styles.modalCategoryButton,
-                          {
-                            backgroundColor: isSel
-                              ? '#4648D4'
-                              : isDark
-                              ? '#111122'
-                              : '#F1F5F9',
-                            borderColor: isSel ? '#4648D4' : isDark ? '#2E2E48' : '#E2E8F0',
-                          },
-                        ]}
-                        onPress={() => setNewCategory(cat)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.modalCategoryButtonText,
-                            {
-                              color: isSel ? '#FFFFFF' : isDark ? '#94A3B8' : '#464554',
-                              fontWeight: isSel ? '700' : '500',
-                            },
-                          ]}
-                        >
-                          {cat}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Action save button */}
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  { opacity: newTitle.trim() && newDesc.trim() ? 1 : 0.6 },
-                ]}
-                onPress={handleAddBookmark}
-                disabled={!newTitle.trim() || !newDesc.trim()}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.saveButtonText}>Add Bookmark</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
 
       {/* Slide drawer menu overlay options */}
       <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
@@ -637,108 +475,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     textAlign: 'center',
     lineHeight: 20,
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 32,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#4648D4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(11, 28, 48, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalKeyboardAvoiding: {
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
-    gap: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(199, 196, 215, 0.2)',
-    paddingBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  formInput: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    fontFamily: 'Inter_500Medium',
-  },
-  textAreaInput: {
-    height: 96,
-    paddingTop: 12,
-    paddingBottom: 12,
-    textAlignVertical: 'top',
-  },
-  modalCategoryRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCategoryButton: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCategoryButtonText: {
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  saveButton: {
-    height: 48,
-    backgroundColor: '#4648D4',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
   },
 });
