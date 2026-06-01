@@ -105,3 +105,32 @@ export interface LikeResponse {
   likesCount: number;
   message: string;
 }
+
+export interface ShortVideo {
+  id: string;
+  videoUrl: string;
+  title: string;
+  description: string;
+  author: {
+    handle: string;
+    name: string;
+    avatarInitial: string;
+  };
+  stats: {
+    likes: string;
+    comments: string;
+  };
+  hashtags: string[];
+  isLive: boolean;
+}
+
+export interface ImmersiveArticle {
+  id: string;
+  category: string;
+  categoryColor: string;
+  headline: string;
+  points: string[];
+  readTime: string;
+  image: any;
+  bulletIcon: any;
+}

@@ -5,11 +5,25 @@ import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/authStore';
 
 export default function TabLayout() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, isOnboarded } = useAuthStore();
+
+  useEffect(() => {
+    if (useAuthStore.persist.hasHydrated()) {
+      if (!isAuthenticated) {
+        router.replace('/(auth)/login');
+      } else if (!isOnboarded) {
+        router.replace('/(onboarding)/language');
+      }
+    }
+  }, [isAuthenticated, isOnboarded]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -43,7 +57,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          fontFamily: 'Inter_600SemiBold',
+          fontFamily: 'Poppins_600SemiBold',
         },
         headerShown: false,
       }}
@@ -102,6 +116,66 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="menu-bookmarks"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings-language"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings-location"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile-interests"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile-reading-history"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="help"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="articles"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="bookmarks"
         options={{
           href: null,
         }}

@@ -15,6 +15,11 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useInterestsList } from '@/hooks/useApi';
+import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
+
 const { width } = Dimensions.get('window');
 
 // Responsive bento grid calculation
@@ -34,40 +39,69 @@ interface Topic {
   span?: boolean;
 }
 
-const TOPICS: Topic[] = [
-  { id: 'tech', name: 'Tech', iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
-  { id: 'design', name: 'Design', iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  { id: 'sports', name: 'Sports', iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
-  { id: 'music', name: 'Music', iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
-  { id: 'art', name: 'Art', iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
-  { id: 'travel', name: 'Travel', iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  { id: 'wellness', name: 'Health & Wellness', iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE', description: 'Mindfulness and healthy living', span: true },
-  { id: 'food', name: 'Food', iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
-  { id: 'gaming', name: 'Gaming', iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-];
+const TOPIC_STYLES: Record<string, {
+  iconName: any;
+  iconType: 'feather' | 'ionicons';
+  iconColor: string;
+  iconBg: string;
+  selectedBg: string;
+  span?: boolean;
+}> = {
+  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
+  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
+  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
+  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
+};
 
 const MIN_SELECTIONS = 3;
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
+
+  const user = useAuthStore(state => state.user);
+
+  // Load onboarding topics list dynamically from simulated backend
+  const { data: interestsList = [], isLoading } = useInterestsList();
+
+  // Map dynamically loaded interests to their gorgeous custom design attributes
+  const mappedTopics = interestsList.map((interest) => {
+    const style = TOPIC_STYLES[interest.id] || {
+      iconName: 'star-outline',
+      iconType: 'ionicons',
+      iconColor: '#4648d4',
+      iconBg: 'rgba(70, 72, 212, 0.06)',
+      selectedBg: '#D8D9F7',
+    };
+    return {
+      id: interest.id,
+      name: interest.name,
+      description: interest.description,
+      ...style,
+    };
+  });
 
   // Pre-select 'sports' and 'art' as shown in the Figma mockup (making it 2/3 selected initially)
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    'sports',
-    'art',
-  ]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(
+    user?.interests && user.interests.length > 0 ? user.interests : ['sports', 'art']
+  );
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const cardScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
 
-  // Initialize scale animations for all bento cards
-  TOPICS.forEach(topic => {
-    if (!cardScaleAnims[topic.id]) {
-      cardScaleAnims[topic.id] = new Animated.Value(1);
-    }
-  });
+
 
   const handleCardPressIn = (topicId: string) => {
+    if (!cardScaleAnims[topicId]) {
+      cardScaleAnims[topicId] = new Animated.Value(1);
+    }
     Animated.spring(cardScaleAnims[topicId], {
       toValue: 0.94,
       useNativeDriver: true,
@@ -77,6 +111,9 @@ export default function InterestsScreen() {
   };
 
   const handleCardPressOut = (topicId: string) => {
+    if (!cardScaleAnims[topicId]) {
+      cardScaleAnims[topicId] = new Animated.Value(1);
+    }
     Animated.spring(cardScaleAnims[topicId], {
       toValue: 1,
       useNativeDriver: true,
@@ -105,50 +142,57 @@ export default function InterestsScreen() {
 
   const handleContinue = () => {
     if (selectedTopics.length >= MIN_SELECTIONS) {
-      router.push('/(auth)/login');
+      useAuthStore.setState((prev) => ({
+        user: prev.user ? { ...prev.user, interests: selectedTopics } : null
+      }));
+      router.push('/(onboarding)/profile');
     }
   };
 
   const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Header - Top AppBar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#4648D4" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
       {/* Main Content Area */}
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Headline Section */}
         <View style={styles.headlineSection}>
-          <Text style={styles.mainTitle}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>
             What are you{'\n'}interested in?
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Select at least {MIN_SELECTIONS} to customize your feed
           </Text>
         </View>
 
         {/* Bento Grid */}
         <View style={styles.bentoGrid}>
-          {TOPICS.map((topic) => {
+          {mappedTopics.map((topic) => {
+
             const isSelected = selectedTopics.includes(topic.id);
+            if (!cardScaleAnims[topic.id]) {
+              cardScaleAnims[topic.id] = new Animated.Value(1);
+            }
             const scale = cardScaleAnims[topic.id];
 
             return (
@@ -166,12 +210,18 @@ export default function InterestsScreen() {
                       ? [
                           styles.cardSelected,
                           {
-                            backgroundColor: topic.selectedBg,
+                            backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
                             borderColor: topic.iconColor,
                             shadowColor: topic.iconColor,
                           }
                         ]
-                      : styles.cardUnselected,
+                      : [
+                          styles.cardUnselected,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                          }
+                        ],
                     { transform: [{ scale }] }
                   ]}
                 >
@@ -191,12 +241,12 @@ export default function InterestsScreen() {
                       
                       <View style={styles.spanTextContainer}>
                         <View style={styles.spanTitleRow}>
-                          <Text style={styles.cardTitle}>{topic.name}</Text>
+                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
                           {isSelected && (
                             <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
                           )}
                         </View>
-                        <Text style={styles.cardDesc}>{topic.description}</Text>
+                        <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
                       </View>
                     </View>
                   ) : (
@@ -216,7 +266,7 @@ export default function InterestsScreen() {
                       </View>
                       
                       <View style={styles.singleTitleRow}>
-                        <Text style={styles.cardTitle}>{topic.name}</Text>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
                         {isSelected && (
                           <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
                         )}
@@ -231,12 +281,12 @@ export default function InterestsScreen() {
       </ScrollView>
 
       {/* Fixed Bottom Action Footer */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? 'rgba(17, 17, 34, 0.95)' : 'rgba(248, 249, 255, 0.95)', borderTopColor: colors.border }]}>
         {/* Progress Stepper Indicator */}
         <View style={styles.progressContainer}>
           <View style={styles.activeStepIndicator} />
-          <View style={styles.inactiveStepIndicator} />
-          <View style={styles.inactiveStepIndicator} />
+          <View style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]} />
+          <View style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]} />
         </View>
 
         {/* Continue Button */}
@@ -288,7 +338,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: {
     width: 32,
@@ -308,10 +358,9 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     letterSpacing: -0.64,
     lineHeight: 40,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 8,
   },
   subtitle: {
@@ -319,7 +368,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   bentoGrid: {
     flexDirection: 'row',
@@ -376,8 +425,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#0B1C30',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   singleTitleRow: {
     flexDirection: 'row',
@@ -404,7 +452,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     color: '#464554',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   bottomBar: {
     position: 'absolute',
@@ -467,7 +515,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   btnChevron: {
     marginTop: 1,

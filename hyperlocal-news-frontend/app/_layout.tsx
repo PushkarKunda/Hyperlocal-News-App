@@ -1,12 +1,5 @@
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { 
-  Newsreader_400Regular, 
-  Newsreader_500Medium, 
-  Newsreader_600SemiBold, 
-  Newsreader_700Bold,
-  Newsreader_400Regular_Italic
-} from '@expo-google-fonts/newsreader';
 import {
+  useFonts,
   Poppins_400Regular,
   Poppins_500Medium,
   Poppins_600SemiBold,
@@ -20,10 +13,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
-import { Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, Appearance } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
 
-// Global text size interceptor to support app-wide dynamic text scaling
+// Global text interceptor to support app-wide dynamic text scaling and Poppins font family enforcement
 const originalTextRender = (Text as any).render;
 if (originalTextRender) {
   (Text as any).render = function (props: any, ref: any) {
@@ -36,17 +29,39 @@ if (originalTextRender) {
         size === 'large' ? 1.2 :
         1.0;
 
-      if (scale !== 1.0 && props && props.style) {
-        const flatStyle = StyleSheet.flatten(props.style);
-        if (flatStyle && typeof flatStyle.fontSize === 'number') {
-          newProps = {
-            ...props,
-            style: [props.style, { fontSize: flatStyle.fontSize * scale }],
-          };
+      let injectedStyle: any = {};
+      const flatStyle = props && props.style ? StyleSheet.flatten(props.style) : null;
+
+      // 1. Handle dynamic text scaling
+      if (scale !== 1.0 && flatStyle && typeof flatStyle.fontSize === 'number') {
+        injectedStyle.fontSize = flatStyle.fontSize * scale;
+      }
+
+      // 2. Handle global Google Fonts Poppins enforcement
+      const family = flatStyle?.fontFamily;
+      if (!family || family === 'System' || family === 'sans-serif' || family === 'normal') {
+        const weight = flatStyle?.fontWeight;
+        const weightStr = weight ? String(weight) : '';
+        
+        if (weightStr === 'bold' || weightStr === '700' || weightStr === '800' || weightStr === '900') {
+          injectedStyle.fontFamily = 'Poppins_700Bold';
+        } else if (weightStr === '600') {
+          injectedStyle.fontFamily = 'Poppins_600SemiBold';
+        } else if (weightStr === '500') {
+          injectedStyle.fontFamily = 'Poppins_500Medium';
+        } else {
+          injectedStyle.fontFamily = 'Poppins_400Regular';
         }
       }
+
+      if (Object.keys(injectedStyle).length > 0) {
+        newProps = {
+          ...props,
+          style: [props.style, injectedStyle],
+        };
+      }
     } catch (e) {
-      console.warn('Error in global text scaling:', e);
+      console.warn('Error in global text interceptor:', e);
     }
     return originalTextRender.call(this, newProps, ref);
   };
@@ -70,15 +85,6 @@ export default function RootLayout() {
   const textSize = user?.textSize || 'medium';
 
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Newsreader_400Regular,
-    Newsreader_500Medium,
-    Newsreader_600SemiBold,
-    Newsreader_700Bold,
-    Newsreader_400Regular_Italic,
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,
@@ -91,6 +97,15 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+useEffect(() => {
+  const theme = useAuthStore.getState().user?.theme;
+  if (theme === 'dark' || theme === 'light') {
+    Appearance.setColorScheme(theme);
+  } else {
+    // Keep standard dynamic system appearance listener active by resetting/avoiding setColorScheme lock
+    Appearance.setColorScheme(null);
+  }
+}, [colorScheme]);
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -111,7 +126,7 @@ export default function RootLayout() {
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(publisher)" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="news" />
+          <Stack.Screen name="news/[id]" />
         </Stack>
       </GestureHandlerRootView>
     </QueryClientProvider>

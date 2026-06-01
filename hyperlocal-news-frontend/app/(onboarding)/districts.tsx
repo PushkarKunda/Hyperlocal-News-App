@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   ScrollView,
   Pressable,
   Animated,
@@ -16,87 +15,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useDistrictsList } from '@/hooks/useApi';
+import { useAuthStore } from '@/store/authStore';
 
 const { width } = Dimensions.get('window');
 
-interface DistrictItem {
-  id: string;
-  name: string;
-  code: string;
-}
-
-const TELANGANA_DISTRICTS: DistrictItem[] = [
-  { id: 'hyderabad', name: 'Hyderabad', code: 'HYD' },
-  { id: 'medchal_malkajgiri', name: 'Medchal-Malkajgiri', code: 'MM' },
-  { id: 'rangareddy', name: 'Rangareddy', code: 'RR' },
-  { id: 'sangareddy', name: 'Sangareddy', code: 'SR' },
-  { id: 'warangal', name: 'Warangal', code: 'WGL' },
-  { id: 'karimnagar', name: 'Karimnagar', code: 'KMR' },
-  { id: 'nizamabad', name: 'Nizamabad', code: 'NZB' },
-  { id: 'khammam', name: 'Khammam', code: 'KMM' },
-  { id: 'nalgonda', name: 'Nalgonda', code: 'NLG' },
-  { id: 'mahabubnagar', name: 'Mahabubnagar', code: 'MBN' },
-  { id: 'medak', name: 'Medak', code: 'MDK' },
-  { id: 'adilabad', name: 'Adilabad', code: 'ADB' },
-  { id: 'bhadradri_kothagudem', name: 'Bhadradri Kothagudem', code: 'BK' },
-  { id: 'hanamkonda', name: 'Hanamkonda', code: 'HNK' },
-  { id: 'jagtial', name: 'Jagtial', code: 'JGL' },
-  { id: 'jangaon', name: 'Jangaon', code: 'JGN' },
-  { id: 'jayashankar_bhupalpally', name: 'Jayashankar Bhupalpally', code: 'JB' },
-  { id: 'jogulamba_gadwal', name: 'Jogulamba Gadwal', code: 'JG' },
-  { id: 'kamareddy', name: 'Kamareddy', code: 'KMR' },
-  { id: 'kumuram_bheem_asifabad', name: 'Kumuram Bheem Asifabad', code: 'KB' },
-  { id: 'mahabubabad', name: 'Mahabubabad', code: 'MBB' },
-  { id: 'mancherial', name: 'Mancherial', code: 'MCL' },
-  { id: 'mulugu', name: 'Mulugu', code: 'MLG' },
-  { id: 'nagarkurnool', name: 'Nagarkurnool', code: 'NKL' },
-  { id: 'narayanpet', name: 'Narayanpet', code: 'NRP' },
-  { id: 'nirmal', name: 'Nirmal', code: 'NML' },
-  { id: 'peddapalli', name: 'Peddapalli', code: 'PDP' },
-  { id: 'rajanna_sircilla', name: 'Rajanna Sircilla', code: 'RS' },
-  { id: 'siddipet', name: 'Siddipet', code: 'SDP' },
-  { id: 'suryapet', name: 'Suryapet', code: 'SYP' },
-  { id: 'vikarabad', name: 'Vikarabad', code: 'VKB' },
-  { id: 'wanaparthy', name: 'Wanaparthy', code: 'WNP' },
-  { id: 'yadadri_bhuvanagiri', name: 'Yadadri Bhuvanagiri', code: 'YB' },
-];
-
-const ANDHRA_PRADESH_DISTRICTS: DistrictItem[] = [
-  { id: 'visakhapatnam', name: 'Visakhapatnam', code: 'VSP' },
-  { id: 'ntr_vijayawada', name: 'NTR (Vijayawada)', code: 'NTR' },
-  { id: 'guntur', name: 'Guntur', code: 'GTR' },
-  { id: 'nellore_spsr', name: 'Nellore (SPSR)', code: 'NLR' },
-  { id: 'kurnool', name: 'Kurnool', code: 'KNL' },
-  { id: 'tirupati', name: 'Tirupati', code: 'TPT' },
-  { id: 'kakinada', name: 'Kakinada', code: 'KKD' },
-  { id: 'kadapa_ysr', name: 'Kadapa (YSR)', code: 'KDP' },
-  { id: 'anantapur', name: 'Anantapur', code: 'ATP' },
-  { id: 'vizianagaram', name: 'Vizianagaram', code: 'VZM' },
-  { id: 'srikakulam', name: 'Srikakulam', code: 'SKL' },
-  { id: 'east_godavari', name: 'East Godavari', code: 'EG' },
-  { id: 'west_godavari', name: 'West Godavari', code: 'WG' },
-  { id: 'chittoor', name: 'Chittoor', code: 'CTR' },
-  { id: 'prakasam', name: 'Prakasam', code: 'PKM' },
-  { id: 'anamayya', name: 'Anamayya', code: 'AMY' },
-  { id: 'bapatla', name: 'Bapatla', code: 'BPT' },
-  { id: 'eluru', name: 'Eluru', code: 'ELR' },
-  { id: 'konaseema', name: 'Dr. B.R. Ambedkar Konaseema', code: 'KSM' },
-  { id: 'manyam_parvathipuram', name: 'Parvathipuram Manyam', code: 'MYM' },
-  { id: 'nandyal', name: 'Nandyal', code: 'NDY' },
-  { id: 'palnadu', name: 'Palnadu', code: 'PLD' },
-  { id: 'sri_satya_sai', name: 'Sri Satya Sai', code: 'SSS' },
-  { id: 'alluri_sitharama_raju', name: 'Alluri Sitharama Raju', code: 'ASR' },
-  { id: 'anakapalli', name: 'Anakapalli', code: 'AKP' },
-];
-
 interface DistrictCardProps {
   name: string;
-  code: string;
+  code?: string;
   isSelected: boolean;
   onPress: () => void;
 }
 
 function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -128,15 +63,36 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
         style={[
           styles.card,
           isSelected ? styles.cardSelected : styles.cardUnselected,
+          {
+            backgroundColor: isSelected 
+              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+              : colors.card,
+            borderColor: isSelected ? colors.primary : colors.border,
+          },
           { transform: [{ scale }] },
         ]}
       >
-        <View style={[styles.badgeCircle, isSelected && styles.badgeCircleSelected]}>
-          <Text style={[styles.badgeText, isSelected ? styles.badgeTextSelected : styles.badgeTextUnselected]}>
-            {code}
+        <View 
+          style={[
+            styles.badgeCircle, 
+            { 
+              backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
+              borderColor: isSelected ? colors.primary : colors.border,
+            }
+          ]}
+        >
+          <Text style={[styles.badgeText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
+            {code || name.substring(0, 3).toUpperCase()}
           </Text>
         </View>
-        <Text style={[styles.districtName, isSelected && styles.districtNameSelected]} numberOfLines={1}>
+        <Text 
+          style={[
+            styles.districtName, 
+            { color: isSelected ? colors.primary : colors.text },
+            isSelected && styles.districtNameSelected
+          ]} 
+          numberOfLines={1}
+        >
           {name}
         </Text>
       </Animated.View>
@@ -145,26 +101,30 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
 }
 
 export default function DistrictsScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { state } = useLocalSearchParams<{ state?: string }>();
 
-  // Determine state parameters
+  // Load districts dynamically using the React Query hook based on onboarding State selection
+  const { data: districts = [], isLoading } = useDistrictsList(state);
+
   const isAP = state === 'ap';
   const stateLabel = isAP ? 'Andhra Pradesh' : 'Telangana';
-  const districtsList = isAP ? ANDHRA_PRADESH_DISTRICTS : TELANGANA_DISTRICTS;
   const defaultDistrictId = isAP ? 'visakhapatnam' : 'hyderabad';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState(defaultDistrictId);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  // Set default selection when switching states
+  // Set default selection when switching states or once dynamic districts are fetched
   useEffect(() => {
-    setSelectedDistrict(defaultDistrictId);
+    if (districts.length > 0) {
+      const hasDefault = districts.some(d => d.id === defaultDistrictId);
+      setSelectedDistrict(hasDefault ? defaultDistrictId : districts[0].id);
+    }
     setSearchQuery('');
-  }, [state, defaultDistrictId]);
+  }, [state, districts, defaultDistrictId]);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const searchBorderAnim = useRef(new Animated.Value(0)).current;
@@ -206,54 +166,60 @@ export default function DistrictsScreen() {
   };
 
   const handleContinue = () => {
+    const matchedDistrict = districts.find(d => d.id === selectedDistrict);
+    if (matchedDistrict) {
+      useAuthStore.setState(prev => ({
+        user: prev.user ? { ...prev.user, district: matchedDistrict.name } : null
+      }));
+    }
     router.push('/(onboarding)/interests');
   };
 
-  const filteredDistricts = districtsList.filter(district =>
+  const filteredDistricts = districts.filter(district =>
     district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    district.code.toLowerCase().includes(searchQuery.toLowerCase())
+    (district.code && district.code.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Interpolate search border colors
+  // Interpolate search border colors dynamically based on active theme
   const searchBorderColor = searchBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(199, 196, 215, 0.5)', '#4648D4'],
+    outputRange: [colors.border, colors.primary],
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Background Blurs */}
-      <View style={styles.purpleBlur} />
-      <View style={styles.tealBlur} />
+      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.05)' }]} />
+      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.05)' }]} />
 
       {/* Header Bar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.divider }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#0B1C30" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Scrollable Content */}
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Hero Title */}
         <View style={styles.headlineSection}>
-          <Text style={styles.mainTitle}>Which district?</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>Which district?</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Select your district in {stateLabel} to get hyperlocal updates.
           </Text>
         </View>
@@ -264,16 +230,17 @@ export default function DistrictsScreen() {
             style={[
               styles.searchBar,
               {
+                backgroundColor: colors.card,
                 borderColor: searchBorderColor,
                 shadowOpacity: isSearchFocused ? 0.15 : 0.05,
               }
             ]}
           >
-            <Ionicons name="search-outline" size={20} color="#767586" style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search district..."
-              placeholderTextColor="#767586"
+              placeholderTextColor={colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={handleSearchFocus}
@@ -284,7 +251,7 @@ export default function DistrictsScreen() {
 
         {/* District Selection Area */}
         <View style={styles.districtsSection}>
-          <Text style={styles.sectionHeader}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
 
           <View style={styles.gridContainer}>
             {filteredDistricts.map((district) => (
@@ -301,7 +268,7 @@ export default function DistrictsScreen() {
       </ScrollView>
 
       {/* Footer Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background }]}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
             style={styles.continueButton}
@@ -361,7 +328,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.5,
   },
   headerSpacer: {
@@ -383,7 +350,6 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.64,
     textAlign: 'center',
@@ -420,8 +386,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    color: '#0B1C30',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   districtsSection: {
     gap: 16,
@@ -430,7 +395,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     textAlign: 'center',
   },
@@ -509,15 +474,14 @@ const styles = StyleSheet.create({
   districtName: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#0B1C30',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   districtNameSelected: {
     color: '#4648D4',
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   footer: {
     paddingHorizontal: 20,

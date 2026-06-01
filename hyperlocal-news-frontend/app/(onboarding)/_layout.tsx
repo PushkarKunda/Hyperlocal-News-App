@@ -1,46 +1,35 @@
 import { Stack, useRouter, usePathname } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
 import { useEffect } from 'react';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 export default function OnboardingLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, isOnboarded, user } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated && isOnboarded) {
-      router.replace('/(tabs)');
-    } else if (isAuthenticated) {
-      const isAllowedPath = 
-        pathname.includes('complete') || 
-        pathname.includes('setup-feed') || 
-        pathname.includes('profile');
-        
-      if (!isAllowedPath) {
-        if (user?.name) {
-          router.replace('/(onboarding)/complete');
-        } else {
-          router.replace('/(onboarding)/profile');
-        }
+    if (!isAuthenticated) {
+      router.replace('/(auth)/login');
+    } else if (isOnboarded) {
+      if (pathname.includes('profile')) {
+        return;
       }
+      router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isOnboarded, pathname, user]);
+  }, [isAuthenticated, isOnboarded, pathname]);
 
-  if (isAuthenticated && isOnboarded) {
+  if (!isAuthenticated) {
     return null;
   }
 
-  if (isAuthenticated) {
-    const isAllowedPath = 
-      pathname.includes('complete') || 
-      pathname.includes('setup-feed') || 
-      pathname.includes('profile');
-      
-    if (!isAllowedPath) {
+  if (isOnboarded) {
+    if (pathname.includes('profile')) {
+      // Allow rendering the profile screen to verify email
+    } else {
       return null;
     }
   }

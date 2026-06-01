@@ -15,21 +15,106 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
-  const { user, updateProfile } = useAuthStore();
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
+  const { user, updateProfile, isOnboarded } = useAuthStore();
 
-  const [name, setName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [name, setName] = useState(user?.name || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
   const [isFocused, setIsFocused] = useState(false);
+  const [isVerified, setIsVerified] = useState(user?.isPublisher || false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showOtpField, setShowOtpField] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'info' | 'error' | 'warning';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showCustomAlert = (title: string, message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeCustomAlert = () => {
+    setDialogConfig(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (isVerified) {
+      setIsVerified(false);
+    }
+    if (showOtpField) {
+      setShowOtpField(false);
+      setOtpCode('');
+    }
+  };
+
+  const handleVerifyEmail = () => {
+    if (!email.trim()) {
+      showCustomAlert('Email Required', 'Please enter your Gmail address first.', 'warning');
+      return;
+    }
+    if (!email.includes('@')) {
+      showCustomAlert('Invalid Email', 'Please enter a valid email address.', 'error');
+      return;
+    }
+    setIsVerifying(true);
+    setTimeout(() => {
+      setIsVerifying(false);
+      setShowOtpField(true);
+      showCustomAlert(
+        'OTP Sent! ✉️',
+        'A verification code has been sent to your email. You can enter any code to complete verification.',
+        'success'
+      );
+    }, 1200);
+  };
+
+  const handleConfirmOtp = () => {
+    if (otpCode.trim().length < 4) {
+      showCustomAlert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).', 'error');
+      return;
+    }
+    setIsVerified(true);
+    setShowOtpField(false);
+    showCustomAlert(
+      'Email Verified! 🎉',
+      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.',
+      'success'
+    );
+  };
 
   // Animations
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -42,8 +127,11 @@ export default function ProfileCompletionScreen() {
 
   useEffect(() => {
     const onBackPress = () => {
-      // Prevent user from going back during the profile setup process
-      return true;
+      // Prevent user from going back during the profile setup process only if not onboarded
+      if (!isOnboarded) {
+        return true;
+      }
+      return false; // Allow going back
     };
 
     BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -62,7 +150,7 @@ export default function ProfileCompletionScreen() {
     ]).start();
 
     return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
-  }, []);
+  }, [isOnboarded]);
 
   const handleInputFocus = () => {
     setIsFocused(true);
@@ -86,9 +174,10 @@ export default function ProfileCompletionScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        showCustomAlert(
           'Permission Denied',
-          'We need access to your photo library to let you upload a custom profile picture.'
+          'We need access to your photo library to let you upload a custom profile picture.',
+          'warning'
         );
         return;
       }
@@ -122,7 +211,7 @@ export default function ProfileCompletionScreen() {
       }
     } catch (error) {
       console.error('Image picking error:', error);
-      Alert.alert('Upload Error', 'Could not select your photo. Please try again.');
+      showCustomAlert('Upload Error', 'Could not select your photo. Please try again.', 'error');
     }
   };
 
@@ -165,34 +254,49 @@ export default function ProfileCompletionScreen() {
   const handleFinishSetup = () => {
     if (name.trim().length >= 2) {
       // Update profile in store
-      const finalAvatar = selectedAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400';
-      updateProfile(name.trim(), finalAvatar);
+      const finalAvatar = selectedAvatar || undefined;
+      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim(), isVerified, isVerified);
 
-      // Trigger navigation loader state
-      router.push('/(onboarding)/setup-feed' as any);
+      if (isOnboarded) {
+        Alert.alert('Profile Saved!', 'Your changes have been saved successfully.');
+        router.replace('/(tabs)/profile');
+      } else {
+        // Trigger navigation loader state
+        router.push('/(onboarding)/setup-feed' as any);
+      }
     }
   };
 
   const isButtonDisabled = name.trim().length < 2;
 
-  // Intercepting border colors
+  // Intercepting border colors dynamically based on active theme
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(199, 196, 215, 0.3)', '#4648D4'],
+    outputRange: [colors.border, colors.primary],
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Radial Gradient Backdrops (Simulated) */}
-      <View style={styles.topRadial} />
-      <View style={styles.bottomRadial} />
+      <View style={[styles.topRadial, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(225, 224, 255, 0.65)' }]} />
+      <View style={[styles.bottomRadial, { backgroundColor: isDark ? 'rgba(0, 106, 97, 0.1)' : 'rgba(229, 238, 255, 0.7)' }]} />
 
       {/* Header - Top Navigation Anchor */}
-      <View style={styles.header}>
-        <View style={styles.headerPlaceholder} />
-        <Text style={styles.headerTitle}>HyperLocal</Text>
+      <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+        {isOnboarded ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerPlaceholder} />
+        )}
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -202,7 +306,7 @@ export default function ProfileCompletionScreen() {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            style={styles.scrollView}
+            style={[styles.scrollView, { backgroundColor: colors.background }]}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -211,15 +315,15 @@ export default function ProfileCompletionScreen() {
               
               {/* Progress Indicator */}
               <View style={styles.progressContainer}>
-                <View style={styles.activeStepIndicatorShort} />
-                <View style={styles.activeStepIndicatorShort} />
-                <View style={styles.activeStepIndicatorLong} />
+                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                <View style={[styles.activeStepIndicatorLong, { backgroundColor: colors.primary }]} />
               </View>
 
               {/* Headline & Subtext */}
               <View style={styles.headlineSection}>
-                <Text style={styles.mainTitle}>Complete your profile</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.mainTitle, { color: colors.text }]}>Complete your profile</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   Add a photo and your name so we{'\n'}can personalize your experience.
                 </Text>
               </View>
@@ -235,6 +339,7 @@ export default function ProfileCompletionScreen() {
                   <Animated.View
                     style={[
                       styles.avatarCircle,
+                      { backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF', borderColor: colors.border },
                       { transform: [{ scale: avatarScale }] }
                     ]}
                   >
@@ -242,33 +347,33 @@ export default function ProfileCompletionScreen() {
                        <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
                     ) : (
                       <View style={styles.cameraIconContainer}>
-                        <Feather name="camera" size={32} color="#4648D4" />
+                        <Feather name="camera" size={32} color={colors.primary} />
                       </View>
                     )}
 
-                    <View style={styles.plusBadge}>
+                    <View style={[styles.plusBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
                       <Ionicons name="add" size={20} color="#FFFFFF" />
                     </View>
                   </Animated.View>
                 </Pressable>
-                <Text style={styles.uploadPrompt}>TAP TO UPLOAD</Text>
+                <Text style={[styles.uploadPrompt, { color: colors.primary }]}>TAP TO UPLOAD</Text>
               </View>
 
               {/* Input Field Container */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>FULL NAME</Text>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FULL NAME</Text>
                 
                 <Animated.View
                   style={[
                     styles.inputWrapper,
-                    { borderColor: borderInterpolation },
+                    { backgroundColor: colors.card, borderColor: borderInterpolation },
                     isFocused && styles.inputWrapperFocused
                   ]}
                 >
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { color: colors.text }]}
                     placeholder="Enter your name"
-                    placeholderTextColor="rgba(118, 117, 134, 0.5)"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
                     value={name}
                     onChangeText={setName}
                     onFocus={handleInputFocus}
@@ -277,18 +382,110 @@ export default function ProfileCompletionScreen() {
                     maxLength={30}
                     returnKeyType="done"
                   />
-                  <Feather name="user" size={20} color="rgba(118, 117, 134, 0.5)" style={styles.inputIcon} />
+                  <Feather name="user" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
                 </Animated.View>
               </View>
 
+              {/* Phone Number Field */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PHONE NUMBER</Text>
+                
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.card, borderColor: colors.border }
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.textInput, { color: colors.text }]}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
+                  <Feather name="phone" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                </View>
+              </View>
+
+              {/* Email Address Field */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>EMAIL ADDRESS</Text>
+                
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.card, borderColor: colors.border }
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.textInput, { color: colors.text }]}
+                    placeholder="Enter email address"
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    value={email}
+                    onChangeText={handleEmailChange}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    maxLength={50}
+                  />
+                  <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                </View>                 {!isVerified && !showOtpField && (
+                  <TouchableOpacity
+                    style={[styles.verifyButton, { backgroundColor: colors.primaryLight }]}
+                    onPress={handleVerifyEmail}
+                    disabled={isVerifying}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                    <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
+                      {isVerifying ? 'Verifying...' : 'Get Verified to Publish'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {showOtpField && !isVerified && (
+                  <View style={styles.otpSection}>
+                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>ENTER OTP CODE</Text>
+                    <View style={[styles.otpInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <TextInput
+                        style={[styles.otpInput, { color: colors.text }]}
+                        placeholder="Enter 4-digit code"
+                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                        value={otpCode}
+                        onChangeText={setOtpCode}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                      <Feather name="lock" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.otpConfirmButton, { backgroundColor: colors.primary }]}
+                      onPress={handleConfirmOtp}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.otpConfirmButtonText}>Confirm Code & Activate</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {email.trim().length > 0 && isVerified && (
+                  <View style={[styles.verifiedSuccessBadge, { backgroundColor: '#006A61', borderColor: '#006A61' }]}>
+                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                    <Text style={[styles.verifiedSuccessText, { color: '#FFFFFF' }]}>Verified Publisher Status Active</Text>
+                  </View>
+                )}
+              </View>
+
               {/* Asymmetric Info Card */}
-              <View style={styles.infoCard}>
-                <View style={styles.infoIconContainer}>
-                  <Ionicons name="shield-checkmark-outline" size={28} color="#4648D4" />
+              <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.infoIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
                 </View>
                 <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoTitle}>Your data is safe</Text>
-                  <Text style={styles.infoDesc}>
+                  <Text style={[styles.infoTitle, { color: colors.text }]}>Your data is safe</Text>
+                  <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
                     We only use your name to personalize your daily news briefings and community interactions.
                   </Text>
                 </View>
@@ -300,7 +497,7 @@ export default function ProfileCompletionScreen() {
       </KeyboardAvoidingView>
 
       {/* Footer - Fixed Bottom Action Area */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           style={styles.buttonWrapper}
           disabled={isButtonDisabled}
@@ -311,22 +508,61 @@ export default function ProfileCompletionScreen() {
           <Animated.View
             style={[
               styles.finishButton,
-              isButtonDisabled ? styles.finishButtonDisabled : styles.finishButtonActive,
+              isButtonDisabled 
+                ? [styles.finishButtonDisabled, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(199, 196, 215, 0.4)' }] 
+                : [styles.finishButtonActive, { backgroundColor: colors.primary }],
               { transform: [{ scale: buttonScale }] }
             ]}
           >
             <Text style={[
               styles.finishButtonText,
-              isButtonDisabled && { color: 'rgba(118, 117, 134, 0.6)' }
+              isButtonDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(118, 117, 134, 0.6)' }
             ]}>Finish Setup</Text>
-            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? "rgba(118, 117, 134, 0.4)" : "#FFFFFF"} />
+            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(118, 117, 134, 0.4)") : "#FFFFFF"} />
           </Animated.View>
         </Pressable>
 
         <View style={styles.stepTextContainer}>
-          <Text style={styles.stepText}>STEP 3 OF 3</Text>
+          <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
         </View>
       </View>
+
+      {/* Premium Custom Alert Modal */}
+      {dialogConfig.visible && (
+        <View style={styles.modalBackdrop}>
+          <TouchableWithoutFeedback onPress={closeCustomAlert}>
+            <View style={styles.modalOverlay} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Top Decorative Icon */}
+            <View 
+              style={[
+                styles.modalIconContainer, 
+                dialogConfig.type === 'success' && { backgroundColor: 'rgba(16, 185, 129, 0.12)' },
+                dialogConfig.type === 'error' && { backgroundColor: 'rgba(239, 68, 68, 0.12)' },
+                dialogConfig.type === 'warning' && { backgroundColor: 'rgba(245, 158, 11, 0.12)' },
+                dialogConfig.type === 'info' && { backgroundColor: colors.primaryLight },
+              ]}
+            >
+              {dialogConfig.type === 'success' && <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />}
+              {dialogConfig.type === 'error' && <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />}
+              {dialogConfig.type === 'warning' && <Ionicons name="warning-outline" size={32} color="#F59E0B" />}
+              {dialogConfig.type === 'info' && <Ionicons name="information-circle-outline" size={32} color={colors.primary} />}
+            </View>
+
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{dialogConfig.title}</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{dialogConfig.message}</Text>
+
+            <TouchableOpacity 
+              style={[styles.modalButton, { backgroundColor: colors.primary }]}
+              onPress={closeCustomAlert}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -375,7 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: {
     width: 40,
@@ -414,10 +650,9 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#0B1C30',
     lineHeight: 40,
     letterSpacing: -0.64,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -426,7 +661,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
   },
   uploaderSection: {
@@ -496,7 +731,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4648D4',
     letterSpacing: 0.3,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   inputContainer: {
     marginBottom: 24,
@@ -506,14 +741,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#464554',
     letterSpacing: 0.6,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 8,
     paddingLeft: 4,
   },
   inputWrapper: {
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: 'rgba(199, 196, 215, 0.3)',
     flexDirection: 'row',
@@ -522,7 +756,6 @@ const styles = StyleSheet.create({
   },
   inputWrapperFocused: {
     borderColor: '#4648D4',
-    backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
         shadowColor: '#4648D4',
@@ -538,9 +771,8 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     height: '100%',
-    color: '#0B1C30',
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   inputIcon: {
     marginLeft: 12,
@@ -582,8 +814,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0B1C30',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 4,
   },
   infoDesc: {
@@ -591,7 +822,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#464554',
     lineHeight: 20,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   footer: {
     backgroundColor: '#F8F9FF',
@@ -636,7 +867,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   stepTextContainer: {
     marginTop: 4,
@@ -646,6 +877,146 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#C7C4D7',
     letterSpacing: 1.1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.2)',
+  },
+  verifyButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  verifiedSuccessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  verifiedSuccessText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  otpSection: {
+    marginTop: 12,
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.15)',
+    backgroundColor: 'rgba(70, 72, 212, 0.02)',
+  },
+  otpLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: 1.0,
+  },
+  otpInputWrapper: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  otpInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    fontWeight: '600',
+    letterSpacing: 2,
+  },
+  otpConfirmButton: {
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  otpConfirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    width: width - 48,
+    maxWidth: 340,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '400',
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

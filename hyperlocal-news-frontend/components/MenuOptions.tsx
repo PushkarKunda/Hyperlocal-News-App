@@ -33,7 +33,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
   const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const displayName = user?.name || 'Alex Rivera';
 
   // Tracks native modal visibility during slide close animations
@@ -165,10 +165,19 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
     ]).start(() => {
       onClose();
       // Navigate to target screen using replace/push
-      if (route === '/' || route === '/shorts' || route === '/local' || route === '/discover' || route === '/profile' || route === '/settings') {
+      if (route === '/' || route === '/shorts' || route === '/local' || route === '/discover' || route === '/profile') {
         router.replace(route as any);
       } else {
-        router.push(route as any);
+        let finalRoute = route;
+        if (route === '/settings') {
+          const fromTab = pathname.replace(/^\/\(tabs\)/, '') || '/';
+          if (fromTab === '/articles') {
+            finalRoute = '/(tabs)/settings?from=articles';
+          } else if (fromTab === '/events') {
+            finalRoute = '/(tabs)/settings?from=events';
+          }
+        }
+        router.push(finalRoute as any);
       }
     });
   };
@@ -191,8 +200,10 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
       }),
     ]).start(() => {
       onClose();
-      // Gracefully redirect back to onboarding language selector
-      router.replace('/(onboarding)/language' as any);
+      // Clear authenticated state and persisted AsyncStorage tokens
+      logout();
+      // Gracefully redirect back to auth flow
+      router.replace('/(auth)/login' as any);
     });
   };
 
@@ -223,12 +234,21 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
         >
           {/* Header row: profile picture + close button */}
           <View style={styles.headerRow}>
-            <View style={[styles.avatarContainer, { borderColor: colors.primary }]}>
-              <Image
-                source={require('@/assets/immersive_feed/f8a7444eb4e0445e94186837bf33bd7f2f8b5681.png')}
-                style={styles.avatarImage}
-                contentFit="cover"
-              />
+            <View style={[styles.avatarContainer, { borderColor: colors.primary, backgroundColor: isDark ? '#1C1C2E' : '#EFF4FF' }]}>
+              {user?.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={30} color={colors.primary} />
+              )}
+              {user?.isPublisher && (
+                <View style={[styles.verifiedBadge, { borderColor: isDark ? colors.surface : '#EFF4FF' }]}>
+                  <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
+                </View>
+              )}
             </View>
             <TouchableOpacity
               style={styles.closeButton}
@@ -242,7 +262,28 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
           {/* User detail info headings */}
           <View style={styles.userInfoContainer}>
             <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
-            <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Premium Subscriber</Text>
+            {user?.isGuest ? (
+              <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Guest Account</Text>
+            ) : user?.isPublisher ? (
+              <View style={styles.drawerPublisherBadge}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+                <Text style={[styles.drawerPublisherText, { color: colors.primary }]}>Publisher</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  handleClose();
+                  setTimeout(() => {
+                    router.push('/(onboarding)/profile');
+                  }, 280);
+                }}
+                activeOpacity={0.7}
+                style={styles.drawerVerifyButton}
+              >
+                <Text style={[styles.userSubtitle, { color: colors.primary, fontWeight: '700', marginTop: 0 }]}>Not Verified</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Navigation Links Scroll List */}
@@ -330,7 +371,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
               {/* Help & Support */}
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => handleNavigate('/settings')}
+                onPress={() => handleNavigate('/help')}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -414,6 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   avatarImage: {
     width: '100%',
@@ -434,14 +476,14 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#4648D4',
     lineHeight: 32,
   },
   userSubtitle: {
     fontSize: 14,
     fontWeight: '400',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#464554',
     lineHeight: 20,
     marginTop: 4,
@@ -463,10 +505,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     height: 48,
   },
-  activeMenuItem: {
-    backgroundColor: '#86F2E4',
-    borderRadius: 9999,
-  },
   inactiveMenuItem: {
     backgroundColor: 'transparent',
   },
@@ -478,14 +516,8 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.6,
-  },
-  activeMenuLabel: {
-    color: '#006F66',
-  },
-  inactiveMenuLabel: {
-    color: '#464554',
   },
   divider: {
     height: 1,
@@ -508,7 +540,7 @@ const styles = StyleSheet.create({
   footerBrand: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: 'rgba(96, 99, 238, 0.4)',
     letterSpacing: 0.6,
     lineHeight: 28,
@@ -516,11 +548,45 @@ const styles = StyleSheet.create({
   footerVersion: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#767586',
     letterSpacing: 1.0,
     textTransform: 'uppercase',
     lineHeight: 16,
     marginTop: 4,
+  },
+  drawerPublisherBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  drawerPublisherText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  drawerVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    backgroundColor: '#006A61',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
 });

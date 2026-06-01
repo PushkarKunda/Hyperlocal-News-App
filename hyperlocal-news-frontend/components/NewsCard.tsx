@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTimeAgo } from '@/utils/formatters';
 
@@ -20,9 +20,22 @@ export function NewsCard({ item, containerHeight }: any) {
         return text;
     };
 
-    const ActionButton = ({ iconName, count, label }: any) => (
+    const handleShare = async () => {
+        try {
+            const shareUrl = item.url || 'https://hyperlocal.app';
+            await Share.share({
+                message: `Check out this article: ${headline}\n\n${content}\n\nRead more here: ${shareUrl}\n\nShared via HyperLocal News App.`,
+                url: shareUrl,
+                title: headline,
+            });
+        } catch (error) {
+            // share dismissed or failed silently
+        }
+    };
+
+    const ActionButton = ({ iconName, count, label, onPress }: any) => (
         <View style={styles.actionButtonContainer}>
-            <TouchableOpacity style={styles.actionRound} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.actionRound} activeOpacity={0.7} onPress={onPress}>
                 <Ionicons name={iconName} size={26} color="#013432" />
             </TouchableOpacity>
             {count && <Text style={styles.actionText}>{count}</Text>}
@@ -41,7 +54,7 @@ export function NewsCard({ item, containerHeight }: any) {
                 {/* Floating Action Column */}
                 <View style={styles.floatingActions}>
                     <ActionButton iconName="heart-outline" count={item.stats?.likes > 1000 ? '1.2k' : item.stats?.likes || '1.2k'} />
-                    <ActionButton iconName="share-social-outline" count={item.stats?.shares || '450'} />
+                    <ActionButton iconName="share-social-outline" count={item.stats?.shares || '450'} onPress={handleShare} />
                     <ActionButton iconName="bookmark-outline" label="Save" />
                 </View>
 
@@ -125,7 +138,7 @@ const styles = StyleSheet.create({
         lineHeight: 34,
         marginBottom: 16,
         paddingRight: 40,
-        fontFamily: 'Newsreader_700Bold', // Preserve our fancy font
+        fontFamily: 'Poppins_700Bold', // Preserve our fancy font
     },
     contentSnippet: {
         fontSize: 17,

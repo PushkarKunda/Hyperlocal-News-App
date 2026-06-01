@@ -1,16 +1,20 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, Easing, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Animated, Easing, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { Colors } from '@/constants/Colors';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const router = useRouter();
 
   // Intro branding animations
@@ -81,13 +85,9 @@ export default function SplashScreen() {
       if (isAuthenticated && isOnboarded) {
         router.replace('/(tabs)');
       } else if (isAuthenticated) {
-        if (user?.name) {
-          router.replace('/(onboarding)/complete');
-        } else {
-          router.replace('/(onboarding)/profile');
-        }
-      } else {
         router.replace('/(onboarding)/language');
+      } else {
+        router.replace('/(auth)/login');
       }
     }, 2800);
 
@@ -126,7 +126,11 @@ export default function SplashScreen() {
         >
           {/* Logo Card with Scale-up, Fade-in & Shadow */}
           <View style={styles.logoContainer}>
-            <Ionicons name="cloud-done" size={48} color="#FFFFFF" />
+            <Image 
+              source={require('../assets/logo.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain" 
+            />
           </View>
 
           {/* App Name/Headline */}
@@ -190,18 +194,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    backgroundColor: '#4648D4',
+    width: 140,
+    height: 140,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+    padding: 10,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   textContainer: {
     alignItems: 'center',

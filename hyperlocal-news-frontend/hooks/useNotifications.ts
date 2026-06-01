@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { MOCK_NOTIFICATIONS } from '@/data';
 import { Notification } from '@/types';
 import { API_CONFIG, notificationsApi } from '@/services/api';

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiService } from '@/utils/apiClient';
 
 export interface User {
   id: string;
@@ -11,6 +12,12 @@ export interface User {
   language?: string;
   theme?: 'light' | 'dark' | 'system';
   textSize?: 'small' | 'medium' | 'large';
+  email?: string;
+  isPublisher?: boolean;
+  emailVerified?: boolean;
+  state?: string;
+  district?: string;
+  interests?: string[];
 }
 
 interface AuthState {
@@ -22,7 +29,7 @@ interface AuthState {
   verifyOtp: (phoneNumber: string, otp: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => void;
-  updateProfile: (name: string, avatar?: string) => void;
+  updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string, isPublisher?: boolean, emailVerified?: boolean) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
   updateTextSize: (textSize: 'small' | 'medium' | 'large') => void;
@@ -39,30 +46,26 @@ export const useAuthStore = create<AuthState>()(
 
       sendOtp: async (phoneNumber: string) => {
         set({ isLoading: true });
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await ApiService.sendOtp(phoneNumber);
         set({ isLoading: false });
-        // In a real app, you might check if the phone number is valid or blocked here
-        return true;
+        return response.success && response.data === true;
       },
 
       verifyOtp: async (phoneNumber: string, otp: string) => {
         set({ isLoading: true });
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await ApiService.verifyOtp(phoneNumber, otp);
         
-        // Mock successful verification
-        set({
-          user: {
-            id: Math.random().toString(36).substr(2, 9),
-            phoneNumber,
-            isGuest: false,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        });
+        if (response.success && response.data) {
+          set({
+            user: response.data,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        }
         
-        return true;
+        set({ isLoading: false });
+        return false;
       },
 
       loginAsGuest: () => {
@@ -84,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateProfile: (name: string, avatar?: string) => {
+      updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string, isPublisher?: boolean, emailVerified?: boolean) => {
         set((state) => {
           if (!state.user) return {};
           return {
@@ -92,6 +95,10 @@ export const useAuthStore = create<AuthState>()(
               ...state.user,
               name,
               avatar: avatar || state.user.avatar,
+              email: email !== undefined ? email : state.user.email,
+              phoneNumber: phoneNumber || state.user.phoneNumber,
+              isPublisher: isPublisher !== undefined ? isPublisher : state.user.isPublisher,
+              emailVerified: emailVerified !== undefined ? emailVerified : state.user.emailVerified,
             },
           };
         });

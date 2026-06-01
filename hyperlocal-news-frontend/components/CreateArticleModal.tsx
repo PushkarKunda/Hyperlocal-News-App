@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerSpacer: {
     width: 40,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   formGroup: {
     gap: 8,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     paddingLeft: 4,
   },
   dashedUploadCard: {
@@ -468,12 +468,12 @@ const styles = StyleSheet.create({
   uploadCardMainText: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   uploadCardSubText: {
     fontSize: 12,
     color: '#9CA3AF',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginTop: 2,
   },
   coverPreviewContainer: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   coverPresetContainer: {
     marginTop: 12,
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   presetHeading: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   presetsScroll: {
     gap: 12,
@@ -550,14 +550,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   textInput: {
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     borderWidth: 1,
   },
   textArea: {
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   stickyFooter: {
     position: 'absolute',
@@ -604,13 +604,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   footerWarningText: {
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 18,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     paddingHorizontal: 16,
   },
   pickerOverlay: {
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   pickerOptionsList: {
     padding: 8,
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   pickerOptionRowActive: {},
   pickerOptionLabel: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   pickerOptionLabelActive: {
     fontWeight: '600',

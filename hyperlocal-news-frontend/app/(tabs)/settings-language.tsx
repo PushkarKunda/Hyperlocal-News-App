@@ -3,24 +3,21 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { useLanguagesList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-import { Language } from '@/types';
-
-const { width } = Dimensions.get('window');
 
 interface LanguageCardProps {
   name: string;
@@ -65,29 +62,29 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
           styles.languageCard,
           isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? isDark ? '#2A2A4D' : '#E6E7FB'
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
         ]}
       >
-        {/* Sleek Selection Indicator in Top Right Corner */}
+        {/* Selection Indicator */}
         {isSelected && (
-          <View style={[styles.checkBadge, { backgroundColor: 'transparent' }]}>
+          <View style={styles.checkBadge}>
             <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
           </View>
         )}
 
-        {/* Large Script Preview Circle */}
-        <View 
+        {/* Script Preview Circle */}
+        <View
           style={[
-            styles.glyphCircle, 
-            { 
-              backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
+            styles.glyphCircle,
+            {
+              backgroundColor: isSelected ? colors.primary : isDark ? '#2A2A3C' : '#F1F5F9',
               borderColor: isSelected ? colors.primary : colors.border,
-            }
+            },
           ]}
         >
           <Text style={[styles.glyphText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
@@ -96,12 +93,12 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
         </View>
 
         {/* Language Name */}
-        <Text 
+        <Text
           style={[
-            styles.languageName, 
+            styles.languageName,
             { color: isSelected ? colors.primary : colors.text },
-            isSelected && styles.languageNameSelected
-          ]} 
+            isSelected && styles.languageNameSelected,
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -111,41 +108,35 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
   );
 }
 
-export default function LanguageScreen() {
+export default function SettingsLanguageScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const { data: languagesList = [], isLoading } = useLanguagesList();
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const buttonScale = useRef(new Animated.Value(1)).current;
+  const { user, updateLanguage } = useAuthStore();
 
-  const handleContinuePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
+  // Find the current language id from the user's stored language name
+  const currentLangId = languagesList.find(l => l.name === user?.language)?.id ?? 'en';
+  const [selectedLanguage, setSelectedLanguage] = useState(currentLangId);
+
+  const saveScale = useRef(new Animated.Value(1)).current;
+
+  const handleSavePressIn = () => {
+    Animated.spring(saveScale, { toValue: 0.95, useNativeDriver: true, tension: 180, friction: 12 }).start();
   };
 
-  const handleContinuePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
+  const handleSavePressOut = () => {
+    Animated.spring(saveScale, { toValue: 1, useNativeDriver: true, tension: 180, friction: 12 }).start();
   };
 
-  const { updateLanguage } = useAuthStore();
-
-  const handleContinue = () => {
-    const matchedLanguage = languagesList.find(l => l.id === selectedLanguage);
-    if (matchedLanguage) {
-      updateLanguage(matchedLanguage.name);
+  const handleSave = () => {
+    const matched = languagesList.find(l => l.id === selectedLanguage);
+    if (matched) {
+      updateLanguage(matched.name);
     }
-    router.push('/(onboarding)/location');
+    router.replace('/(tabs)');
   };
 
   if (isLoading) {
@@ -157,38 +148,39 @@ export default function LanguageScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-      {/* Simulated Background Blur Vectors */}
-      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.05)' }]} />
-      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.05)' }]} />
+      {/* Background Blurs */}
+      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.04)' }]} />
+      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.04)' }]} />
 
-      {/* Header Container */}
-      <View style={[styles.header, { borderBottomColor: colors.divider }]}>
-        <View style={styles.headerSpacer} />
-
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
-
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.headerLeftButton, { backgroundColor: colors.card }]}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Language</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Main Content Area */}
+      {/* Subtitle */}
+      <View style={styles.subtitleSection}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Select your preferred language to read stories
+        </Text>
+      </View>
+
+      {/* Language Grid */}
       <ScrollView
-        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Headline Section */}
-        <View style={styles.headlineSection}>
-          <Text style={[styles.mainTitle, { color: colors.text }]}>Choose your language</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Select your preferred language to read stories.
-          </Text>
-        </View>
-
-        {/* Bento Grid of Language Cards */}
         <View style={styles.gridContainer}>
           {languagesList.map((language) => (
             <LanguageCard
@@ -202,28 +194,27 @@ export default function LanguageScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Action Footer */}
-      <View style={[styles.footer, { backgroundColor: colors.background }]}>
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+      {/* Save Footer */}
+      <View style={[styles.footer, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+        <Animated.View style={{ transform: [{ scale: saveScale }] }}>
           <Pressable
-            style={styles.continueButton}
-            onPress={handleContinue}
-            onPressIn={handleContinuePressIn}
-            onPressOut={handleContinuePressOut}
+            style={styles.saveButton}
+            onPress={handleSave}
+            onPressIn={handleSavePressIn}
+            onPressOut={handleSavePressOut}
           >
-            <Text style={styles.continueButtonText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.continueIcon} />
+            <Ionicons name="checkmark" size={20} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.saveButtonText}>Save Changes</Text>
           </Pressable>
         </Animated.View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FF',
   },
   purpleBlur: {
     position: 'absolute',
@@ -232,7 +223,6 @@ const styles = StyleSheet.create({
     width: 156,
     height: 393.59,
     borderRadius: 9999,
-    backgroundColor: 'rgba(70, 72, 212, 0.05)',
     zIndex: -1,
   },
   tealBlur: {
@@ -242,61 +232,52 @@ const styles = StyleSheet.create({
     width: 117,
     height: 295.19,
     borderRadius: 9999,
-    backgroundColor: 'rgba(0, 106, 97, 0.05)',
     zIndex: -1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    height: 64,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
+    position: 'relative',
   },
-  backButton: {
+  headerLeftButton: {
+    position: 'absolute',
+    left: 20,
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: 'rgba(70, 72, 212, 0.05)',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#4648D4',
-    fontFamily: 'Poppins_600SemiBold',
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
   },
   headerSpacer: {
     width: 40,
   },
-  scrollView: {
-    flex: 1,
+  subtitleSection: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 4,
+    alignItems: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 40,
-  },
-  headlineSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-    gap: 8,
-  },
-  mainTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: -0.64,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#464554',
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    lineHeight: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   gridContainer: {
     flexDirection: 'row',
@@ -315,7 +296,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     borderWidth: 2,
-    borderStyle: 'solid',
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -323,25 +303,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   languageCardSelected: {
-    backgroundColor: '#E6E7FB',
     borderColor: '#4648D4',
-    borderStyle: 'solid',
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
     elevation: 3,
   },
   languageCardUnselected: {
-    backgroundColor: '#FFFFFF',
     borderColor: 'rgba(199, 196, 215, 0.3)',
-    borderStyle: 'solid',
   },
   checkBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     zIndex: 1,
   },
@@ -349,7 +321,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 40,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -360,7 +331,6 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: '#E6E7FB',
   },
   glyphText: {
     fontSize: 16,
@@ -375,17 +345,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   languageNameSelected: {
-    color: '#4648D4',
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
   footer: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 16,
-    backgroundColor: '#F8F9FF',
+    paddingTop: 12,
   },
-  continueButton: {
+  saveButton: {
     height: 56,
     borderRadius: 9999,
     backgroundColor: '#4648D4',
@@ -398,15 +365,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
   },
-  continueButtonText: {
+  saveButtonText: {
     color: '#FFF',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
-    lineHeight: 28,
-  },
-  continueIcon: {
-    marginLeft: 8,
-    marginTop: 2,
   },
 });

@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textTransform: 'capitalize',
   },
   clearText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   tabWrapper: {
     paddingVertical: 14,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   tabPillText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginLeft: 4,
   },
   cardsContainer: {
@@ -317,13 +317,13 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 9,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
   },
   titleText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 19,
   },
   metaRow: {
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   dot: {
     width: 3,
@@ -363,12 +363,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 20,
@@ -391,6 +391,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
 });

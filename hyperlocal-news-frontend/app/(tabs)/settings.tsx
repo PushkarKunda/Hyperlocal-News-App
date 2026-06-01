@@ -6,13 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  useColorScheme,
   Alert,
   Image,
   Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
@@ -24,6 +23,7 @@ export default function SettingsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   
   const { user, logout, updateTheme, updateTextSize } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -80,9 +80,9 @@ export default function SettingsScreen() {
     ? user.textSize.charAt(0).toUpperCase() + user.textSize.slice(1) 
     : 'Medium';
 
-  const displayName = user?.name || 'Rahul Kumar';
-  const displayPhone = user?.phoneNumber || '+91 98765 43210';
-  const avatarUrl = user?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400';
+  const isGuest = user?.isGuest;
+  const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
+  const displayPhone = user?.phoneNumber || (isGuest ? 'No phone added' : 'Setup Phone');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -93,16 +93,22 @@ export default function SettingsScreen() {
       {/* Symmetrical Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.primaryLight }]}
-          onPress={() => router.back()}
+          style={styles.headerLeftButton}
+          onPress={() => {
+            if (from === 'articles') {
+              router.push('/(tabs)/articles');
+            } else if (from === 'events') {
+              router.push('/(tabs)/events');
+            } else {
+              router.back();
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
-        
-        <View style={styles.headerPlaceholder} />
       </View>
 
       <ScrollView 
@@ -123,25 +129,54 @@ export default function SettingsScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarGradient}
                 >
-                  <View style={[styles.avatarInner, { borderColor: colors.card }]}>
-                    <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  <View style={[styles.avatarInner, { borderColor: colors.card, justifyContent: 'center', alignItems: 'center', backgroundColor: darkModeEnabled ? '#1C1C2E' : '#EFF4FF' }]}>
+                    {user?.avatar ? (
+                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <Ionicons name="person" size={32} color={colors.primary} />
+                    )}
                   </View>
                 </LinearGradient>
                 
                 {/* Verified Check Badge */}
-                <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
-                  <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
-                </View>
+                {user?.isPublisher && (
+                  <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
+                    <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
+                  </View>
+                )}
               </View>
 
               <View style={styles.profileDetails}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
                 <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>{displayPhone}</Text>
+                {user?.email ? (
+                  <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
+                ) : (
+                  user?.isGuest && <Text style={[styles.profilePhone, { color: colors.textTertiary, fontSize: 11, marginTop: 2 }]}>No email added</Text>
+                )}
                 
-                <View style={styles.premiumBadgeContainer}>
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumBadgeText}>Premium Member</Text>
-                  </View>
+                 <View style={styles.premiumBadgeContainer}>
+                  {user?.isPublisher ? (
+                    <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
+                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
+                    </View>
+                  ) : (
+                    isGuest ? (
+                      <View style={[styles.premiumBadge, { backgroundColor: darkModeEnabled ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
+                        <Text style={[styles.premiumBadgeText, { color: colors.primary }]}>Guest Account</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
+                        onPress={() => router.push('/(onboarding)/profile')}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                 </View>
               </View>
 
@@ -164,7 +199,7 @@ export default function SettingsScreen() {
             <TouchableOpacity 
               style={styles.settingItem} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/language')}
+              onPress={() => router.push('/(tabs)/settings-language' as any)}
             >
               <View style={styles.settingLabelContainer}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
@@ -184,7 +219,7 @@ export default function SettingsScreen() {
             <TouchableOpacity 
               style={styles.settingItem} 
               activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/location')}
+              onPress={() => router.push('/(tabs)/settings-location' as any)}
             >
               <View style={styles.settingLabelContainer}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(0, 106, 97, 0.08)' }]}>
@@ -193,29 +228,14 @@ export default function SettingsScreen() {
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Location</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>Hyderabad, Telangana</Text>
+                <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.state || 'Telangana'}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-            {/* Interests */}
-            <TouchableOpacity 
-              style={styles.settingItem} 
-              activeOpacity={0.7}
-              onPress={() => router.push('/(onboarding)/interests')}
-            >
-              <View style={styles.settingLabelContainer}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(217, 119, 6, 0.08)' }]}>
-                  <Ionicons name="heart-outline" size={20} color="#D97706" />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Interests</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-            </TouchableOpacity>
 
-            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
             {/* Notifications Switch */}
             <View style={styles.settingItem}>
@@ -333,7 +353,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Premium Capsule Logout Button */}
+        {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -375,13 +395,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    height: 64,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(199, 196, 215, 0.1)',
+    position: 'relative',
   },
-  backButton: {
+  headerLeftButton: {
+    position: 'absolute',
+    left: 20,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -392,12 +414,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
-  },
-  headerPlaceholder: {
-    width: 40,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -412,7 +430,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#767586',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.2,
     marginLeft: 4,
   },
@@ -485,14 +503,13 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0B1C30',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
   profilePhone: {
     fontSize: 13,
     color: '#767586',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   premiumBadgeContainer: {
     flexDirection: 'row',
@@ -508,7 +525,7 @@ const styles = StyleSheet.create({
     color: '#006F66',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -519,6 +536,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(70, 72, 212, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
   settingItem: {
     flexDirection: 'row',
@@ -543,8 +562,7 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0B1C30',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   settingValueContainer: {
     flexDirection: 'row',
@@ -555,13 +573,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#4648D4',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   versionText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#767586',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   divider: {
     height: 1,
@@ -590,5 +608,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Poppins_600SemiBold',
+  },
+  publisherBadge: {
+    backgroundColor: '#006A61',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+  publisherBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  publisherVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  publisherVerifyButtonText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });

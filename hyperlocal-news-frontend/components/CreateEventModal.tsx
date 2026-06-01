@@ -180,15 +180,15 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
           <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
             
             {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
+            <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
               <TouchableOpacity
-                style={styles.closeButton}
+                style={[styles.closeButton, { backgroundColor: colorScheme === 'dark' ? '#2E2E48' : '#F3F4F6' }]}
                 onPress={handleClose}
                 activeOpacity={0.7}
               >
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Create Event</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>Create Event</Text>
               <View style={styles.headerSpacer} />
             </View>
 
@@ -207,7 +207,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
 
               {/* Cover Photo */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Event Cover Photo</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Event Cover Photo</Text>
                 {coverImage ? (
                   <View style={styles.coverPreviewContainer}>
                     <Image source={{ uri: coverImage }} style={styles.coverImagePreview} />
@@ -222,22 +222,22 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={styles.dashedUploadCard}
+                    style={[styles.dashedUploadCard, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.05)' : 'rgba(103,100,242,0.03)', borderColor: colorScheme === 'dark' ? '#374151' : 'rgba(103,100,242,0.3)' }]}
                     onPress={() => setShowImagePicker(true)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.uploadIconWrapper}>
-                      <Ionicons name="image-outline" size={24} color="#4648D4" />
+                      <Ionicons name="image-outline" size={24} color={colors.primary} />
                     </View>
-                    <Text style={styles.uploadCardMainText}>Tap to upload image</Text>
-                    <Text style={styles.uploadCardSubText}>Recommended size: 1200x675px</Text>
+                    <Text style={[styles.uploadCardMainText, { color: colors.primary }]}>Tap to upload image</Text>
+                    <Text style={[styles.uploadCardSubText, { color: colors.textSecondary }]}>Recommended size: 1200x675px</Text>
                   </TouchableOpacity>
                 )}
 
                 {/* Horizontal Cover Picker presets */}
                 {showImagePicker && (
-                  <View style={styles.coverPresetContainer}>
-                    <Text style={styles.presetHeading}>Select a Preset Theme Cover:</Text>
+                  <View style={[styles.coverPresetContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.presetHeading, { color: colors.primary }]}>Select a Preset Theme Cover:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsScroll}>
                       {COVER_PRESETS.map((preset) => (
                         <TouchableOpacity
@@ -262,11 +262,11 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
 
               {/* Event Title */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Event Title</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Event Title</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   placeholder="What's the name of the event?"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textTertiary}
                   value={title}
                   onChangeText={(text) => {
                     setTitle(text);
@@ -277,11 +277,11 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
 
               {/* Description */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Description</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Description</Text>
                 <TextInput
-                  style={[styles.textInput, styles.textArea]}
+                  style={[styles.textInput, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   placeholder="Tell the community about your event, what to expect, and any special requirements..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textTertiary}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -296,86 +296,86 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
               {/* Date & Time Row */}
               <View style={styles.rowLayout}>
                 <View style={[styles.formGroup, styles.halfColumn]}>
-                  <Text style={styles.fieldLabel}>Date</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Date</Text>
                   <TextInput
-                    style={styles.textInputWithIcon}
+                    style={[styles.textInputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     placeholder="e.g. Sat, May 25"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textTertiary}
                     value={date}
                     onChangeText={setDate}
                   />
-                  <Ionicons name="calendar-outline" size={18} color="#9CA3AF" style={styles.fieldIcon} />
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.fieldIcon} />
                 </View>
 
                 <View style={[styles.formGroup, styles.halfColumn]}>
-                  <Text style={styles.fieldLabel}>Time</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Time</Text>
                   <TextInput
-                    style={styles.textInputWithIcon}
+                    style={[styles.textInputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     placeholder="e.g. 6:00 PM"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textTertiary}
                     value={time}
                     onChangeText={setTime}
                   />
-                  <Ionicons name="time-outline" size={18} color="#9CA3AF" style={styles.fieldIcon} />
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.fieldIcon} />
                 </View>
               </View>
 
               {/* Location/Venue */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Location / Venue</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Location / Venue</Text>
                 <View style={styles.inputContainerWithLeftIcon}>
                   <TextInput
-                    style={styles.textInputLeftIcon}
+                    style={[styles.textInputLeftIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     placeholder="Search for a location or address"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textTertiary}
                     value={locationName}
                     onChangeText={setLocationName}
                   />
-                  <Ionicons name="location-outline" size={18} color="#9CA3AF" style={styles.leftFieldIcon} />
+                  <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={styles.leftFieldIcon} />
                 </View>
               </View>
 
               {/* Category Dropdown Selector */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Category</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Category</Text>
                 <TouchableOpacity
-                  style={styles.dropdownSelector}
+                  style={[styles.dropdownSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
                   onPress={() => setPickerType('category')}
                 >
-                  <Text style={[styles.dropdownText, !category && styles.dropdownPlaceholder]}>
+                  <Text style={[styles.dropdownText, { color: category ? colors.text : colors.textTertiary }]}>
                     {category || 'Select a category'}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                  <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               {/* City / Area Dropdown Selector */}
               <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>City / Area</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>City / Area</Text>
                 <TouchableOpacity
-                  style={styles.dropdownSelector}
+                  style={[styles.dropdownSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
                   onPress={() => setPickerType('neighborhood')}
                 >
-                  <Text style={[styles.dropdownText, !neighborhood && styles.dropdownPlaceholder]}>
+                  <Text style={[styles.dropdownText, { color: neighborhood ? colors.text : colors.textTertiary }]}>
                     {neighborhood || 'Choose neighborhood'}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                  <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             </ScrollView>
 
             {/* Sticky Action Footer */}
-            <View style={[styles.stickyFooter, { paddingBottom: Math.max(20, insets.bottom + 8) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(20, insets.bottom + 8) }]}>
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, { backgroundColor: colors.primary }]}
                 onPress={handleSubmit}
                 activeOpacity={0.8}
               >
                 <Text style={styles.submitButtonText}>Submit for Review</Text>
               </TouchableOpacity>
-              <Text style={styles.footerWarningText}>
+              <Text style={[styles.footerWarningText, { color: colors.textSecondary }]}>
                 Events are reviewed before publishing to ensure community safety and guideline adherence. This usually takes 1-2 hours.
               </Text>
             </View>
@@ -395,13 +395,13 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
               activeOpacity={1}
               onPress={() => setPickerType(null)}
             >
-              <View style={styles.pickerSheet}>
-                <View style={styles.pickerHeader}>
-                  <Text style={styles.pickerTitle}>
+              <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
+                <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.pickerTitle, { color: colors.text }]}>
                     {pickerType === 'category' ? 'Select Category' : 'Select Neighborhood'}
                   </Text>
                   <TouchableOpacity onPress={() => setPickerType(null)}>
-                    <Ionicons name="close" size={22} color="#464554" />
+                    <Ionicons name="close" size={22} color={colors.text} />
                   </TouchableOpacity>
                 </View>
                 <ScrollView contentContainerStyle={styles.pickerOptionsList}>
@@ -410,7 +410,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                       key={item}
                       style={[
                         styles.pickerOptionRow,
-                        (pickerType === 'category' ? category : neighborhood) === item && styles.pickerOptionRowActive,
+                        (pickerType === 'category' ? category : neighborhood) === item && [styles.pickerOptionRowActive, { backgroundColor: colors.primaryLight }],
                       ]}
                       onPress={() => {
                         if (pickerType === 'category') {
@@ -426,13 +426,14 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                       <Text
                         style={[
                           styles.pickerOptionLabel,
-                          (pickerType === 'category' ? category : neighborhood) === item && styles.pickerOptionLabelActive,
+                          { color: colors.text },
+                          (pickerType === 'category' ? category : neighborhood) === item && [styles.pickerOptionLabelActive, { color: colors.primary }],
                         ]}
                       >
                         {item}
                       </Text>
                       {(pickerType === 'category' ? category : neighborhood) === item ? (
-                        <Ionicons name="checkmark-circle" size={20} color="#4648D4" />
+                        <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
                       ) : null}
                     </TouchableOpacity>
                   ))}
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#111827',
   },
   headerSpacer: {
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   formGroup: {
     gap: 8,
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     paddingLeft: 4,
   },
   dashedUploadCard: {
@@ -550,12 +551,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   uploadCardSubText: {
     fontSize: 12,
     color: '#9CA3AF',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginTop: 2,
   },
   coverPreviewContainer: {
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   coverPresetContainer: {
     marginTop: 12,
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#4648D4',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   presetsScroll: {
     gap: 12,
@@ -635,7 +636,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   textInput: {
     backgroundColor: '#F9FAFB',
@@ -644,7 +645,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: '#111827',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     borderColor: '#F3F4F6',
     borderWidth: 1,
   },
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: '#111827',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     borderColor: '#F3F4F6',
     borderWidth: 1,
   },
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: '#111827',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     borderColor: '#F3F4F6',
     borderWidth: 1,
   },
@@ -710,7 +711,7 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 15,
     color: '#111827',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   dropdownPlaceholder: {
     color: '#9CA3AF',
@@ -739,14 +740,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   footerWarningText: {
     fontSize: 11,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 18,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     paddingHorizontal: 16,
   },
   pickerOverlay: {
@@ -773,7 +774,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   pickerOptionsList: {
     padding: 8,
@@ -792,7 +793,7 @@ const styles = StyleSheet.create({
   pickerOptionLabel: {
     fontSize: 15,
     color: '#334155',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   pickerOptionLabelActive: {
     color: '#4648D4',

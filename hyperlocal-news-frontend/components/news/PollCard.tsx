@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Poll } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface PollCardProps {
   poll: Poll;
@@ -12,7 +13,7 @@ interface PollCardProps {
 }
 
 export function PollCard({ poll, onVote, onUndo }: PollCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
   const hasVoted = poll.hasVoted;

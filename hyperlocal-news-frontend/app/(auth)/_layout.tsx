@@ -1,11 +1,11 @@
 import { Stack, useRouter } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
 import { useEffect } from 'react';
 
 export default function AuthLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { isAuthenticated, isOnboarded, user } = useAuthStore();
@@ -15,14 +15,10 @@ export default function AuthLayout() {
       if (isOnboarded) {
         router.replace('/(tabs)');
       } else {
-        if (user?.name) {
-          router.replace('/(onboarding)/complete');
-        } else {
-          router.replace('/(onboarding)/profile');
-        }
+        router.replace('/(onboarding)/language');
       }
     }
-  }, [isAuthenticated, isOnboarded, user]);
+  }, [isAuthenticated, isOnboarded]);
 
   if (isAuthenticated) {
     return null;

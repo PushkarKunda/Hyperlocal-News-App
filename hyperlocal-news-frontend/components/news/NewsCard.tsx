@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { NewsArticle } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface NewsCardProps {
   article: NewsArticle;
@@ -13,7 +14,7 @@ interface NewsCardProps {
 }
 
 export function NewsCard({ article, onPress, onBookmarkPress, onSharePress }: NewsCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   const formattedDate = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true });

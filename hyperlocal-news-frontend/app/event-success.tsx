@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function EventSuccessScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -156,12 +157,12 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 30,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
   },
   subheading: {
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: 16,
@@ -185,11 +186,11 @@ const styles = StyleSheet.create({
   infoCardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   infoCardDescription: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 22,
   },
   footer: {
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   secondaryButton: {
     width: '100%',
@@ -220,6 +221,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

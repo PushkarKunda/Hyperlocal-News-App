@@ -6,7 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Typography } from '@/constants/Typography';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
-import { MOCK_SHORTS, ShortVideo } from '@/data/mockShorts';
+import { ShortVideo } from '@/types';
+import { useShortsList } from '@/hooks/useApi';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import MenuOptions from '@/components/MenuOptions';
 
 const { width, height } = Dimensions.get('window');
@@ -96,9 +98,6 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
               <Text key={index} style={styles.hashtag}>{tag}</Text>
             ))}
           </View>
-          
-          
-          
         </View>
       </LinearGradient>
 
@@ -119,6 +118,8 @@ export default function ShortsScreen() {
   const [listHeight, setListHeight] = useState(height);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
+  const { data: shorts = [], isLoading } = useShortsList();
+
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
       setActiveIndex(viewableItems[0].index || 0);
@@ -129,10 +130,18 @@ export default function ShortsScreen() {
     itemVisiblePercentThreshold: 50,
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.darkLoaderContainer}>
+        <LoadingSpinner fullScreen text="Loading shorts..." colorScheme="dark" color="#4648D4" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
       <FlatList
-        data={MOCK_SHORTS}
+        data={shorts}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <ShortVideoItem item={item} isActive={index === activeIndex} itemHeight={listHeight} />
@@ -157,6 +166,10 @@ export default function ShortsScreen() {
         pointerEvents="box-none"
       >
         <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setIsMenuVisible(true)} style={styles.menuLeftButton}>
+            <Ionicons name="menu" size={28} color="white" />
+          </TouchableOpacity>
+
           <View style={styles.tabsContainer}>
             <TouchableOpacity onPress={() => setActiveTab('Following')} style={styles.tabItem}>
               <Text style={[styles.tabText, activeTab === 'Following' && styles.activeTabText]}>Following</Text>
@@ -168,9 +181,6 @@ export default function ShortsScreen() {
               {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
-            <Ionicons name="menu" size={28} color="white" />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -204,14 +214,21 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    paddingTop: Spacing.sm,
+    height: 48,
+  },
+  menuLeftButton: {
+    position: 'absolute',
+    left: 0,
     paddingTop: Spacing.sm,
   },
   tabsContainer: {
     flexDirection: 'row',
     gap: Spacing.lg,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   tabItem: {
     alignItems: 'center',
@@ -348,17 +365,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     fontFamily: Typography.fonts.semiBold,
   },
-  swipeIndicatorContainer: {
-    alignItems: 'center',
-    opacity: 0.7,
-    marginTop: Spacing.sm,
-  },
-  swipeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontFamily: Typography.fonts.medium,
-    letterSpacing: 2,
-  },
   progressBarContainer: {
     position: 'absolute',
     bottom: 6,
@@ -377,5 +383,11 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: '#4648D4',
+  },
+  darkLoaderContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  useColorScheme,
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -13,6 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Category } from '@/types';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -93,7 +93,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onSelect,
   onViewFocused,
 }) => {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const flatListRef = useRef<FlatList>(null);
   

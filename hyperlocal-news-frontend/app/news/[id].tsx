@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, useColorScheme, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,34 +7,48 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import { MOCK_NEWS } from '@/data/mockNews';
+import { useArticleDetails } from '@/hooks/useApi';
 import { formatDate } from '@/utils/formatters';
 import { Badge } from '@/components/ui/Badge';
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 const { width } = Dimensions.get('window');
 
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
-  const article = MOCK_NEWS.find((item) => item.id === id);
+  // Load article dynamically using React Query Hook
+  const { data: article, isLoading } = useArticleDetails(id as string);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+        <LoadingSpinner fullScreen text="Loading story details..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   if (!article) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text }}>Article not found</Text>
+        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+        <Text style={{ color: colors.text, fontFamily: 'Poppins_500Medium', fontSize: 16 }}>Article not found</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={{ color: colors.primary }}>Go Back</Text>
+          <Text style={{ color: colors.primary, fontFamily: 'Poppins_600SemiBold' }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -209,11 +223,11 @@ const styles = StyleSheet.create({
   },
   readTime: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   headline: {
     fontSize: 32,
-    fontFamily: 'Newsreader_700Bold',
+    fontFamily: 'Poppins_700Bold',
     lineHeight: 40,
     marginBottom: Spacing.xl,
     letterSpacing: -0.5,
@@ -236,11 +250,11 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   publishedDate: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 2,
   },
   followBtn: {
@@ -251,21 +265,21 @@ const styles = StyleSheet.create({
   },
   followBtnText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   articleBody: {
     marginTop: Spacing.sm,
   },
   leadIn: {
     fontSize: 20,
-    fontFamily: 'Newsreader_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     lineHeight: 30,
     marginBottom: Spacing.lg,
     opacity: 0.9,
   },
   bodyText: {
     fontSize: 19,
-    fontFamily: 'Newsreader_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 32,
     letterSpacing: 0.3,
     marginBottom: Spacing.lg,

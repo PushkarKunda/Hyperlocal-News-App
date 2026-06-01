@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Event } from '@/types';
 import { format } from 'date-fns';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface EventCardProps {
   event: Event;
@@ -11,7 +12,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onPress }: EventCardProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   const eventDate = new Date(event.date);

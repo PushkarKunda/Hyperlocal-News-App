@@ -8,35 +8,8 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
 import MenuOptions from '@/components/MenuOptions';
 
-// Data definitions
-const TRENDING = [
-  { id: '1', title: '#LocalElection', count: '4.2k stories this morning', icon: 'trending-up' },
-  { id: '2', title: '#MetroUpdate', count: '1.8k stories', icon: 'trending-up' },
-  { id: '3', title: '#WeatherAlert', count: '900 stories', icon: 'cloud' }
-];
-
-const TOPICS = [
-  { id: '1', title: 'Business', icon: 'briefcase', library: 'FontAwesome5' },
-  { id: '2', title: 'Politics', icon: 'gavel', library: 'FontAwesome5' },
-  { id: '3', title: 'Tech', icon: 'laptop', library: 'MaterialIcons' },
-  { id: '4', title: 'Crime', icon: 'shield', library: 'Ionicons' },
-  { id: '5', title: 'Sports', icon: 'sports-soccer', library: 'MaterialIcons' },
-  { id: '6', title: 'Lifestyle', icon: 'star', library: 'Ionicons' }
-];
-
-const SOURCES = [
-  { id: '1', name: 'Times' },
-  { id: '2', name: 'Daily' },
-  { id: '3', name: 'Watch' },
-  { id: '4', name: 'Metro' },
-  { id: '5', name: 'Bulletin' }
-];
-
-const LOCALITIES = [
-  { id: '1', name: 'Gachibowli', count: '12 new stories' },
-  { id: '2', name: 'Madhapur', count: '8 new stories' },
-  { id: '3', name: 'Jubilee Hills', count: '15 new stories' }
-];
+import { useTrendingList, useCategoriesList, useSourcesList, useLocalitiesList } from '@/hooks/useApi';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function DiscoverScreen() {
   const colorScheme = useAppColorScheme();
@@ -44,6 +17,12 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+
+  // Load discover page segments dynamically from simulated Axios client using React Query hooks
+  const { data: trending = [], isLoading: isLoadingTrending } = useTrendingList();
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesList();
+  const { data: sources = [], isLoading: isLoadingSources } = useSourcesList();
+  const { data: localities = [], isLoading: isLoadingLocalities } = useLocalitiesList();
 
   const renderIcon = (library: string, name: string, color: string, size: number) => {
     switch (library) {
@@ -54,11 +33,59 @@ export default function DiscoverScreen() {
     }
   };
 
+  const isLoading = isLoadingTrending || isLoadingCategories || isLoadingSources || isLoadingLocalities;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <LoadingSpinner fullScreen text="Discovering local channels..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
+
+  // Map backend categories/interests nicely to the 6 bento grid items with custom gorgeous icons
+  const mappedTopics = categories.map((cat) => {
+    let library = 'MaterialIcons';
+    let icon = cat.icon || 'star';
+    if (cat.slug === 'business') {
+      library = 'FontAwesome5';
+      icon = 'briefcase';
+    } else if (cat.slug === 'politics') {
+      library = 'FontAwesome5';
+      icon = 'gavel';
+    } else if (cat.slug === 'technology') {
+      library = 'MaterialIcons';
+      icon = 'laptop';
+    } else if (cat.slug === 'crime') {
+      library = 'Ionicons';
+      icon = 'shield';
+    }
+    return {
+      id: cat.id,
+      title: cat.name,
+      icon,
+      library
+    };
+  }).slice(0, 6);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      {/* Search Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.background, flex: 1 }]}>
+      {/* Header Section */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={styles.headerLeftButton} 
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+        
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Discover</Text>
+      </View>
+
+      {/* Search Bar Container */}
+      <View style={styles.searchBarContainer}>
+        <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
           <MaterialIcons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -68,13 +95,6 @@ export default function DiscoverScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity 
-          style={{ padding: 8 }} 
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={26} color={colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -88,7 +108,7 @@ export default function DiscoverScreen() {
             </TouchableOpacity>
           </View>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {TRENDING.map((item, index) => (
+            {trending.map((item: any, index: number) => (
               <React.Fragment key={item.id}>
                 <TouchableOpacity style={styles.listItem}>
                   <View style={styles.listItemContent}>
@@ -97,7 +117,7 @@ export default function DiscoverScreen() {
                   </View>
                   <Ionicons name={item.icon as any} size={20} color={colors.textTertiary} />
                 </TouchableOpacity>
-                {index < TRENDING.length - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
+                {index < trending.length - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
               </React.Fragment>
             ))}
           </View>
@@ -109,7 +129,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📂 BROWSE BY TOPIC</Text>
           </View>
           <View style={styles.gridContainer}>
-            {TOPICS.map((topic) => (
+            {mappedTopics.map((topic) => (
               <TouchableOpacity key={topic.id} style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
                   {renderIcon(topic.library, topic.icon, colors.primary, 20)}
@@ -126,7 +146,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📰 TOP SOURCES</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-            {SOURCES.map((source) => (
+            {sources.map((source: any) => (
               <TouchableOpacity key={source.id} style={styles.sourceItem}>
                 <View style={[styles.avatar, { backgroundColor: colors.border }]}>
                   <Text style={[styles.avatarText, { color: colors.textSecondary }]}>{source.name.charAt(0)}</Text>
@@ -143,7 +163,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📍 NEARBY LOCALITIES</Text>
           </View>
           <View style={styles.listContainer}>
-            {LOCALITIES.map((locality, index) => (
+            {localities.map((locality: any, index: number) => (
               <React.Fragment key={locality.id}>
                 <TouchableOpacity style={[styles.localityItem, { backgroundColor: colors.surface }]}>
                   <View style={[styles.localityIconContainer, { backgroundColor: colors.background }]}>
@@ -171,10 +191,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    height: 64,
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
+  headerLeftButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  searchBarContainer: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   searchBar: {
     flexDirection: 'row',
