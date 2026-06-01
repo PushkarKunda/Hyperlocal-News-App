@@ -139,7 +139,7 @@ export default function SettingsScreen() {
                 </LinearGradient>
                 
                 {/* Verified Check Badge */}
-                {!isGuest && (
+                {user?.isPublisher && (
                   <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
                     <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
                   </View>
@@ -416,9 +416,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
-  },
-  headerPlaceholder: {
-    width: 40,
   },
   scrollContent: {
     paddingHorizontal: 20,

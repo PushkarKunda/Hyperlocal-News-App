@@ -365,17 +365,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     fontFamily: Typography.fonts.semiBold,
   },
-  swipeIndicatorContainer: {
-    alignItems: 'center',
-    opacity: 0.7,
-    marginTop: Spacing.sm,
-  },
-  swipeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontFamily: Typography.fonts.medium,
-    letterSpacing: 2,
-  },
   progressBarContainer: {
     position: 'absolute',
     bottom: 6,

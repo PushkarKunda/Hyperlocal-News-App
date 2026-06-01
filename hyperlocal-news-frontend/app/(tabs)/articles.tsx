@@ -67,7 +67,7 @@ export default function ArticlesScreen() {
         message: `Check out this article: ${title}\nShared via HyperLocal News App.`,
       });
     } catch (error) {
-      console.log('Share error:', error);
+      // share dismissed or failed silently
     }
   };
 

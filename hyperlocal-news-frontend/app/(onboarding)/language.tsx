@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Pressable,
   Animated,
@@ -167,13 +166,7 @@ export default function LanguageScreen() {
 
       {/* Header Container */}
       <View style={[styles.header, { borderBottomColor: colors.divider }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
 
         <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
 
@@ -369,21 +362,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E6E7FB',
   },
-  glyphCircleSelected: {
-    borderColor: '#4648D4',
-    backgroundColor: '#4648D4',
-    shadowOpacity: 0.15,
-  },
   glyphText: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
-  },
-  glyphTextSelected: {
-    color: '#FFFFFF',
-  },
-  glyphTextUnselected: {
-    color: '#4648D4',
   },
   languageName: {
     fontSize: 13,

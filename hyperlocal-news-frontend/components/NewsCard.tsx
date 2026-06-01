@@ -29,7 +29,7 @@ export function NewsCard({ item, containerHeight }: any) {
                 title: headline,
             });
         } catch (error) {
-            console.log('Share error:', error);
+            // share dismissed or failed silently
         }
     };
 

@@ -299,28 +299,31 @@ const handleGoogleLogin = async () => {
             {/* Hero Section */}
             <View style={styles.heroSection}>
               {/* Radar Illustration Card */}
-              <View style={[styles.heroCard, { backgroundColor: isDark ? '#0F0F2E' : '#0D0D2B' }]}>
+              <View style={[
+                styles.heroCard,
+                { backgroundColor: isDark ? '#0F0F2E' : colors.card, borderWidth: isDark ? 0 : 1, borderColor: isDark ? 'transparent' : colors.border }
+              ]}>
                 {/* Radar base circle + grid */}
                 <View style={styles.radarBase}>
                   {/* Concentric rings */}
-                  <View style={[styles.radarRing, styles.radarRingLg, { borderColor: 'rgba(99,102,241,0.25)' }]} />
-                  <View style={[styles.radarRing, styles.radarRingMd, { borderColor: 'rgba(99,102,241,0.35)' }]} />
-                  <View style={[styles.radarRing, styles.radarRingSm, { borderColor: 'rgba(99,102,241,0.5)' }]} />
+                  <View style={[styles.radarRing, styles.radarRingLg, { borderColor: isDark ? 'rgba(99,102,241,0.25)' : 'rgba(70,72,212,0.12)' }]} />
+                  <View style={[styles.radarRing, styles.radarRingMd, { borderColor: isDark ? 'rgba(99,102,241,0.35)' : 'rgba(70,72,212,0.2)' }]} />
+                  <View style={[styles.radarRing, styles.radarRingSm, { borderColor: isDark ? 'rgba(99,102,241,0.5)' : 'rgba(70,72,212,0.35)' }]} />
 
                   {/* Cross-hair lines */}
-                  <View style={[styles.crossH, { backgroundColor: 'rgba(99,102,241,0.2)' }]} />
-                  <View style={[styles.crossV, { backgroundColor: 'rgba(99,102,241,0.2)' }]} />
+                  <View style={[styles.crossH, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(70,72,212,0.1)' }]} />
+                  <View style={[styles.crossV, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(70,72,212,0.1)' }]} />
 
-                  {/* Rotating outer dashed ring 1 */}
-                  <Animated.View style={[styles.radarRing, styles.radarRingXl, { borderColor: 'rgba(99,102,241,0.15)', transform: [{ rotate: ring1Deg }] }]} />
+                  {/* Rotating outer ring 1 */}
+                  <Animated.View style={[styles.radarRing, styles.radarRingXl, { borderColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(70,72,212,0.08)', transform: [{ rotate: ring1Deg }] }]} />
 
                   {/* Rotating outer dashed ring 2 */}
-                  <Animated.View style={[styles.radarRing, styles.radarRingXl2, { borderColor: 'rgba(139,92,246,0.2)', borderStyle: 'dashed', transform: [{ rotate: ring2Deg }] }]} />
+                  <Animated.View style={[styles.radarRing, styles.radarRingXl2, { borderColor: isDark ? 'rgba(139,92,246,0.2)' : 'rgba(70,72,212,0.1)', borderStyle: 'dashed', transform: [{ rotate: ring2Deg }] }]} />
 
                   {/* Radar sweep arm */}
                   <Animated.View style={[styles.sweepWrap, { transform: [{ rotate: sweepDeg }] }]}>
-                    <View style={styles.sweepArm} />
-                    <View style={styles.sweepGlow} />
+                    <View style={[styles.sweepArm, { backgroundColor: isDark ? 'rgba(99,102,241,0.9)' : 'rgba(70,72,212,0.7)' }]} />
+                    <View style={[styles.sweepGlow, { backgroundColor: isDark ? 'rgba(99,102,241,0.06)' : 'rgba(70,72,212,0.06)' }]} />
                   </Animated.View>
 
                   {/* Ping dots at fixed positions */}
@@ -333,8 +336,8 @@ const handleGoogleLogin = async () => {
                     <View style={[styles.pingRipple, { borderColor: '#F59E0B' }]} />
                   </Animated.View>
                   <Animated.View style={[styles.ping, { bottom: 44, left: 44, opacity: ping3 }]}>
-                    <View style={[styles.pingDot, { backgroundColor: '#818CF8' }]} />
-                    <View style={[styles.pingRipple, { borderColor: '#818CF8' }]} />
+                    <View style={[styles.pingDot, { backgroundColor: colors.primary }]} />
+                    <View style={[styles.pingRipple, { borderColor: colors.primary }]} />
                   </Animated.View>
                   <Animated.View style={[styles.ping, { bottom: 30, right: 56, opacity: ping4 }]}>
                     <View style={[styles.pingDot, { backgroundColor: '#F472B6' }]} />
@@ -345,8 +348,8 @@ const handleGoogleLogin = async () => {
                     <View style={[styles.pingRipple, { borderColor: '#38BDF8' }]} />
                   </Animated.View>
 
-                  {/* Center pulsing dot */}
-                  <Animated.View style={[styles.radarCenter, { backgroundColor: '#FFFFFF', transform: [{ scale: centerPulse }] }]}>
+                  {/* Center pulsing logo */}
+                  <Animated.View style={[styles.radarCenter, { backgroundColor: isDark ? '#FFFFFF' : colors.primaryLight, transform: [{ scale: centerPulse }] }]}>
                     <Image 
                       source={require('../../assets/logo.png')} 
                       style={styles.radarLogoImage} 
@@ -357,8 +360,8 @@ const handleGoogleLogin = async () => {
 
                 {/* LIVE label */}
                 <View style={styles.liveLabel}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveLabelText}>LIVE  LOCAL  NEWS</Text>
+                  <View style={[styles.liveDot, { backgroundColor: '#34D399' }]} />
+                  <Text style={[styles.liveLabelText, { color: isDark ? 'rgba(255,255,255,0.45)' : colors.textSecondary }]}>LIVE  LOCAL  NEWS</Text>
                 </View>
               </View>
 

@@ -35,8 +35,6 @@ interface AppState {
   user: User;
   publisherRequestStatus: 'none' | 'pending' | 'approved' | 'rejected';
   requestPublisherAccess: () => void;
-  /** Dev-only: toggle publisher approval to simulate admin action */
-  approvePublisherRequest: () => void;
 
   // --- Publisher Articles ---
   /** All articles ever created (mock seed + publisher-submitted) */
@@ -84,12 +82,6 @@ export const useStore = create<AppState>((set) => ({
       }
       return { publisherRequestStatus: 'pending' };
     }),
-
-  approvePublisherRequest: () =>
-    set((state) => ({
-      publisherRequestStatus: 'approved',
-      user: { ...state.user, isPublisher: true },
-    })),
 
   // --- Articles ---
   allArticles: SEED_ARTICLES,

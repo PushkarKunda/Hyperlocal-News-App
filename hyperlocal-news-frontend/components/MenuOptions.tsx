@@ -244,6 +244,11 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
               ) : (
                 <Ionicons name="person" size={30} color={colors.primary} />
               )}
+              {user?.isPublisher && (
+                <View style={[styles.verifiedBadge, { borderColor: isDark ? colors.surface : '#EFF4FF' }]}>
+                  <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
+                </View>
+              )}
             </View>
             <TouchableOpacity
               style={styles.closeButton}
@@ -450,6 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   avatarImage: {
     width: '100%',
@@ -499,10 +505,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     height: 48,
   },
-  activeMenuItem: {
-    backgroundColor: '#86F2E4',
-    borderRadius: 9999,
-  },
   inactiveMenuItem: {
     backgroundColor: 'transparent',
   },
@@ -516,12 +518,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.6,
-  },
-  activeMenuLabel: {
-    color: '#006F66',
-  },
-  inactiveMenuLabel: {
-    color: '#464554',
   },
   divider: {
     height: 1,
@@ -575,5 +571,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginTop: 4,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    backgroundColor: '#006A61',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
 });

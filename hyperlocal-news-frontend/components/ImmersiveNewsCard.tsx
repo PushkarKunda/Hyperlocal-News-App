@@ -41,7 +41,7 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
         title: item.headline,
       });
     } catch (error) {
-      console.log('Share error:', error);
+      // share dismissed or failed silently
     }
   };
 
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
-    fontFamily: 'Popi_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   contentContainer: {
     height: '55%',
@@ -161,13 +161,13 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 22,
     fontWeight: '800',
-    fontFamily: 'Popi_600SemiBold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: Spacing.lg,
     lineHeight: 24,
   },
   summaryText: {
     fontSize: 15,
-    fontFamily: 'Popi_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 24,
   },
   footerWrapper: {
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   readTimeText: {
     fontSize: 13,
-    fontFamily: 'Popi_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   actionsContainer: {
     flexDirection: 'row',

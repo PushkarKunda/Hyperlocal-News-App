@@ -156,6 +156,30 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="articles"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="bookmarks"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

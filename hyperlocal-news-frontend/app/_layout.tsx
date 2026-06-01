@@ -85,20 +85,6 @@ export default function RootLayout() {
   const textSize = user?.textSize || 'medium';
 
   const [fontsLoaded, fontError] = useFonts({
-    // Map Inter font names to Poppins equivalents
-    'Poppins_400Regular': Poppins_400Regular,
-    'Poppins_500Medium': Poppins_500Medium,
-    'Poppins_600SemiBold': Poppins_600SemiBold,
-    'Poppins_700Bold': Poppins_700Bold,
-
-    // Map Newsreader font names to Poppins equivalents
-    'Poppins_400Regular': Poppins_400Regular,
-    'Poppins_500Medium': Poppins_500Medium,
-    'Poppins_600SemiBold': Poppins_600SemiBold,
-    'Poppins_700Bold': Poppins_700Bold,
-    'Poppins_400Regular': Poppins_400Regular,
-
-    // Load Poppins fonts
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,

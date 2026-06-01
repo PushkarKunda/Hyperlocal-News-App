@@ -94,7 +94,7 @@ export default function ProfileScreen() {
               </LinearGradient>
               
               {/* Teal Verified Badge */}
-              {!isGuest && (
+              {user?.isPublisher && (
                 <View style={[styles.verifiedBadge, { borderColor: colors.surface }]}>
                   <Ionicons name="checkmark-sharp" size={12} color="#FFFFFF" />
                 </View>
