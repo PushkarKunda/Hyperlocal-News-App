@@ -1,15 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { ApiService } from '@/utils/apiClient';
+
+import { MOCK_EVENTS } from '@/data';
+import { Event } from '@/types';
+import { API_CONFIG, eventsApi } from '@/services/api';
+
+const fetchEvents = async (): Promise<Event[]> => {
+  if (API_CONFIG.useMocks) {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(MOCK_EVENTS), 800);
+    });
+  }
+
+  return eventsApi.list();
+};
 
 export const useEvents = () => {
   return useQuery({
-    queryKey: ['events'],
-    queryFn: async () => {
-      const response = await ApiService.getEvents();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load events');
-      }
-      return response.data;
-    },
+    queryKey: ['events', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryFn: fetchEvents,
+
   });
 };

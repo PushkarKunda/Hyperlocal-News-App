@@ -1,5 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { ApiService } from '@/utils/apiClient';
+
+import { MOCK_CATEGORIES } from '@/data';
+import { Category } from '@/types';
+import { API_CONFIG, categoriesApi } from '@/services/api';
+
+const fetchCategories = async (): Promise<Category[]> => {
+  if (API_CONFIG.useMocks) {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(MOCK_CATEGORIES), 300);
+    });
+  }
+
+  return categoriesApi.list();
+};
+
 
 export const useCategories = () => {
   return useQuery({

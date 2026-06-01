@@ -1,28 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { Poll } from '@/types';
+import { API_CONFIG, pollsApi } from '@/services/api';
 
 // ─── API Simulation Layer ───────────────────────────────────────────────────
 // These functions are where you would later add Supabase or REST API calls.
 // No UI changes will be needed once these are updated with real fetch/post logic.
-
-const api = {
-  fetchPolls: async (allPolls: Poll[]): Promise<Poll[]> => {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    return allPolls;
-  },
-  
-  vote: async (pollId: string, optionId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    // In a real app, this would be: await supabase.from('votes').insert(...)
-  },
-
-  undoVote: async (pollId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    // In a real app, this would be: await supabase.from('votes').delete(...)
-  }
-};
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
@@ -31,9 +14,15 @@ export const usePolls = () => {
   const pollsFromStore = useStore((state) => state.polls);
 
   return useQuery({
-    queryKey: ['polls'],
-    queryFn: () => api.fetchPolls(pollsFromStore),
-    // Keep data fresh if store changes
+    queryKey: ['polls', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryFn: async () => {
+      if (API_CONFIG.useMocks) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return pollsFromStore;
+      }
+
+      return pollsApi.list();
+    },
     placeholderData: pollsFromStore,
   });
 };
@@ -44,15 +33,17 @@ export const useVotePoll = () => {
   const votePollStore = useStore((state) => state.votePoll);
 
   return useMutation({
-    mutationFn: ({ pollId, optionId }: { pollId: string; optionId: string }) => 
-      api.vote(pollId, optionId),
+    mutationFn: ({ pollId, optionId }: { pollId: string; optionId: string }) =>
+      API_CONFIG.useMocks ? Promise.resolve(undefined) : pollsApi.vote(pollId, optionId),
     // Optimistic Update: Update the UI immediately
     onMutate: async ({ pollId, optionId }) => {
       // Cancel refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: ['polls'] });
-      
-      // Update the local state (store) immediately
-      votePollStore(pollId, optionId);
+
+      if (API_CONFIG.useMocks) {
+        // Update the local state (store) immediately
+        votePollStore(pollId, optionId);
+      }
       
       return { pollId, optionId };
     },
@@ -69,11 +60,14 @@ export const useUndoVotePoll = () => {
   const undoVotePollStore = useStore((state) => state.undoVotePoll);
 
   return useMutation({
-    mutationFn: (pollId: string) => api.undoVote(pollId),
+    mutationFn: (pollId: string) =>
+      API_CONFIG.useMocks ? Promise.resolve(undefined) : pollsApi.undoVote(pollId),
     // Optimistic Update
     onMutate: async (pollId) => {
       await queryClient.cancelQueries({ queryKey: ['polls'] });
-      undoVotePollStore(pollId);
+      if (API_CONFIG.useMocks) {
+        undoVotePollStore(pollId);
+      }
       return { pollId };
     },
     onSettled: () => {
