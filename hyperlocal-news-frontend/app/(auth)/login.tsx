@@ -368,7 +368,7 @@ const handleGoogleLogin = async () => {
 
               {/* Headings */}
               <View style={styles.headingContainer}>
-                <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome Back!</Text>
+                <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome</Text>
                 <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                   Log in to your account with your phone number to continue where you left off.
                 </Text>
