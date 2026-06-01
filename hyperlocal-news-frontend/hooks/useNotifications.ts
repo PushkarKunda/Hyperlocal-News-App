@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { MOCK_NOTIFICATIONS } from '@/data';
 import { Notification } from '@/types';
 import { API_CONFIG, notificationsApi } from '@/services/api';
+import { API_DATABASE } from '@/utils/apiClient';
 
 const fetchNotifications = async (): Promise<Notification[]> => {
   if (API_CONFIG.useMocks) {
     return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_NOTIFICATIONS), 600);
+      setTimeout(() => resolve(API_DATABASE.notifications), 600);
     });
   }
 

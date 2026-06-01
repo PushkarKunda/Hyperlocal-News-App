@@ -1,9 +1,21 @@
 import { NewsArticle, NewsFilters } from '@/types';
 import { API_ROUTES } from './routes';
 import { request } from './client';
-import type { components } from '../../../types/generated-api';
-
-type GeneratedNewsOut = components['schemas']['NewsOut'];
+interface GeneratedNewsOut {
+  [key: string]: any;
+  news_uid?: string;
+  id?: string;
+  user_uid?: string;
+  summary?: string;
+  image_url?: string | null;
+  category?: any;
+  source_name?: string;
+  title?: string;
+  state?: any;
+  district?: any;
+  city?: any;
+  created_at?: string;
+}
 
 const DEFAULT_CATEGORY = {
   id: 'news',

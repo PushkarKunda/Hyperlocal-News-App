@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { MOCK_CATEGORIES } from '@/data';
 import { Category } from '@/types';
 import { API_CONFIG, categoriesApi } from '@/services/api';
+import { API_DATABASE } from '@/utils/apiClient';
 
 const fetchCategories = async (): Promise<Category[]> => {
   if (API_CONFIG.useMocks) {
     return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_CATEGORIES), 300);
+      setTimeout(() => resolve(API_DATABASE.categories), 300);
     });
   }
 
@@ -17,14 +17,8 @@ const fetchCategories = async (): Promise<Category[]> => {
 
 export const useCategories = () => {
   return useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await ApiService.getCategories();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load categories');
-      }
-      return response.data;
-    },
+    queryKey: ['categories', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryFn: fetchCategories,
     staleTime: 1000 * 60 * 30, // categories rarely change — cache 30 min
   });
 };

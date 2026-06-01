@@ -1,9 +1,12 @@
 import { Category } from '@/types';
 import { API_ROUTES } from './routes';
 import { request } from './client';
-import type { components } from '../../../types/generated-api';
-
-type GeneratedCategoryOut = components['schemas']['CategoryOut'];
+interface GeneratedCategoryOut {
+  id: number | string;
+  name: string;
+  image_url?: string | null;
+  color?: string | null;
+}
 
 const toSlug = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
 
