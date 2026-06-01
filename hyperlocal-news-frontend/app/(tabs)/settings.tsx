@@ -25,7 +25,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
   
-  const { user, logout, updateTheme, updateTextSize } = useAuthStore();
+  const { user, logout, updateTheme } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const darkModeEnabled = colorScheme === 'dark';
 
@@ -50,35 +50,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleTextSizeChange = () => {
-    Alert.alert(
-      'Text Size',
-      'Choose your preferred reading text size:',
-      [
-        {
-          text: 'Small',
-          onPress: () => updateTextSize('small'),
-        },
-        {
-          text: 'Medium (Default)',
-          onPress: () => updateTextSize('medium'),
-        },
-        {
-          text: 'Large',
-          onPress: () => updateTextSize('large'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
 
-  const displayTextSize = user?.textSize 
-    ? user.textSize.charAt(0).toUpperCase() + user.textSize.slice(1) 
-    : 'Medium';
 
   const isGuest = user?.isGuest;
   const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
@@ -275,25 +247,6 @@ export default function SettingsScreen() {
               />
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-            {/* Text Size */}
-            <TouchableOpacity 
-              style={styles.settingItem} 
-              activeOpacity={0.7}
-              onPress={handleTextSizeChange}
-            >
-              <View style={styles.settingLabelContainer}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
-                  <Ionicons name="text-outline" size={20} color="#4648D4" />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Text Size</Text>
-              </View>
-              <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>{displayTextSize}</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-              </View>
-            </TouchableOpacity>
           </View>
         </View>
 

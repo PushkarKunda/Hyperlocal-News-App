@@ -32,7 +32,7 @@ interface AuthState {
   updateProfile: (name: string, avatar?: string, email?: string, phoneNumber?: string, isPublisher?: boolean, emailVerified?: boolean) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
-  updateTextSize: (textSize: 'small' | 'medium' | 'large') => void;
+
   completeOnboarding: () => void;
 }
 
@@ -136,21 +136,6 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateTextSize: (textSize: 'small' | 'medium' | 'large') => {
-        set((state) => {
-          const defaultUser = {
-            id: 'user-' + Math.random().toString(36).substr(2, 9),
-            isGuest: true,
-          };
-          const currentUser = state.user || defaultUser;
-          return {
-            user: {
-              ...currentUser,
-              textSize,
-            },
-          };
-        });
-      },
 
       completeOnboarding: () => {
         set({ isOnboarded: true });
