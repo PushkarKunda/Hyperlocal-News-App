@@ -25,10 +25,10 @@
         "backgroundColor": "#FF6B35"
       },
       "package": "com.hyperlocalnews.app",
-      "navigationBar": {
-        "barStyle": "dark-content",
-        "backgroundColor": "#00000000"
-      }
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -49,6 +49,14 @@
     "experiments": {
       "typedRoutes": true
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "310d04bb-cf3d-4f28-8c8f-0649ffc07afd"
+      }
+    }
   }
 }
