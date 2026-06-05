@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -340,7 +341,10 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                 <TouchableOpacity
                   style={[styles.dropdownSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
-                  onPress={() => setPickerType('category')}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setPickerType('category');
+                  }}
                 >
                   <Text style={[styles.dropdownText, { color: category ? colors.text : colors.textTertiary }]}>
                     {category || 'Select a category'}
@@ -355,7 +359,10 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                 <TouchableOpacity
                   style={[styles.dropdownSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
-                  onPress={() => setPickerType('neighborhood')}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setPickerType('neighborhood');
+                  }}
                 >
                   <Text style={[styles.dropdownText, { color: neighborhood ? colors.text : colors.textTertiary }]}>
                     {neighborhood || 'Choose neighborhood'}
@@ -383,12 +390,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
 
         {/* Dropdown Options Bottom-Sheet Selector */}
         {pickerType !== null && (
-          <Modal
-            transparent
-            visible={pickerType !== null}
-            animationType="fade"
-            onRequestClose={() => setPickerType(null)}
-          >
+          <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 99 }]}>
             <TouchableOpacity
               style={styles.pickerOverlay}
               activeOpacity={1}
@@ -439,7 +441,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                 </ScrollView>
               </View>
             </TouchableOpacity>
-          </Modal>
+          </View>
         )}
 
       </View>

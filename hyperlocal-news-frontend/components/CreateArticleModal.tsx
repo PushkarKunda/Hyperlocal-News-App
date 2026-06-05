@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -286,7 +287,10 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
                 <TouchableOpacity
                   style={[styles.dropdownSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
-                  onPress={() => setShowCategoryPicker(true)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowCategoryPicker(true);
+                  }}
                 >
                   <Text style={[styles.dropdownText, { color: category ? colors.text : colors.textTertiary }]}>
                     {category || 'Select a category'}
@@ -314,12 +318,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
 
         {/* Category Sheet Selector */}
         {showCategoryPicker && (
-          <Modal
-            transparent
-            visible={showCategoryPicker}
-            animationType="fade"
-            onRequestClose={() => setShowCategoryPicker(false)}
-          >
+          <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 99 }]}>
             <TouchableOpacity
               style={styles.pickerOverlay}
               activeOpacity={1}
@@ -364,7 +363,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
                 </ScrollView>
               </View>
             </TouchableOpacity>
-          </Modal>
+          </View>
         )}
 
       </View>

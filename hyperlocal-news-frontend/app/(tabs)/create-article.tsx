@@ -10,6 +10,7 @@ import {
   Platform,
   useWindowDimensions,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -453,7 +454,10 @@ export default function CreateArticleScreen() {
               <TouchableOpacity
                 style={[styles.dropdownSelect, { backgroundColor: colors.surface }]}
                 activeOpacity={0.7}
-                onPress={() => setPickerType('category')}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setPickerType('category');
+                }}
               >
                 <Text style={[styles.dropdownValue, { color: category ? colors.text : colors.textTertiary }]}>
                   {category || 'Select Category'}
@@ -469,7 +473,10 @@ export default function CreateArticleScreen() {
                 <TouchableOpacity
                   style={[styles.dropdownSelect, { backgroundColor: colors.surface }]}
                   activeOpacity={0.7}
-                  onPress={() => setPickerType('language')}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setPickerType('language');
+                  }}
                 >
                   <Text style={[styles.dropdownValue, { color: language ? colors.text : colors.textTertiary }]}>
                     {language || 'Select Language'}
@@ -483,7 +490,10 @@ export default function CreateArticleScreen() {
                 <TouchableOpacity
                   style={[styles.dropdownSelect, { backgroundColor: colors.surface }]}
                   activeOpacity={0.7}
-                  onPress={() => setPickerType('location')}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setPickerType('location');
+                  }}
                 >
                   <Text style={[styles.dropdownValue, { color: location ? colors.text : colors.textTertiary }]}>
                     {location || 'Select City'}
@@ -537,12 +547,7 @@ export default function CreateArticleScreen() {
 
       {/* Single Bottom Sheet Picker Modal */}
       {pickerType !== null && (
-        <Modal
-          transparent
-          visible={pickerType !== null}
-          animationType="slide"
-          onRequestClose={() => setPickerType(null)}
-        >
+        <View style={[StyleSheet.absoluteFill, { zIndex: 10000, elevation: 99 }]}>
           <TouchableOpacity
             style={styles.pickerOverlay}
             activeOpacity={1}
@@ -591,7 +596,7 @@ export default function CreateArticleScreen() {
               </ScrollView>
             </View>
           </TouchableOpacity>
-        </Modal>
+        </View>
       )}
     </View>
   );
