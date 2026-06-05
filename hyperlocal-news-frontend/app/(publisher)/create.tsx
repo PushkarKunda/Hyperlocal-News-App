@@ -106,13 +106,13 @@ export default function CreateArticleScreen() {
         {/* Header */}
         <View style={[styles.gatedHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={styles.backButton}
             onPress={handleGatedBack}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitleText, { color: colors.text }]}>Publisher Access</Text>
+          <Text style={[styles.gatedHeaderTitleText, { color: colors.text }]}>Publisher Access</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -193,14 +193,14 @@ export default function CreateArticleScreen() {
         imageUrl: imageUrl.trim(),
         category: selectedCategory!,
         author: {
-          id: user.id,
-          name: user.name ?? 'Publisher',
-          avatar: user.avatar,
-          isVerified: user.isPublisher,
+          id: user?.id || '',
+          name: user?.name ?? 'Publisher',
+          avatar: user?.avatar,
+          isVerified: user?.isPublisher || false,
         },
         location: {
-          state: user.location.state,
-          district: user.location.district,
+          state: user?.state || '',
+          district: user?.district || '',
           city: city.trim(),
         },
         readTime: `${Math.max(1, Math.ceil(content.trim().split(/\s+/).length / 200))} min read`,

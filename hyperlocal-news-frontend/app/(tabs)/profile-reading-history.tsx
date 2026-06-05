@@ -174,13 +174,13 @@ export default function ProfileReadingHistoryScreen() {
       .slice(0, 12)
       .map((a, i) => ({
         id: a.id,
-        title: a.title,
+        title: a.headline,
         category: a.category?.name ?? 'General',
         categoryColor: CATEGORY_COLORS[a.category?.slug ?? ''] ?? '#4648D4',
         image: a.imageUrl,
         source: a.source?.name ?? 'HyperLocal',
         publishedAt: a.publishedAt ?? new Date(Date.now() - i * 3600000 * 4).toISOString(),
-        readTime: Math.max(2, Math.floor(a.title.length / 30)),
+        readTime: Math.max(2, Math.floor(a.headline.length / 30)),
       })),
     [allArticles]
   );

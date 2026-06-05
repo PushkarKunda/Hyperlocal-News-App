@@ -191,7 +191,7 @@ export default function ArticlesScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitleText, { color: colors.text }]}>Publisher Access</Text>
+          <Text style={[styles.gatedHeaderTitleText, { color: colors.text }]}>Publisher Access</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -926,5 +926,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
+  },
+  topRightBlur: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(70, 72, 212, 0.08)',
+  },
+  bottomLeftBlur: {
+    position: 'absolute',
+    bottom: -80,
+    left: -80,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  headerSpacer: {
+    width: 40,
   },
 });

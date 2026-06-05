@@ -97,7 +97,7 @@ export default function CreateArticleScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitleText, { color: colors.text }]}>Publisher Access</Text>
+          <Text style={[styles.gatedHeaderTitleText, { color: colors.text }]}>Publisher Access</Text>
           <View style={styles.headerSpacer} />
         </View>
 

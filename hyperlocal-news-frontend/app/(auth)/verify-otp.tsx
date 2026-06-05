@@ -229,10 +229,10 @@ export default function VerifyOTPScreen() {
       Animated.timing(dot1Angle, { toValue: Math.PI * 2, duration: 3000, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.timing(dot2Angle, { toValue: dot2Angle.__getValue() + Math.PI * 2, duration: 3000, useNativeDriver: true })
+      Animated.timing(dot2Angle, { toValue: 2.09 + Math.PI * 2, duration: 3000, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.timing(dot3Angle, { toValue: dot3Angle.__getValue() + Math.PI * 2, duration: 3000, useNativeDriver: true })
+      Animated.timing(dot3Angle, { toValue: 4.19 + Math.PI * 2, duration: 3000, useNativeDriver: true })
     ).start();
   }, []);
 

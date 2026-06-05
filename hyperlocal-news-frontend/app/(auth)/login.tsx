@@ -14,25 +14,19 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { StatusBar } from 'expo-status-bar';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
-WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳' },
-  { code: '+1', country: 'US', flag: '🇺🇸' },
-  { code: '+44', country: 'UK', flag: '🇬🇧' },
-  { code: '+61', country: 'AU', flag: '🇦🇺' },
 ];
 
 export default function LoginScreen() {
@@ -43,45 +37,7 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const { sendOtp, loginAsGuest } = useAuthStore();
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: 'YOUR_EXPO_CLIENT_ID',
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
-    androidClientId: 'YOUR_ANDROID_CLIENT_ID',
-    // webClientId: 'YOUR_WEB_CLIENT_ID', // optional for web
-  });
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${authentication?.accessToken}` },
-      })
-        .then(res => res.json())
-        .then(data => {
-          useAuthStore.setState({
-            user: {
-              id: data.sub,
-              name: data.name,
-              email: data.email,
-              avatar: data.picture,
-              theme: 'system',
-              textSize: 'medium',
-            },
-            isAuthenticated: true,
-            isOnboarded: true,
-          });
-          Alert.alert('Google Sign‑In', `Welcome ${data.name}`);
-          (navigation as any).reset({ index: 0, routes: [{ name: '(tabs)' }] });
-        })
-        .catch(() => {
-          Alert.alert('Google Sign‑In', 'Failed to retrieve profile');
-        })
-        .finally(() => setIsLoading(false));
-    } else if (response?.type === 'error' || response?.type === 'cancel') {
-      Alert.alert('Google Sign‑In', 'Authentication cancelled');
-      setIsLoading(false);
-    }
-  }, [response]);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
@@ -91,7 +47,7 @@ export default function LoginScreen() {
   // Animated values
   const primaryButtonScale = useRef(new Animated.Value(1)).current;
   const emailButtonScale = useRef(new Animated.Value(1)).current;
-  const googleButtonScale = useRef(new Animated.Value(1)).current;
+
   const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
 
   // Hero Radar animations
@@ -244,15 +200,7 @@ export default function LoginScreen() {
     });
   };
 
-const handleGoogleLogin = async () => {
-  setIsLoading(true);
-  try {
-    await promptAsync();
-  } catch (e) {
-    Alert.alert('Google Sign‑In', 'Failed to start authentication');
-    setIsLoading(false);
-  }
-};
+
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -463,25 +411,7 @@ const handleGoogleLogin = async () => {
                 </Pressable>
               </Animated.View>
 
-              {/* OR Separator */}
-              <View style={styles.separatorRow}>
-                <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-                <Text style={[styles.separatorText, { color: colors.textSecondary }]}>OR</Text>
-                <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-              </View>
 
-              {/* "Continue with Google" Button */}
-              <Animated.View style={{ transform: [{ scale: googleButtonScale }] }}>
-                <Pressable
-                  style={[styles.secondaryButton, { borderColor: colors.border, marginTop: 8 }]}
-                  onPressIn={() => animateButton(googleButtonScale, 0.96)}
-                  onPressOut={() => animateButton(googleButtonScale, 1)}
-                  onPress={handleGoogleLogin}
-                >
-                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
-                  <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Continue with Google</Text>
-                </Pressable>
-              </Animated.View>
             </View>
 
             {/* Footer Legal Terms */}
@@ -843,45 +773,7 @@ const styles = StyleSheet.create({
   buttonIcon: {
     marginTop: 1,
   },
-  separatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 8,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#C7C4D7',
-  },
-  separatorText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#C7C4D7',
-    letterSpacing: 1.5,
-    marginHorizontal: 12,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: '#C7C4D7',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Poppins_500Medium',
-  },
   mailIcon: {
-    marginTop: 1,
-  },
-  googleIcon: {
     marginTop: 1,
   },
   footer: {
