@@ -297,7 +297,11 @@ export default function ProfileCompletionScreen() {
         ) : (
           <View style={styles.headerPlaceholder} />
         )}
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
         <View style={styles.headerPlaceholder} />
       </View>
 

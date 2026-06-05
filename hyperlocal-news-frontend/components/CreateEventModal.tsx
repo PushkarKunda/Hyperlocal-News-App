@@ -195,7 +195,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
             {/* Scrollable Form Content */}
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.formScroll, { paddingBottom: 180 }]}
+              contentContainerStyle={[styles.formScroll, { paddingBottom: 220 }]}
             >
               {/* Validation Alert */}
               {validationError ? (
@@ -297,26 +297,30 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
               <View style={styles.rowLayout}>
                 <View style={[styles.formGroup, styles.halfColumn]}>
                   <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Date</Text>
-                  <TextInput
-                    style={[styles.textInputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                    placeholder="e.g. Sat, May 25"
-                    placeholderTextColor={colors.textTertiary}
-                    value={date}
-                    onChangeText={setDate}
-                  />
-                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.fieldIcon} />
+                  <View style={styles.inputContainerWithRightIcon}>
+                    <TextInput
+                      style={[styles.textInputRightIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                      placeholder="e.g. May 25"
+                      placeholderTextColor={colors.textTertiary}
+                      value={date}
+                      onChangeText={setDate}
+                    />
+                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.rightFieldIcon} />
+                  </View>
                 </View>
 
                 <View style={[styles.formGroup, styles.halfColumn]}>
                   <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Time</Text>
-                  <TextInput
-                    style={[styles.textInputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                    placeholder="e.g. 6:00 PM"
-                    placeholderTextColor={colors.textTertiary}
-                    value={time}
-                    onChangeText={setTime}
-                  />
-                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.fieldIcon} />
+                  <View style={styles.inputContainerWithRightIcon}>
+                    <TextInput
+                      style={[styles.textInputRightIcon, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                      placeholder="6:00 PM"
+                      placeholderTextColor={colors.textTertiary}
+                      value={time}
+                      onChangeText={setTime}
+                    />
+                    <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.rightFieldIcon} />
+                  </View>
                 </View>
               </View>
 
@@ -365,7 +369,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
                   }}
                 >
                   <Text style={[styles.dropdownText, { color: neighborhood ? colors.text : colors.textTertiary }]}>
-                    {neighborhood || 'Choose neighborhood'}
+                    {neighborhood || 'Choose City / Area'}
                   </Text>
                   <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -399,7 +403,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
               <View style={[styles.pickerSheet, { backgroundColor: colors.surface, maxHeight: screenHeight * 0.5 }]}>
                 <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.pickerTitle, { color: colors.text }]}>
-                    {pickerType === 'category' ? 'Select Category' : 'Select Neighborhood'}
+                    {pickerType === 'category' ? 'Select Category' : 'Select City / Area'}
                   </Text>
                   <TouchableOpacity onPress={() => setPickerType(null)}>
                     <Ionicons name="close" size={22} color={colors.text} />
@@ -677,6 +681,22 @@ const styles = StyleSheet.create({
     borderColor: '#F3F4F6',
     borderWidth: 1,
   },
+  inputContainerWithRightIcon: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  textInputRightIcon: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    paddingLeft: 16,
+    paddingRight: 44,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#111827',
+    fontFamily: 'Poppins_500Medium',
+    borderColor: '#F3F4F6',
+    borderWidth: 1,
+  },
   textArea: {
     height: 100,
   },
@@ -696,6 +716,10 @@ const styles = StyleSheet.create({
   leftFieldIcon: {
     position: 'absolute',
     left: 16,
+  },
+  rightFieldIcon: {
+    position: 'absolute',
+    right: 16,
   },
   dropdownSelector: {
     flexDirection: 'row',
