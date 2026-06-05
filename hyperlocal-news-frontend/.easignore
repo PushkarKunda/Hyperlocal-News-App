@@ -1,34 +1,30 @@
-# Ignore local native folders
-android/
-ios/
 
-# Ignore dependency and build artifacts
-node_modules/
-.expo/
-dist/
-web-build/
-debug-build/
+**/android/**
+**/ios/**
 
-# Ignore certificate and keys
-*.jks
-*.keystore
-*.p8
-*.p12
-*.mobileprovision
-*.key
-*.pem
+# Ignore local dependency and build artifacts recursively
+**/node_modules/**
+**/.expo/**
+**/dist/**
+**/web-build/**
+**/debug-build/**
+**/*.jks
+**/*.keystore
+**/*.p8
+**/*.p12
+**/*.mobileprovision
+**/*.key
+**/*.pem
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
 
-# Ignore environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Ignore temporary and cache files
-.gradle/
-.cxx/
-build/
-bin/
-obj/
-*.log
+**/.gradle/**
+**/.cxx/**
+**/build/**
+**/bin/**
+**/obj/**
+**.log
