@@ -230,7 +230,11 @@ export default function LoginScreen() {
 
       {/* Header - Top Navigation Anchor */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -463,9 +467,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 30,
+    fontSize: 21,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
+    letterSpacing: -0.4,
     color: '#4648D4',
     textAlign: 'center',
   },
