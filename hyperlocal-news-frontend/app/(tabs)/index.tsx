@@ -35,10 +35,15 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const { user } = useAuthStore();
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { newsId } = useLocalSearchParams<{ newsId?: string }>();
-  const flatListRef = useRef<FlatList>(null);
+  
+  const categoryFlatListRef = useRef<FlatList>(null);
+  const horizontalFlatListRef = useRef<FlatList>(null);
+  const verticalRefs = useRef<{ [key: string]: FlatList | null }>({});
+  const isProgrammaticScroll = useRef(false);
+
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeCategory, setActiveCategory] = useState('for-you');
@@ -47,29 +52,40 @@ export default function HomeScreen() {
   const { data: news = [], isLoading } = useNewsFeed();
 
   // Filter news dynamically based on the selected category slug
-  const filteredNews = news.filter(item => {
-    if (activeCategory === 'for-you') return true;
-    return item.category?.slug === activeCategory;
-  });
+  const getFilteredNews = (slug: string) => {
+    if (slug === 'for-you') return news;
+    return news.filter(item => item.category?.slug === slug);
+  };
 
+  // Sync scroll for deep link newsId
   useEffect(() => {
-    if (newsId && news.length > 0) {
-      const index = news.findIndex(item => item.id === newsId);
-      if (index !== -1 && scrollHeight > 0) {
-        const timer = setTimeout(() => {
-          flatListRef.current?.scrollToIndex({ index, animated: true });
-        }, 100);
-        return () => clearTimeout(timer);
+    if (newsId && news.length > 0 && scrollHeight > 0) {
+      const item = news.find(i => i.id === newsId);
+      if (item) {
+        const itemCategory = item.category?.slug || 'for-you';
+        const categoryNews = getFilteredNews(itemCategory);
+        const itemIndex = categoryNews.findIndex(i => i.id === newsId);
+        
+        if (itemIndex !== -1) {
+          // Set active category
+          setActiveCategory(itemCategory);
+          const catIndex = CATEGORIES.findIndex(c => c.slug === itemCategory);
+          
+          const timer = setTimeout(() => {
+            horizontalFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true });
+            categoryFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true, viewPosition: 0.5 });
+            
+            const verticalTimer = setTimeout(() => {
+              verticalRefs.current[itemCategory]?.scrollToIndex({ index: itemIndex, animated: true });
+            }, 250);
+            return () => clearTimeout(verticalTimer);
+          }, 150);
+          
+          return () => clearTimeout(timer);
+        }
       }
     }
   }, [newsId, scrollHeight, news]);
-
-  // Reset FlatList scroll when the category changes
-  useEffect(() => {
-    if (filteredNews.length > 0) {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-    }
-  }, [activeCategory]);
 
   if (isLoading) {
     return (
@@ -95,9 +111,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>HyperLocal</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+            <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
+            <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+          </Text>
           <View style={styles.locationContainer}>
-            <Ionicons name="location-sharp" size={12} color={colors.primary} style={styles.locationIcon} />
+            <Ionicons name="location-sharp" size={12} color={isDark ? '#818CF8' : colors.primary} style={styles.locationIcon} />
             <Text style={[styles.locationText, { color: colors.textSecondary }]}>
               {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'HYDERABAD, TS')}
             </Text>
@@ -115,19 +135,31 @@ export default function HomeScreen() {
       </View>
 
       {/* Horizontally Scrollable Categories Tab List */}
-      <View style={[styles.categoriesContainer, { borderBottomColor: colors.border }]}>
-        <ScrollView 
-          horizontal 
+      <View style={[styles.categoriesContainer, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+        <FlatList
+          ref={categoryFlatListRef}
+          data={CATEGORIES}
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesScrollContent}
-        >
-          {CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.slug;
+          keyExtractor={(item) => item.id}
+          onScrollToIndexFailed={(info) => {
+            const wait = new Promise(resolve => setTimeout(resolve, 50));
+            wait.then(() => {
+              categoryFlatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
+            });
+          }}
+          renderItem={({ item, index }) => {
+            const isActive = activeCategory === item.slug;
             return (
               <TouchableOpacity
-                key={cat.id}
                 style={styles.categoryTab}
-                onPress={() => setActiveCategory(cat.slug)}
+                onPress={() => {
+                  isProgrammaticScroll.current = true;
+                  setActiveCategory(item.slug);
+                  horizontalFlatListRef.current?.scrollToIndex({ index, animated: true });
+                  categoryFlatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -137,56 +169,126 @@ export default function HomeScreen() {
                     fontWeight: isActive ? '700' : '500'
                   }
                 ]}>
-                  {cat.name}
+                  {item.name}
                 </Text>
                 {isActive && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+        />
       </View>
 
-      {/* Main Snap Scrolling Feed Container */}
+      {/* Main Snap Scrolling Feed Container (Horizontal Pager) */}
       <View 
         style={styles.feedWrapper}
         onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
       >
-        {filteredNews.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this category yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Check back later or explore other sections</Text>
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={filteredNews}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ImmersiveNewsCard 
-                item={item} 
-                containerHeight={scrollHeight} 
-              />
-            )}
-            pagingEnabled
-            showsVerticalScrollIndicator={false}
-            snapToInterval={scrollHeight}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            bounces={false}
-            getItemLayout={(data, index) => ({
-              length: scrollHeight,
-              offset: scrollHeight * index,
-              index,
-            })}
-            onScrollToIndexFailed={(info) => {
-              const wait = new Promise(resolve => setTimeout(resolve, 50));
-              wait.then(() => {
-                flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
-              });
-            }}
-          />
-        )}
+        <FlatList
+          ref={horizontalFlatListRef}
+          data={CATEGORIES}
+          keyExtractor={(item) => item.slug}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={screenWidth}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          bounces={false}
+          getItemLayout={(data, index) => ({
+            length: screenWidth,
+            offset: screenWidth * index,
+            index,
+          })}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            if (isProgrammaticScroll.current) return;
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const index = Math.round(offsetX / screenWidth);
+            if (index >= 0 && index < CATEGORIES.length) {
+              const nextSlug = CATEGORIES[index].slug;
+              if (activeCategory !== nextSlug) {
+                setActiveCategory(nextSlug);
+                categoryFlatListRef.current?.scrollToIndex({
+                  index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }
+            }
+          }}
+          onMomentumScrollEnd={(e) => {
+            isProgrammaticScroll.current = false;
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const index = Math.round(offsetX / screenWidth);
+            if (index >= 0 && index < CATEGORIES.length) {
+              const nextSlug = CATEGORIES[index].slug;
+              if (activeCategory !== nextSlug) {
+                setActiveCategory(nextSlug);
+                categoryFlatListRef.current?.scrollToIndex({
+                  index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }
+            }
+          }}
+          renderItem={({ item: category, index }) => {
+            const categoryNews = getFilteredNews(category.slug);
+            const activeIndex = CATEGORIES.findIndex(c => c.slug === activeCategory);
+            // Pre-load 2 adjacent neighbors for buttery-smooth horizontal swipes
+            const isVisible = Math.abs(index - activeIndex) <= 2;
+
+            if (!isVisible) {
+              return <View style={{ width: screenWidth, height: scrollHeight }} />;
+            }
+
+            if (categoryNews.length === 0) {
+              return (
+                <View style={[styles.emptyContainer, { width: screenWidth, height: scrollHeight }]}>
+                  <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this category yet</Text>
+                  <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Check back later or explore other sections</Text>
+                </View>
+              );
+            }
+
+            return (
+              <View style={{ width: screenWidth, height: scrollHeight }}>
+                <FlatList
+                  ref={ref => {
+                    verticalRefs.current[category.slug] = ref;
+                  }}
+                  data={categoryNews}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <ImmersiveNewsCard 
+                      item={item} 
+                      containerHeight={scrollHeight} 
+                    />
+                  )}
+                  pagingEnabled
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={scrollHeight}
+                  snapToAlignment="start"
+                  decelerationRate="fast"
+                  bounces={false}
+                  getItemLayout={(_, idx) => ({
+                    length: scrollHeight,
+                    offset: scrollHeight * idx,
+                    index: idx,
+                  })}
+                  onScrollToIndexFailed={(info) => {
+                    const wait = new Promise(resolve => setTimeout(resolve, 50));
+                    wait.then(() => {
+                      verticalRefs.current[category.slug]?.scrollToIndex({ index: info.index, animated: true });
+                    });
+                  }}
+                />
+              </View>
+            );
+          }}
+        />
       </View>
 
       {/* Reusable Menu Drawer Overlay Component */}
@@ -238,10 +340,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -253,9 +355,8 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: 0.5,
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 1.0,
   },
   notificationDot: {
     position: 'absolute',
