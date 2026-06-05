@@ -347,7 +347,13 @@ export default function VerifyOTPScreen() {
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(auth)/login');
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={24} color={colors.primary} />

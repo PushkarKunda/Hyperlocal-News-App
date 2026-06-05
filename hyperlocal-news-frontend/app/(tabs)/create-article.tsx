@@ -250,7 +250,11 @@ export default function CreateArticleScreen() {
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
 
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/articles');
+    }
   };
 
   const activeOptions = 
@@ -280,7 +284,13 @@ export default function CreateArticleScreen() {
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
         <TouchableOpacity
           style={styles.closeButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/articles');
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="close" size={24} color={colors.text} />
