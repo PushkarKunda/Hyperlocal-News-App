@@ -177,7 +177,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
           style={styles.keyboardContainer}
         >
           {/* Main Container */}
-          <View style={[styles.mainContainer, { backgroundColor: colors.background, height: screenHeight * 0.92 }]}>
+          <View style={[styles.mainContainer, { backgroundColor: colors.background, height: '100%', borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
             
             {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
