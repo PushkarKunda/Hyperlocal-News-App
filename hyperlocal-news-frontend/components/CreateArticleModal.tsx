@@ -158,7 +158,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
             {/* Scrollable Form Content */}
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.formScroll, { paddingBottom: 140 }]}
+              contentContainerStyle={[styles.formScroll, { paddingBottom: 180 }]}
             >
               {/* Validation Alert */}
               {validationError ? (

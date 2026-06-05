@@ -195,7 +195,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
             {/* Scrollable Form Content */}
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.formScroll, { paddingBottom: 120 }]}
+              contentContainerStyle={[styles.formScroll, { paddingBottom: 180 }]}
             >
               {/* Validation Alert */}
               {validationError ? (
