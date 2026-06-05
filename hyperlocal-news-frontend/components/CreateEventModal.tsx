@@ -9,7 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -18,8 +18,6 @@ import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useRouter } from 'expo-router';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Mock Event Cover Presets
 const COVER_PRESETS = [
@@ -72,6 +70,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
 
   // Form State
   const [title, setTitle] = useState('');
@@ -177,7 +176,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
           style={styles.keyboardContainer}
         >
           {/* Main Container */}
-          <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.mainContainer, { backgroundColor: colors.background, height: screenHeight * 0.92 }]}>
             
             {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
@@ -395,7 +394,7 @@ export function CreateEventModal({ isVisible, onClose, onSubmit }: CreateEventMo
               activeOpacity={1}
               onPress={() => setPickerType(null)}
             >
-              <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.pickerSheet, { backgroundColor: colors.surface, maxHeight: screenHeight * 0.5 }]}>
                 <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.pickerTitle, { color: colors.text }]}>
                     {pickerType === 'category' ? 'Select Category' : 'Select Neighborhood'}
@@ -459,7 +458,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   mainContainer: {
-    height: screenHeight * 0.92,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
@@ -759,7 +757,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: screenHeight * 0.5,
     paddingBottom: 24,
   },
   pickerHeader: {

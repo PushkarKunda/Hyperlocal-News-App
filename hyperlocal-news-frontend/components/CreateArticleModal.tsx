@@ -9,7 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -17,8 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Mock Article Cover Presets
 const COVER_PRESETS = [
@@ -59,6 +57,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
   const colorScheme = useAppColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
+  const { height: screenHeight } = useWindowDimensions();
 
   // Form State
   const [headline, setHeadline] = useState('');
@@ -140,7 +139,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
           style={styles.keyboardContainer}
         >
           {/* Main Container */}
-          <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.mainContainer, { backgroundColor: colors.background, height: screenHeight * 0.9 }]}>
             
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
@@ -326,7 +325,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
               activeOpacity={1}
               onPress={() => setShowCategoryPicker(false)}
             >
-              <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.pickerSheet, { backgroundColor: colors.surface, maxHeight: screenHeight * 0.5 }]}>
                 <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.pickerTitle, { color: colors.text }]}>Select Category</Text>
                   <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
@@ -384,7 +383,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   mainContainer: {
-    height: screenHeight * 0.9,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
@@ -621,7 +619,6 @@ const styles = StyleSheet.create({
   pickerSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: screenHeight * 0.5,
     paddingBottom: 24,
   },
   pickerHeader: {

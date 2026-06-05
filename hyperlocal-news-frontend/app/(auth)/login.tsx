@@ -10,9 +10,9 @@ import {
   ScrollView,
   Animated,
   Pressable,
-  Dimensions,
   Alert,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
@@ -23,7 +23,6 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 
-const { width } = Dimensions.get('window');
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳' },
@@ -36,6 +35,8 @@ export default function LoginScreen() {
   const isDark = colorScheme === 'dark';
   const navigation = useNavigation();
   const { sendOtp, loginAsGuest } = useAuthStore();
+  const { width } = useWindowDimensions();
+  const heroCardHeight = Math.min(Math.max(width * 0.46, 160), 220);
 
 
 
@@ -249,7 +250,12 @@ export default function LoginScreen() {
               {/* Radar Illustration Card */}
               <View style={[
                 styles.heroCard,
-                { backgroundColor: isDark ? '#0F0F2E' : colors.card, borderWidth: isDark ? 0 : 1, borderColor: isDark ? 'transparent' : colors.border }
+                { 
+                  height: heroCardHeight,
+                  backgroundColor: isDark ? '#0F0F2E' : colors.card, 
+                  borderWidth: isDark ? 0 : 1, 
+                  borderColor: isDark ? 'transparent' : colors.border 
+                }
               ]}>
                 {/* Radar base circle + grid */}
                 <View style={styles.radarBase}>
@@ -493,7 +499,6 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: '#E5EEFF',
-    height: 192,
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',

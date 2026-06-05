@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +13,6 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 
-const { height: screenHeight } = Dimensions.get('window');
 
 const CATEGORIES = [
   { id: 'for-you', name: 'For You', slug: 'for-you' },
@@ -36,7 +35,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const { user } = useAuthStore();
-
+  const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { newsId } = useLocalSearchParams<{ newsId?: string }>();
   const flatListRef = useRef<FlatList>(null);

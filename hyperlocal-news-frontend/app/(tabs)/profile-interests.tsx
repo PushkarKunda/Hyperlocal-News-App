@@ -7,8 +7,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -19,9 +19,6 @@ import { useInterestsList } from '@/hooks/useApi';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 40 - 16) / 2;
 
 const TOPIC_STYLES: Record<string, {
   iconName: any;
@@ -51,6 +48,8 @@ export default function ProfileInterestsScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 16) / 2;
 
   const { data: interestsList = [], isLoading } = useInterestsList();
 
@@ -171,7 +170,7 @@ export default function ProfileInterestsScreen() {
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-                style={topic.span ? styles.bentoCardSpan : styles.bentoCardSingle}
+              style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
               >
                 <Animated.View
                   style={[
@@ -351,7 +350,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   bentoCardSingle: {
-    width: CARD_WIDTH,
     height: 140,
   },
   bentoCardSpan: {

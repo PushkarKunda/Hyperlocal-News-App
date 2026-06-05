@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Share, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Share, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useRouter } from 'expo-router';
@@ -12,8 +12,6 @@ import MenuOptions from '@/components/MenuOptions';
 import { useAuthStore } from '@/store/authStore';
 import { StatusBar } from 'expo-status-bar';
 
-
-const { height: screenHeight } = Dimensions.get('window');
 
 export default function ArticlesScreen() {
   const colorScheme = useAppColorScheme();

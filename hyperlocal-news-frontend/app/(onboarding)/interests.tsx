@@ -7,8 +7,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -19,13 +19,6 @@ import { useInterestsList } from '@/hooks/useApi';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
-
-// Responsive bento grid calculation
-// Total screen padding = 40 (20 left, 20 right)
-// Gap between cards = 16
-const CARD_WIDTH = (width - 40 - 16) / 2;
 
 interface Topic {
   id: string;
@@ -65,7 +58,9 @@ export default function InterestsScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
-
+  const { width } = useWindowDimensions();
+  // Responsive bento grid: total horizontal padding = 40, gap = 16
+  const CARD_WIDTH = (width - 40 - 16) / 2;
   const user = useAuthStore(state => state.user);
 
   // Load onboarding topics list dynamically from simulated backend
@@ -201,7 +196,7 @@ export default function InterestsScreen() {
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-                style={topic.span ? styles.bentoCardSpan : styles.bentoCardSingle}
+                style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
               >
                 <Animated.View
                   style={[
@@ -377,7 +372,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   bentoCardSingle: {
-    width: CARD_WIDTH,
     height: 140,
   },
   bentoCardSpan: {

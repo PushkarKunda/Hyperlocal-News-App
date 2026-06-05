@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Dimensions,
   Pressable,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
@@ -18,7 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 
-const DRAWER_WIDTH = 320;
+const MAX_DRAWER_WIDTH = 320;
 
 interface MenuOptionsProps {
   isVisible: boolean;
@@ -29,6 +29,8 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const { width: screenWidth } = useWindowDimensions();
+  const DRAWER_WIDTH = Math.min(screenWidth * 0.85, MAX_DRAWER_WIDTH);
   
   const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
@@ -225,6 +227,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
           style={[
             styles.drawer,
             {
+              width: DRAWER_WIDTH,
               paddingTop: insets.top,
               paddingBottom: Math.max(insets.bottom + 16, 24),
               transform: [{ translateX: slideAnim }],
@@ -428,7 +431,6 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: DRAWER_WIDTH,
     backgroundColor: '#EFF4FF',
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,

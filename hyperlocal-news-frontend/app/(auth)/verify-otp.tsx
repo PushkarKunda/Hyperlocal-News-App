@@ -10,8 +10,8 @@ import {
   ScrollView,
   Animated,
   Pressable,
-  Dimensions,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,6 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 
-const { width } = Dimensions.get('window');
 const OTP_LENGTH = 4;
 
 interface ResendTimerProps {
@@ -150,6 +149,9 @@ export default function VerifyOTPScreen() {
   const isDark = colorScheme === 'dark';
   const params = useLocalSearchParams();
   const rawPhone = params.phone as string || '';
+  const { width } = useWindowDimensions();
+  // Scale the illustration: 200px on 390px screen, clamp between 140 and 200
+  const illustrationSize = Math.min(Math.max(width * 0.51, 140), 200);
   
   // Format phone number for readability in heading
   const formatDisplayPhone = (phone: string) => {
@@ -367,7 +369,7 @@ export default function VerifyOTPScreen() {
 
             {/* Illustration Section */}
             <View style={styles.illustrationSection}>
-              <View style={styles.otpIllustrationWrap}>
+              <View style={[styles.otpIllustrationWrap, { width: illustrationSize, height: illustrationSize }]}>
                 {/* Wave rings */}
                 <Animated.View style={[styles.waveRing, { borderColor: colors.primary }, makeWaveStyle(wave1)]} />
                 <Animated.View style={[styles.waveRing, { borderColor: colors.primary }, makeWaveStyle(wave2)]} />

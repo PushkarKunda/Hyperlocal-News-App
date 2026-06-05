@@ -7,7 +7,6 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
   TextInput,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -18,8 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useDistrictsList } from '@/hooks/useApi';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
 
 interface DistrictCardProps {
   name: string;

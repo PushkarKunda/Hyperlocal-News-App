@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,8 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-const { width } = Dimensions.get('window');
 
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -189,7 +187,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   heroContainer: {
-    width: width,
+    width: '100%',
     height: 420,
   },
   heroImage: {

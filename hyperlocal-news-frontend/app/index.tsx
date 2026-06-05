@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, Easing, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,8 +8,6 @@ import { useAuthStore } from '@/store/authStore';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const colorScheme = useAppColorScheme();

@@ -15,7 +15,7 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Alert,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,6 @@ import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
-const { width } = Dimensions.get('window');
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -34,6 +33,8 @@ export default function ProfileCompletionScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const { user, updateProfile, isOnboarded } = useAuthStore();
+  const { width } = useWindowDimensions();
+  const avatarSize = Math.min(Math.max(width * 0.33, 96), 140);
 
   const [name, setName] = useState(user?.name || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
@@ -339,7 +340,13 @@ export default function ProfileCompletionScreen() {
                   <Animated.View
                     style={[
                       styles.avatarCircle,
-                      { backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF', borderColor: colors.border },
+                      { 
+                        backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF', 
+                        borderColor: colors.border,
+                        width: avatarSize,
+                        height: avatarSize,
+                        borderRadius: avatarSize / 2,
+                      },
                       { transform: [{ scale: avatarScale }] }
                     ]}
                   >
@@ -533,7 +540,7 @@ export default function ProfileCompletionScreen() {
           <TouchableWithoutFeedback onPress={closeCustomAlert}>
             <View style={styles.modalOverlay} />
           </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border, width: width - 48 }]}>
             {/* Top Decorative Icon */}
             <View 
               style={[
@@ -966,7 +973,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    width: width - 48,
     maxWidth: 340,
     borderRadius: 24,
     borderWidth: 1.5,

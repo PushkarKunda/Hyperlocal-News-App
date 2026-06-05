@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +19,6 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 import { Language } from '@/types';
 
-const { width } = Dimensions.get('window');
 
 interface LanguageCardProps {
   name: string;

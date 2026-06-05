@@ -8,7 +8,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
+  useWindowDimensions,
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,8 +21,6 @@ import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useArticleStore } from '@/store/articleStore';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const COVER_PRESETS = [
   { id: 'business', label: 'Business', url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600' },
@@ -66,6 +64,7 @@ export default function CreateArticleScreen() {
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
 
   // Zustand Store
   const { addArticle } = useArticleStore();
@@ -549,7 +548,7 @@ export default function CreateArticleScreen() {
             activeOpacity={1}
             onPress={() => setPickerType(null)}
           >
-            <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.pickerSheet, { backgroundColor: colors.surface, maxHeight: screenHeight * 0.5 }]}>
               <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.pickerTitle, { color: colors.text }]}>
                   Select {pickerType.charAt(0).toUpperCase() + pickerType.slice(1)}
@@ -973,7 +972,6 @@ const styles = StyleSheet.create({
   pickerSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: screenHeight * 0.5,
     paddingBottom: 24,
   },
   pickerHeader: {

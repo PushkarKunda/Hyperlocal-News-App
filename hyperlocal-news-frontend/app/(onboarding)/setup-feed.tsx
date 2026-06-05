@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
   Easing,
   Platform,
   BackHandler,
@@ -15,8 +14,6 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-const { width } = Dimensions.get('window');
 
 export default function FeedSetupLoaderScreen() {
   const router = useRouter();

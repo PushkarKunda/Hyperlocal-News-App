@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Share } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTimeAgo } from '@/utils/formatters';
 
-const { width: screenWidth } = Dimensions.get('window');
 
 export function NewsCard({ item, containerHeight }: any) {
 
@@ -94,7 +93,7 @@ export function NewsCard({ item, containerHeight }: any) {
 
 const styles = StyleSheet.create({
     cardContainer: {
-        width: screenWidth,
+        width: '100%',
         backgroundColor: '#fff',
     },
     image: {

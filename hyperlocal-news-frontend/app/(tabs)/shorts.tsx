@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, FlatList, ViewToken } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +11,6 @@ import { useShortsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import MenuOptions from '@/components/MenuOptions';
 
-const { width, height } = Dimensions.get('window');
 
 const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isActive: boolean; itemHeight: number }) => {
   const insets = useSafeAreaInsets();
@@ -113,6 +112,7 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
 
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   itemContainer: {
-    width: width,
+    width: '100%',
     overflow: 'hidden',
   },
   backgroundImage: {

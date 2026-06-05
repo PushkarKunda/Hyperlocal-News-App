@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Share, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { NewsArticle } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 interface ImmersiveNewsCardProps {
   item: NewsArticle;
@@ -18,6 +16,7 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
+  const { width: screenWidth } = useWindowDimensions();
 
   // Local interaction states
   const [liked, setLiked] = useState(item.isBookmarked ?? false);
@@ -124,7 +123,7 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
 
 const styles = StyleSheet.create({
   cardContainer: {
-    width: screenWidth,
+    width: '100%',
   },
   imageContainer: {
     width: '100%',

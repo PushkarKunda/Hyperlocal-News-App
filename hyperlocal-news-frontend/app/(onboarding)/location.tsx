@@ -7,7 +7,6 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Dimensions,
   TextInput,
   Image,
   ActivityIndicator,
@@ -21,8 +20,6 @@ import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
 
 import { useStatesList } from '@/hooks/useApi';
 

@@ -5,7 +5,7 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -14,13 +14,8 @@ import { Colors } from '@/constants/Colors';
 import { Category } from '@/types';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 // ── Configuration ──────────────────────────────────────────────────────────
-const ITEM_WIDTH = SCREEN_WIDTH * 0.7; // Large, clear cards
 const ITEM_SPACING = 16;
-const SNAP_INTERVAL = ITEM_WIDTH + ITEM_SPACING;
-const HORIZONTAL_PADDING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
 
 interface CategoryBarProps {
   categories: Category[];
@@ -33,14 +28,16 @@ const CategoryCard = memo(({
   item, 
   isFocused, 
   onPress, 
-  colors 
+  colors,
+  itemWidth,
 }: { 
   item: Category; 
   isFocused: boolean; 
   onPress: () => void;
   colors: any;
+  itemWidth: number;
 }) => (
-  <View style={[styles.cardContainer, { width: ITEM_WIDTH }]}>
+  <View style={[styles.cardContainer, { width: itemWidth }]}>
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
@@ -96,6 +93,10 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const flatListRef = useRef<FlatList>(null);
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const ITEM_WIDTH = SCREEN_WIDTH * 0.7;
+  const SNAP_INTERVAL = ITEM_WIDTH + ITEM_SPACING;
+  const HORIZONTAL_PADDING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
   
   // Track the current index to avoid redundant updates
   const currentIndexRef = useRef(categories.findIndex(c => c.slug === selectedSlug));
@@ -147,6 +148,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             isFocused={item.slug === selectedSlug}
             onPress={() => onSelect(item.slug)}
             colors={colors}
+            itemWidth={ITEM_WIDTH}
           />
         )}
         horizontal
@@ -182,7 +184,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     // This allows the first and last items to be perfectly centered
-    paddingRight: HORIZONTAL_PADDING, 
   },
   cardContainer: {
     marginRight: ITEM_SPACING,
