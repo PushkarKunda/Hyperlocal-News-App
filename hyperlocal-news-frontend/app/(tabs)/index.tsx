@@ -193,6 +193,7 @@ export default function HomeScreen() {
           snapToInterval={screenWidth}
           snapToAlignment="start"
           decelerationRate="fast"
+          disableIntervalMomentum={true}
           bounces={false}
           getItemLayout={(data, index) => ({
             length: screenWidth,
@@ -272,6 +273,7 @@ export default function HomeScreen() {
                   snapToInterval={scrollHeight}
                   snapToAlignment="start"
                   decelerationRate="fast"
+                  disableIntervalMomentum={true}
                   bounces={false}
                   getItemLayout={(_, idx) => ({
                     length: scrollHeight,
@@ -384,6 +386,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     paddingHorizontal: 4,
+    paddingBottom: 6,
   },
   categoryText: {
     fontSize: 14,
