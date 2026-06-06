@@ -63,8 +63,8 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
           styles.languageCard,
           isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
@@ -79,10 +79,10 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
         )}
 
         {/* Large Script Preview Circle */}
-        <View 
+        <View
           style={[
-            styles.glyphCircle, 
-            { 
+            styles.glyphCircle,
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -94,12 +94,12 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
         </View>
 
         {/* Language Name */}
-        <Text 
+        <Text
           style={[
-            styles.languageName, 
+            styles.languageName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.languageNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -113,6 +113,8 @@ export default function LanguageScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   const { data: languagesList = [], isLoading } = useLanguagesList();
   const [selectedLanguage, setSelectedLanguage] = useState('en');

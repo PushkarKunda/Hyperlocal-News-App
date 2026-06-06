@@ -101,6 +101,8 @@ export default function SettingsLocationScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 14) / 2 - 1;
 
   const { data: statesList = [], isLoading } = useStatesList();
   const { user } = useAuthStore();

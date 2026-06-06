@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { newsId } = useLocalSearchParams<{ newsId?: string }>();
-  
+
   const categoryFlatListRef = useRef<FlatList>(null);
   const horizontalFlatListRef = useRef<FlatList>(null);
   const verticalRefs = useRef<{ [key: string]: FlatList | null }>({});
@@ -65,22 +65,22 @@ export default function HomeScreen() {
         const itemCategory = item.category?.slug || 'for-you';
         const categoryNews = getFilteredNews(itemCategory);
         const itemIndex = categoryNews.findIndex(i => i.id === newsId);
-        
+
         if (itemIndex !== -1) {
           // Set active category
           setActiveCategory(itemCategory);
           const catIndex = CATEGORIES.findIndex(c => c.slug === itemCategory);
-          
+
           const timer = setTimeout(() => {
             horizontalFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true });
             categoryFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true, viewPosition: 0.5 });
-            
+
             const verticalTimer = setTimeout(() => {
               verticalRefs.current[itemCategory]?.scrollToIndex({ index: itemIndex, animated: true });
             }, 250);
             return () => clearTimeout(verticalTimer);
           }, 150);
-          
+
           return () => clearTimeout(timer);
         }
       }
@@ -102,14 +102,14 @@ export default function HomeScreen() {
 
       {/* Styled Symmetrical Theme-Aware Header Section */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
-          style={[styles.headerLeftButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]} 
+        <TouchableOpacity
+          style={[styles.headerLeftButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
           onPress={() => setIsMenuVisible(true)}
           activeOpacity={0.7}
         >
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
@@ -124,7 +124,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.headerRightButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
           onPress={() => router.push('/(tabs)/notifications')}
           activeOpacity={0.7}
@@ -163,8 +163,8 @@ export default function HomeScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[
-                  styles.categoryText, 
-                  { 
+                  styles.categoryText,
+                  {
                     color: isActive ? colors.primary : colors.textSecondary,
                     fontWeight: isActive ? '700' : '500'
                   }
@@ -179,7 +179,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Main Snap Scrolling Feed Container (Horizontal Pager) */}
-      <View 
+      <View
         style={styles.feedWrapper}
         onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
       >
@@ -262,9 +262,9 @@ export default function HomeScreen() {
                   data={categoryNews}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
-                    <ImmersiveNewsCard 
-                      item={item} 
-                      containerHeight={scrollHeight} 
+                    <ImmersiveNewsCard
+                      item={item}
+                      containerHeight={scrollHeight}
                     />
                   )}
                   pagingEnabled
@@ -294,9 +294,9 @@ export default function HomeScreen() {
       </View>
 
       {/* Reusable Menu Drawer Overlay Component */}
-      <MenuOptions 
-        isVisible={isMenuVisible} 
-        onClose={() => setIsMenuVisible(false)} 
+      <MenuOptions
+        isVisible={isMenuVisible}
+        onClose={() => setIsMenuVisible(false)}
       />
     </View>
   );
@@ -420,4 +420,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
   },
-});
+});

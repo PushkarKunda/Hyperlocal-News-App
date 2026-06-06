@@ -11,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +23,7 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 
 import { useStatesList } from '@/hooks/useApi';
+import { scaleFontSize } from '@/utils/responsive';
 
 interface StateItem {
   id: string;
@@ -34,9 +36,12 @@ interface StateCardProps {
   code: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: number;
+  marginRight?: number;
+  marginBottom?: number;
 }
 
-function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
+function StateCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: StateCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -65,7 +70,7 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.regionCardContainer}
+      style={[styles.regionCardContainer, width ? { width } : null, marginRight !== undefined ? { marginRight } : null, marginBottom !== undefined ? { marginBottom } : null]}
     >
       <Animated.View
         style={[
@@ -112,6 +117,8 @@ export default function LocationScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   // Load states list dynamically using our react query hook
   const { data: statesList = [], isLoading: isLoadingStates } = useStatesList();
@@ -384,15 +391,24 @@ export default function LocationScreen() {
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>INDIAN STATES</Text>
 
           <View style={styles.gridContainer}>
-            {filteredStates.map((state) => (
-              <StateCard
-                key={state.id}
-                name={state.name}
-                code={state.code}
-                isSelected={selectedState === state.id}
-                onPress={() => handleSelectState(state.id)}
-              />
-            ))}
+            {(() => {
+              let singleCount = 0;
+              return filteredStates.map((state) => {
+                const marginRight = singleCount++ % 2 === 0 ? 16 : 0;
+                return (
+                  <StateCard
+                    key={state.id}
+                    name={state.name}
+                    code={state.code}
+                    isSelected={selectedState === state.id}
+                    onPress={() => handleSelectState(state.id)}
+                    width={CARD_WIDTH}
+                    marginRight={marginRight}
+                    marginBottom={16}
+                  />
+                );
+              });
+            })()}
           </View>
         </View>
       </ScrollView>
@@ -455,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: scaleFontSize(20),
     fontWeight: '600',
     color: '#4648D4',
     fontFamily: 'Poppins_600SemiBold',
@@ -478,19 +494,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mainTitle: {
-    fontSize: 32,
+    fontSize: scaleFontSize(32),
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.64,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(16),
     fontWeight: '400',
     color: '#464554',
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: scaleFontSize(24),
   },
   searchContainer: {
     gap: 16,
@@ -534,7 +550,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   gpsButtonText: {
-    fontSize: 13,
+    fontSize: scaleFontSize(13),
     fontWeight: '600',
     color: '#4648D4',
     fontFamily: 'Poppins_600SemiBold',
@@ -544,7 +560,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   sectionHeader: {
-    fontSize: 12,
+    fontSize: scaleFontSize(12),
     fontWeight: '600',
     color: '#767586',
     fontFamily: 'Poppins_600SemiBold',
@@ -554,11 +570,9 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
+    width: '100%',
   },
   regionCardContainer: {
-    width: '47.5%',
     height: 120,
   },
   regionCard: {
@@ -613,7 +627,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
   },
   stateCodeText: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
@@ -629,7 +643,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   regionName: {
-    fontSize: 13,
+    fontSize: scaleFontSize(13),
     fontWeight: '500',
     fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
@@ -661,9 +675,9 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 20,
+    fontSize: scaleFontSize(20),
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
-    lineHeight: 28,
+    lineHeight: scaleFontSize(28),
   },
 });

@@ -29,15 +29,15 @@ const TOPIC_STYLES: Record<string, {
   darkSelectedBg: string;
   span?: boolean;
 }> = {
-  tech:    { iconName: 'monitor',                 iconType: 'feather',   iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)',  selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
-  design:  { iconName: 'color-palette-outline',   iconType: 'ionicons',  iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  sports:  { iconName: 'basketball-outline',      iconType: 'ionicons',  iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)',  selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
-  music:   { iconName: 'music',                   iconType: 'feather',   iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)',  selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020' },
-  art:     { iconName: 'brush-outline',            iconType: 'ionicons',  iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)',  selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
-  travel:  { iconName: 'compass',                 iconType: 'feather',   iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  food:    { iconName: 'restaurant-outline',      iconType: 'ionicons',  iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)',  selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
-  gaming:  { iconName: 'game-controller-outline', iconType: 'ionicons',  iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  wellness:{ iconName: 'heart',                   iconType: 'feather',   iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)',  selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020', span: true },
+  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
+  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
+  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020' },
+  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
+  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
+  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020', span: true },
 };
 
 const MIN_SELECTIONS = 3;
@@ -49,7 +49,7 @@ export default function ProfileInterestsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const CARD_WIDTH = (width - 40 - 16) / 2;
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   const { data: interestsList = [], isLoading } = useInterestsList();
 
@@ -99,7 +99,7 @@ export default function ProfileInterestsScreen() {
 
   const handleSave = () => {
     if (isButtonDisabled) return;
-    
+
     useAuthStore.setState((prev) => ({
       user: prev.user ? { ...prev.user, interests: selectedTopics } : null
     }));
@@ -170,27 +170,27 @@ export default function ProfileInterestsScreen() {
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-              style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
+                style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
               >
                 <Animated.View
                   style={[
                     styles.cardInner,
                     isSelected
                       ? [
-                          styles.cardSelected,
-                          {
-                            backgroundColor: isDark ? topic.darkSelectedBg : topic.selectedBg,
-                            borderColor: topic.iconColor,
-                            shadowColor: topic.iconColor,
-                          },
-                        ]
+                        styles.cardSelected,
+                        {
+                          backgroundColor: isDark ? topic.darkSelectedBg : topic.selectedBg,
+                          borderColor: topic.iconColor,
+                          shadowColor: topic.iconColor,
+                        },
+                      ]
                       : [
-                          styles.cardUnselected,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                          },
-                        ],
+                        styles.cardUnselected,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ],
                     { transform: [{ scale }] },
                   ]}
                 >

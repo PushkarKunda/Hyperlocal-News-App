@@ -60,7 +60,7 @@ export default function InterestsScreen() {
   const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   // Responsive bento grid: total horizontal padding = 40, gap = 16
-  const CARD_WIDTH = (width - 40 - 16) / 2;
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
   const user = useAuthStore(state => state.user);
 
   // Load onboarding topics list dynamically from simulated backend
@@ -205,22 +205,22 @@ export default function InterestsScreen() {
                 <Animated.View
                   style={[
                     styles.cardInner,
-                    isSelected 
+                    isSelected
                       ? [
-                          styles.cardSelected,
-                          {
-                            backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
-                            borderColor: topic.iconColor,
-                            shadowColor: topic.iconColor,
-                          }
-                        ]
+                        styles.cardSelected,
+                        {
+                          backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
+                          borderColor: topic.iconColor,
+                          shadowColor: topic.iconColor,
+                        }
+                      ]
                       : [
-                          styles.cardUnselected,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                          }
-                        ],
+                        styles.cardUnselected,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        }
+                      ],
                     { transform: [{ scale }] }
                   ]}
                 >
@@ -237,7 +237,7 @@ export default function InterestsScreen() {
                           <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
                         )}
                       </View>
-                      
+
                       <View style={styles.spanTextContainer}>
                         <View style={styles.spanTitleRow}>
                           <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
@@ -263,7 +263,7 @@ export default function InterestsScreen() {
                           )}
                         </View>
                       </View>
-                      
+
                       <View style={styles.singleTitleRow}>
                         <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
                         {isSelected && (

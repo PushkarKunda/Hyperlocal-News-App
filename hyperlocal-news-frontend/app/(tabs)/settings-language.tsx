@@ -113,6 +113,8 @@ export default function SettingsLanguageScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   const { data: languagesList = [], isLoading } = useLanguagesList();
   const { user, updateLanguage } = useAuthStore();

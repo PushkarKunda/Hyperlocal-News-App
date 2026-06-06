@@ -61,18 +61,18 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
           styles.card,
           isSelected ? styles.cardSelected : styles.cardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
         ]}
       >
-        <View 
+        <View
           style={[
-            styles.badgeCircle, 
-            { 
+            styles.badgeCircle,
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -82,12 +82,12 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
             {code || name.substring(0, 3).toUpperCase()}
           </Text>
         </View>
-        <Text 
+        <Text
           style={[
-            styles.districtName, 
+            styles.districtName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.districtNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -102,6 +102,8 @@ export default function DistrictsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { state } = useLocalSearchParams<{ state?: string }>();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   // Load districts dynamically using the React Query hook based on onboarding State selection
   const { data: districts = [], isLoading } = useDistrictsList(state);
