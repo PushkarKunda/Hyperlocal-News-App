@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   useWindowDimensions,
+  DimensionValue,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
@@ -36,9 +37,9 @@ interface StateCardProps {
   code: string;
   isSelected: boolean;
   onPress: () => void;
-  width?: number;
-  marginRight?: number;
-  marginBottom?: number;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
 function StateCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: StateCardProps) {
@@ -70,7 +71,7 @@ function StateCard({ name, code, isSelected, onPress, width, marginRight, margin
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={[styles.regionCardContainer, width ? { width } : null, marginRight !== undefined ? { marginRight } : null, marginBottom !== undefined ? { marginBottom } : null]}
+      style={[styles.regionCardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
@@ -117,8 +118,6 @@ export default function LocationScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   // Load states list dynamically using our react query hook
   const { data: statesList = [], isLoading: isLoadingStates } = useStatesList();
@@ -394,7 +393,7 @@ export default function LocationScreen() {
             {(() => {
               let singleCount = 0;
               return filteredStates.map((state) => {
-                const marginRight = singleCount++ % 2 === 0 ? 16 : 0;
+                const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
                 return (
                   <StateCard
                     key={state.id}
@@ -402,7 +401,7 @@ export default function LocationScreen() {
                     code={state.code}
                     isSelected={selectedState === state.id}
                     onPress={() => handleSelectState(state.id)}
-                    width={CARD_WIDTH}
+                    width="47%"
                     marginRight={marginRight}
                     marginBottom={16}
                   />

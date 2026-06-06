@@ -10,6 +10,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
+  DimensionValue,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
@@ -26,9 +28,12 @@ interface StateCardProps {
   code: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
-function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
+function StateCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: StateCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -47,7 +52,7 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.regionCardContainer}
+      style={[styles.regionCardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
@@ -101,8 +106,6 @@ export default function SettingsLocationScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const CARD_WIDTH = (width - 40 - 14) / 2 - 1;
 
   const { data: statesList = [], isLoading } = useStatesList();
   const { user } = useAuthStore();
@@ -311,15 +314,24 @@ export default function SettingsLocationScreen() {
       >
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>INDIAN STATES</Text>
         <View style={styles.gridContainer}>
-          {filteredStates.map((state) => (
-            <StateCard
-              key={state.id}
-              name={state.name}
-              code={state.code}
-              isSelected={selectedState === state.id}
-              onPress={() => handleSelectState(state.id)}
-            />
-          ))}
+          {(() => {
+            let singleCount = 0;
+            return filteredStates.map((state) => {
+              const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
+              return (
+                <StateCard
+                  key={state.id}
+                  name={state.name}
+                  code={state.code}
+                  isSelected={selectedState === state.id}
+                  onPress={() => handleSelectState(state.id)}
+                  width="47%"
+                  marginRight={marginRight}
+                  marginBottom={16}
+                />
+              );
+            });
+          })()}
           {filteredStates.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="search-outline" size={40} color={colors.textTertiary} />
@@ -468,7 +480,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 14,
   },
   regionCardContainer: {
     width: '47.5%',

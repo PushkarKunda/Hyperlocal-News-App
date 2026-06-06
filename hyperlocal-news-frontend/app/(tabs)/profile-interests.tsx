@@ -157,21 +157,32 @@ export default function ProfileInterestsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.bentoGrid}>
-          {mappedTopics.map((topic) => {
-            const isSelected = selectedTopics.includes(topic.id);
-            if (!cardScaleAnims[topic.id]) {
-              cardScaleAnims[topic.id] = new Animated.Value(1);
-            }
-            const scale = cardScaleAnims[topic.id];
+          {(() => {
+            let singleItemCount = 0;
+            return mappedTopics.map((topic) => {
+              const isSelected = selectedTopics.includes(topic.id);
+              if (!cardScaleAnims[topic.id]) {
+                cardScaleAnims[topic.id] = new Animated.Value(1);
+              }
+              const scale = cardScaleAnims[topic.id];
+              const isSpan = !!topic.span;
+              const marginRight = isSpan ? '0%' : (singleItemCount++ % 2 === 0 ? '6%' : '0%');
 
-            return (
-              <Pressable
-                key={topic.id}
-                onPressIn={() => handleCardPressIn(topic.id)}
-                onPressOut={() => handleCardPressOut(topic.id)}
-                onPress={() => toggleTopic(topic.id)}
-                style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
-              >
+              return (
+                <Pressable
+                  key={topic.id}
+                  onPressIn={() => handleCardPressIn(topic.id)}
+                  onPressOut={() => handleCardPressOut(topic.id)}
+                  onPress={() => toggleTopic(topic.id)}
+                  style={[
+                    isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
+                    {
+                      width: isSpan ? '100%' : '47%',
+                      marginRight,
+                      marginBottom: 16
+                    }
+                  ]}
+                >
                 <Animated.View
                   style={[
                     styles.cardInner,
@@ -232,8 +243,9 @@ export default function ProfileInterestsScreen() {
                   )}
                 </Animated.View>
               </Pressable>
-            );
-          })}
+              );
+            });
+          })()}
         </View>
       </ScrollView>
 
@@ -346,7 +358,6 @@ const styles = StyleSheet.create({
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
     width: '100%',
   },
   bentoCardSingle: {

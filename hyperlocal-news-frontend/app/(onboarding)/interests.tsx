@@ -146,6 +146,8 @@ export default function InterestsScreen() {
 
   const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
 
+  let singleItemCount = 0;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -193,6 +195,8 @@ export default function InterestsScreen() {
               cardScaleAnims[topic.id] = new Animated.Value(1);
             }
             const scale = cardScaleAnims[topic.id];
+            const isSpan = !!topic.span;
+            const marginRight = isSpan ? '0%' : (singleItemCount++ % 2 === 0 ? '6%' : '0%');
 
             return (
               <Pressable
@@ -200,7 +204,14 @@ export default function InterestsScreen() {
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-                style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
+                style={[
+                  isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
+                  {
+                    width: isSpan ? '100%' : '47%',
+                    marginRight,
+                    marginBottom: 16
+                  }
+                ]}
               >
                 <Animated.View
                   style={[
@@ -372,7 +383,6 @@ const styles = StyleSheet.create({
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
     width: '100%',
   },
   bentoCardSingle: {

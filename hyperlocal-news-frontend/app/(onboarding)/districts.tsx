@@ -8,6 +8,7 @@ import {
   Pressable,
   Animated,
   TextInput,
+  DimensionValue,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +24,12 @@ interface DistrictCardProps {
   code?: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
-function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
+function DistrictCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: DistrictCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -54,7 +58,7 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.cardContainer}
+      style={[styles.cardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
@@ -102,8 +106,6 @@ export default function DistrictsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { state } = useLocalSearchParams<{ state?: string }>();
-  const { width } = useWindowDimensions();
-  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   // Load districts dynamically using the React Query hook based on onboarding State selection
   const { data: districts = [], isLoading } = useDistrictsList(state);
@@ -257,15 +259,24 @@ export default function DistrictsScreen() {
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
 
           <View style={styles.gridContainer}>
-            {filteredDistricts.map((district) => (
-              <DistrictCard
-                key={district.id}
-                name={district.name}
-                code={district.code}
-                isSelected={selectedDistrict === district.id}
-                onPress={() => setSelectedDistrict(district.id)}
-              />
-            ))}
+            {(() => {
+              let singleCount = 0;
+              return filteredDistricts.map((district) => {
+                const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
+                return (
+                  <DistrictCard
+                    key={district.id}
+                    name={district.name}
+                    code={district.code}
+                    isSelected={selectedDistrict === district.id}
+                    onPress={() => setSelectedDistrict(district.id)}
+                    width="47%"
+                    marginRight={marginRight}
+                    marginBottom={16}
+                  />
+                );
+              });
+            })()}
           </View>
         </View>
       </ScrollView>
@@ -406,7 +417,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
   },
   cardContainer: {
     width: '47.5%',
