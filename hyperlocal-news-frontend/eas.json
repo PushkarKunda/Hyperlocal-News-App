@@ -8,6 +8,7 @@
       "distribution": "internal"
     },
     "preview": {
+      "workingDirectory": "hyperlocal-news-frontend",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
