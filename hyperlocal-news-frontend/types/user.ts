@@ -9,7 +9,9 @@ export interface User {
   language: string;
   interests: string[];
   isVerified: boolean;
-  isPublisher: boolean;
+  isPublisher?: boolean;
+  emailVerified: boolean;
+  mobileVerified: boolean;
   createdAt: string;
   updatedAt: string;
 }

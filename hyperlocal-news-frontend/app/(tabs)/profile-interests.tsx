@@ -29,15 +29,15 @@ const TOPIC_STYLES: Record<string, {
   darkSelectedBg: string;
   span?: boolean;
 }> = {
-  tech:    { iconName: 'monitor',                 iconType: 'feather',   iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)',  selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
-  design:  { iconName: 'color-palette-outline',   iconType: 'ionicons',  iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  sports:  { iconName: 'basketball-outline',      iconType: 'ionicons',  iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)',  selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
-  music:   { iconName: 'music',                   iconType: 'feather',   iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)',  selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020' },
-  art:     { iconName: 'brush-outline',            iconType: 'ionicons',  iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)',  selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
-  travel:  { iconName: 'compass',                 iconType: 'feather',   iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  food:    { iconName: 'restaurant-outline',      iconType: 'ionicons',  iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)',  selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
-  gaming:  { iconName: 'game-controller-outline', iconType: 'ionicons',  iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)',   selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
-  wellness:{ iconName: 'heart',                   iconType: 'feather',   iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)',  selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020', span: true },
+  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
+  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
+  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020' },
+  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7', darkSelectedBg: '#222244' },
+  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC', darkSelectedBg: '#2A2A4D' },
+  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3', darkSelectedBg: '#1C3030' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE', darkSelectedBg: '#3C1020', span: true },
 };
 
 const MIN_SELECTIONS = 3;
@@ -49,7 +49,7 @@ export default function ProfileInterestsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const CARD_WIDTH = (width - 40 - 16) / 2;
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
 
   const { data: interestsList = [], isLoading } = useInterestsList();
 
@@ -99,7 +99,7 @@ export default function ProfileInterestsScreen() {
 
   const handleSave = () => {
     if (isButtonDisabled) return;
-    
+
     useAuthStore.setState((prev) => ({
       user: prev.user ? { ...prev.user, interests: selectedTopics } : null
     }));
@@ -157,26 +157,37 @@ export default function ProfileInterestsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.bentoGrid}>
-          {mappedTopics.map((topic) => {
-            const isSelected = selectedTopics.includes(topic.id);
-            if (!cardScaleAnims[topic.id]) {
-              cardScaleAnims[topic.id] = new Animated.Value(1);
-            }
-            const scale = cardScaleAnims[topic.id];
+          {(() => {
+            let singleItemCount = 0;
+            return mappedTopics.map((topic) => {
+              const isSelected = selectedTopics.includes(topic.id);
+              if (!cardScaleAnims[topic.id]) {
+                cardScaleAnims[topic.id] = new Animated.Value(1);
+              }
+              const scale = cardScaleAnims[topic.id];
+              const isSpan = !!topic.span;
+              const marginRight = isSpan ? '0%' : (singleItemCount++ % 2 === 0 ? '6%' : '0%');
 
-            return (
-              <Pressable
-                key={topic.id}
-                onPressIn={() => handleCardPressIn(topic.id)}
-                onPressOut={() => handleCardPressOut(topic.id)}
-                onPress={() => toggleTopic(topic.id)}
-              style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
-              >
-                <Animated.View
+              return (
+                <Pressable
+                  key={topic.id}
+                  onPressIn={() => handleCardPressIn(topic.id)}
+                  onPressOut={() => handleCardPressOut(topic.id)}
+                  onPress={() => toggleTopic(topic.id)}
                   style={[
-                    styles.cardInner,
-                    isSelected
-                      ? [
+                    isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
+                    {
+                      width: isSpan ? '100%' : '47%',
+                      marginRight,
+                      marginBottom: 16
+                    }
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.cardInner,
+                      isSelected
+                        ? [
                           styles.cardSelected,
                           {
                             backgroundColor: isDark ? topic.darkSelectedBg : topic.selectedBg,
@@ -184,38 +195,19 @@ export default function ProfileInterestsScreen() {
                             shadowColor: topic.iconColor,
                           },
                         ]
-                      : [
+                        : [
                           styles.cardUnselected,
                           {
                             backgroundColor: colors.card,
                             borderColor: colors.border,
                           },
                         ],
-                    { transform: [{ scale }] },
-                  ]}
-                >
-                  {topic.span ? (
-                    // Full-width span layout (Wellness)
-                    <View style={styles.spanRow}>
-                      <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
-                        {topic.iconType === 'feather' ? (
-                          <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
-                        ) : (
-                          <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
-                        )}
-                      </View>
-                      <View style={styles.spanTextContainer}>
-                        <View style={styles.spanTitleRow}>
-                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
-                          {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
-                        </View>
-                        <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    // Normal 2-column bento card
-                    <View style={styles.singleLayout}>
-                      <View style={styles.singleTopRow}>
+                      { transform: [{ scale }] },
+                    ]}
+                  >
+                    {topic.span ? (
+                      // Full-width span layout (Wellness)
+                      <View style={styles.spanRow}>
                         <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
                           {topic.iconType === 'feather' ? (
                             <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
@@ -223,17 +215,37 @@ export default function ProfileInterestsScreen() {
                             <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
                           )}
                         </View>
+                        <View style={styles.spanTextContainer}>
+                          <View style={styles.spanTitleRow}>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                            {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
+                          </View>
+                          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
+                        </View>
                       </View>
-                      <View style={styles.singleTitleRow}>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
-                        {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
+                    ) : (
+                      // Normal 2-column bento card
+                      <View style={styles.singleLayout}>
+                        <View style={styles.singleTopRow}>
+                          <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
+                            {topic.iconType === 'feather' ? (
+                              <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                            ) : (
+                              <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                            )}
+                          </View>
+                        </View>
+                        <View style={styles.singleTitleRow}>
+                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                          {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
+                        </View>
                       </View>
-                    </View>
-                  )}
-                </Animated.View>
-              </Pressable>
-            );
-          })}
+                    )}
+                  </Animated.View>
+                </Pressable>
+              );
+            });
+          })()}
         </View>
       </ScrollView>
 
@@ -346,7 +358,6 @@ const styles = StyleSheet.create({
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
     width: '100%',
   },
   bentoCardSingle: {

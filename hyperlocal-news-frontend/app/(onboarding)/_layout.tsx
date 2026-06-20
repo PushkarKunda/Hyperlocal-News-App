@@ -28,7 +28,7 @@ export default function OnboardingLayout() {
 
   if (isOnboarded) {
     if (pathname.includes('profile')) {
-      // Allow rendering the profile screen to verify email
+      // Allow rendering the profile screen to verify Google identity
     } else {
       return null;
     }
@@ -46,7 +46,6 @@ export default function OnboardingLayout() {
       <Stack.Screen name="location" />
       <Stack.Screen name="districts" />
       <Stack.Screen name="interests" />
-      <Stack.Screen name="profile" />
       <Stack.Screen name="setup-feed" />
       <Stack.Screen name="complete" />
     </Stack>

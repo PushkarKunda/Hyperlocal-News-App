@@ -5,9 +5,9 @@ import { request } from './client';
 export const notificationsApi = {
   list: async () => {
     const response = await request<Notification[]>({
-      url: API_ROUTES.notifications,
+      url: API_ROUTES.engagement.notifications,
       method: 'GET',
     });
-    return response.data;
+    return response;
   },
 };

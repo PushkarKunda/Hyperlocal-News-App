@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 
 export default function ProfileCompletionScreen() {
@@ -38,13 +39,9 @@ export default function ProfileCompletionScreen() {
 
   const [name, setName] = useState(user?.name || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
-  const [email, setEmail] = useState(user?.email || '');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
   const [isFocused, setIsFocused] = useState(false);
-  const [isVerified, setIsVerified] = useState(user?.isPublisher || false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showOtpField, setShowOtpField] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
+  const [isGoogleVerified, setIsGoogleVerified] = useState(Boolean(user?.email_verified));
 
   const [dialogConfig, setDialogConfig] = useState<{
     visible: boolean;
@@ -71,51 +68,24 @@ export default function ProfileCompletionScreen() {
     setDialogConfig(prev => ({ ...prev, visible: false }));
   };
 
-  const handleEmailChange = (val: string) => {
-    setEmail(val);
-    if (isVerified) {
-      setIsVerified(false);
-    }
-    if (showOtpField) {
-      setShowOtpField(false);
-      setOtpCode('');
-    }
-  };
-
-  const handleVerifyEmail = () => {
-    if (!email.trim()) {
-      showCustomAlert('Email Required', 'Please enter your Gmail address first.', 'warning');
-      return;
-    }
-    if (!email.includes('@')) {
-      showCustomAlert('Invalid Email', 'Please enter a valid email address.', 'error');
-      return;
-    }
-    setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-      setShowOtpField(true);
+  const {
+    signInWithGoogle,
+    isGoogleReady,
+    isGoogleLoading,
+  } = useGoogleFirebaseAuth({
+    onSuccess: () => {
+      setIsGoogleVerified(true);
       showCustomAlert(
-        'OTP Sent! ✉️',
-        'A verification code has been sent to your email. You can enter any code to complete verification.',
+        'Google Verified',
+        'Your Google account has been verified through Firebase. You can now continue your profile setup.',
         'success'
       );
-    }, 1200);
-  };
+    },
+    onError: (error) => {
+      showCustomAlert('Google Sign-In Failed', error.message || 'Please try again.', 'error');
+    },
+  });
 
-  const handleConfirmOtp = () => {
-    if (otpCode.trim().length < 4) {
-      showCustomAlert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).', 'error');
-      return;
-    }
-    setIsVerified(true);
-    setShowOtpField(false);
-    showCustomAlert(
-      'Email Verified! 🎉',
-      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.',
-      'success'
-    );
-  };
 
   // Animations
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -256,7 +226,14 @@ export default function ProfileCompletionScreen() {
     if (name.trim().length >= 2) {
       // Update profile in store
       const finalAvatar = selectedAvatar || undefined;
-      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim(), isVerified, isVerified);
+      updateProfile(
+        name.trim(),
+        finalAvatar,
+        user?.email ?? undefined,
+        phoneNumber.trim(),
+        isGoogleVerified,
+        user?.mobile_verified
+      );
 
       if (isOnboarded) {
         Alert.alert('Profile Saved!', 'Your changes have been saved successfully.');
@@ -416,74 +393,44 @@ export default function ProfileCompletionScreen() {
                 </View>
               </View>
 
-              {/* Email Address Field */}
+              {/* Google Verification */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>EMAIL ADDRESS</Text>
-                
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    { backgroundColor: colors.card, borderColor: colors.border }
-                  ]}
-                >
-                  <TextInput
-                    style={[styles.textInput, { color: colors.text }]}
-                    placeholder="Enter email address"
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    maxLength={50}
-                  />
-                  <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
-                </View>                 {!isVerified && !showOtpField && (
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>GOOGLE ACCOUNT</Text>
+
+                <View style={[styles.googleVerifyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={[styles.googleIconCircle, { backgroundColor: colors.primaryLight }]}>
+                    <Ionicons name="logo-google" size={22} color={colors.primary} />
+                  </View>
+                  <View style={styles.googleVerifyText}>
+                    <Text style={[styles.googleVerifyTitle, { color: colors.text }]}>
+                      {isGoogleVerified ? 'Google account connected' : 'Verify with Google'}
+                    </Text>
+                    <Text style={[styles.googleVerifySubtitle, { color: colors.textSecondary }]}>
+                      {user?.email || 'Use Firebase Google OAuth to verify your publisher identity.'}
+                    </Text>
+                  </View>
+                </View>
+
+                {isGoogleVerified ? (
+                  <View style={[styles.verifiedSuccessBadge, { backgroundColor: '#006A61', borderColor: '#006A61' }] }>
+                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                    <Text style={[styles.verifiedSuccessText, { color: '#FFFFFF' }]}>Google Verification Active</Text>
+                  </View>
+                ) : (
                   <TouchableOpacity
                     style={[styles.verifyButton, { backgroundColor: colors.primaryLight }]}
-                    onPress={handleVerifyEmail}
-                    disabled={isVerifying}
+                    onPress={signInWithGoogle}
+                    disabled={!isGoogleReady || isGoogleLoading}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                    <Ionicons name="logo-google" size={16} color={colors.primary} />
                     <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
-                      {isVerifying ? 'Verifying...' : 'Get Verified to Publish'}
+                      {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
                     </Text>
                   </TouchableOpacity>
                 )}
-
-                {showOtpField && !isVerified && (
-                  <View style={styles.otpSection}>
-                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>ENTER OTP CODE</Text>
-                    <View style={[styles.otpInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                      <TextInput
-                        style={[styles.otpInput, { color: colors.text }]}
-                        placeholder="Enter 4-digit code"
-                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
-                        value={otpCode}
-                        onChangeText={setOtpCode}
-                        keyboardType="number-pad"
-                        maxLength={6}
-                      />
-                      <Feather name="lock" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
-                    </View>
-
-                    <TouchableOpacity
-                      style={[styles.otpConfirmButton, { backgroundColor: colors.primary }]}
-                      onPress={handleConfirmOtp}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.otpConfirmButtonText}>Confirm Code & Activate</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {email.trim().length > 0 && isVerified && (
-                  <View style={[styles.verifiedSuccessBadge, { backgroundColor: '#006A61', borderColor: '#006A61' }]}>
-                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
-                    <Text style={[styles.verifiedSuccessText, { color: '#FFFFFF' }]}>Verified Publisher Status Active</Text>
-                  </View>
-                )}
               </View>
+
 
               {/* Asymmetric Info Card */}
               <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -784,6 +731,37 @@ const styles = StyleSheet.create({
   inputIcon: {
     marginLeft: 12,
   },
+  googleVerifyCard: {
+    minHeight: 72,
+    borderRadius: 16,
+    borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  googleIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleVerifyText: {
+    flex: 1,
+    gap: 2,
+  },
+  googleVerifyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  googleVerifySubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: 'Poppins_400Regular',
+  },
   infoCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -915,49 +893,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   verifiedSuccessText: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  otpSection: {
-    marginTop: 12,
-    gap: 8,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(70, 72, 212, 0.15)',
-    backgroundColor: 'rgba(70, 72, 212, 0.02)',
-  },
-  otpLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: 1.0,
-  },
-  otpInputWrapper: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  otpInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: 'Poppins_600SemiBold',
-    fontWeight: '600',
-    letterSpacing: 2,
-  },
-  otpConfirmButton: {
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  otpConfirmButtonText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',

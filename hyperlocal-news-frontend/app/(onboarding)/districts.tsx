@@ -8,6 +8,7 @@ import {
   Pressable,
   Animated,
   TextInput,
+  DimensionValue,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +24,12 @@ interface DistrictCardProps {
   code?: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
-function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
+function DistrictCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: DistrictCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -54,25 +58,25 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.cardContainer}
+      style={[styles.cardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
           styles.card,
           isSelected ? styles.cardSelected : styles.cardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
         ]}
       >
-        <View 
+        <View
           style={[
-            styles.badgeCircle, 
-            { 
+            styles.badgeCircle,
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -82,12 +86,12 @@ function DistrictCard({ name, code, isSelected, onPress }: DistrictCardProps) {
             {code || name.substring(0, 3).toUpperCase()}
           </Text>
         </View>
-        <Text 
+        <Text
           style={[
-            styles.districtName, 
+            styles.districtName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.districtNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -201,7 +205,11 @@ export default function DistrictsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -251,15 +259,24 @@ export default function DistrictsScreen() {
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
 
           <View style={styles.gridContainer}>
-            {filteredDistricts.map((district) => (
-              <DistrictCard
-                key={district.id}
-                name={district.name}
-                code={district.code}
-                isSelected={selectedDistrict === district.id}
-                onPress={() => setSelectedDistrict(district.id)}
-              />
-            ))}
+            {(() => {
+              let singleCount = 0;
+              return filteredDistricts.map((district) => {
+                const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
+                return (
+                  <DistrictCard
+                    key={district.id}
+                    name={district.name}
+                    code={district.code}
+                    isSelected={selectedDistrict === district.id}
+                    onPress={() => setSelectedDistrict(district.id)}
+                    width="47%"
+                    marginRight={marginRight}
+                    marginBottom={16}
+                  />
+                );
+              });
+            })()}
           </View>
         </View>
       </ScrollView>
@@ -400,7 +417,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
   },
   cardContainer: {
     width: '47.5%',

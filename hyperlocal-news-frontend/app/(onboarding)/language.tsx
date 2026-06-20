@@ -6,6 +6,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  useWindowDimensions,
+  DimensionValue,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,9 +27,12 @@ interface LanguageCardProps {
   glyph: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
-function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
+function LanguageCard({ name, glyph, isSelected, onPress, width, marginRight, marginBottom }: LanguageCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -56,15 +61,15 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.cardContainer}
+      style={[styles.cardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
           styles.languageCard,
           isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
@@ -79,10 +84,10 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
         )}
 
         {/* Large Script Preview Circle */}
-        <View 
+        <View
           style={[
-            styles.glyphCircle, 
-            { 
+            styles.glyphCircle,
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -94,12 +99,12 @@ function LanguageCard({ name, glyph, isSelected, onPress }: LanguageCardProps) {
         </View>
 
         {/* Language Name */}
-        <Text 
+        <Text
           style={[
-            styles.languageName, 
+            styles.languageName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.languageNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -166,7 +171,11 @@ export default function LanguageScreen() {
       <View style={[styles.header, { borderBottomColor: colors.divider }]}>
         <View style={styles.headerSpacer} />
 
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -188,15 +197,24 @@ export default function LanguageScreen() {
 
         {/* Bento Grid of Language Cards */}
         <View style={styles.gridContainer}>
-          {languagesList.map((language) => (
-            <LanguageCard
-              key={language.id}
-              name={language.name}
-              glyph={language.glyph ?? ''}
-              isSelected={selectedLanguage === language.id}
-              onPress={() => setSelectedLanguage(language.id)}
-            />
-          ))}
+          {(() => {
+            let singleCount = 0;
+            return languagesList.map((language) => {
+              const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
+              return (
+                <LanguageCard
+                  key={language.id}
+                  name={language.name}
+                  glyph={language.glyph ?? ''}
+                  isSelected={selectedLanguage === language.id}
+                  onPress={() => setSelectedLanguage(language.id)}
+                  width="47%"
+                  marginRight={marginRight}
+                  marginBottom={16}
+                />
+              );
+            });
+          })()}
         </View>
       </ScrollView>
 
@@ -300,7 +318,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
   },
   cardContainer: {
     width: '47.5%',

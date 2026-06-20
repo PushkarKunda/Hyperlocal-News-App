@@ -193,7 +193,7 @@ export default function CreateArticleScreen() {
         imageUrl: imageUrl.trim(),
         category: selectedCategory!,
         author: {
-          id: user?.id || '',
+          id: user?.user_uid || '',
           name: user?.name ?? 'Publisher',
           avatar: user?.avatar,
           isVerified: user?.isPublisher || false,

@@ -60,7 +60,7 @@ export default function InterestsScreen() {
   const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   // Responsive bento grid: total horizontal padding = 40, gap = 16
-  const CARD_WIDTH = (width - 40 - 16) / 2;
+  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
   const user = useAuthStore(state => state.user);
 
   // Load onboarding topics list dynamically from simulated backend
@@ -146,6 +146,8 @@ export default function InterestsScreen() {
 
   const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
 
+  let singleItemCount = 0;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -160,7 +162,11 @@ export default function InterestsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -189,6 +195,8 @@ export default function InterestsScreen() {
               cardScaleAnims[topic.id] = new Animated.Value(1);
             }
             const scale = cardScaleAnims[topic.id];
+            const isSpan = !!topic.span;
+            const marginRight = isSpan ? '0%' : (singleItemCount++ % 2 === 0 ? '6%' : '0%');
 
             return (
               <Pressable
@@ -196,27 +204,34 @@ export default function InterestsScreen() {
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
                 onPress={() => toggleTopic(topic.id)}
-                style={topic.span ? styles.bentoCardSpan : [styles.bentoCardSingle, { width: CARD_WIDTH }]}
+                style={[
+                  isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
+                  {
+                    width: isSpan ? '100%' : '47%',
+                    marginRight,
+                    marginBottom: 16
+                  }
+                ]}
               >
                 <Animated.View
                   style={[
                     styles.cardInner,
-                    isSelected 
+                    isSelected
                       ? [
-                          styles.cardSelected,
-                          {
-                            backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
-                            borderColor: topic.iconColor,
-                            shadowColor: topic.iconColor,
-                          }
-                        ]
+                        styles.cardSelected,
+                        {
+                          backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
+                          borderColor: topic.iconColor,
+                          shadowColor: topic.iconColor,
+                        }
+                      ]
                       : [
-                          styles.cardUnselected,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                          }
-                        ],
+                        styles.cardUnselected,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        }
+                      ],
                     { transform: [{ scale }] }
                   ]}
                 >
@@ -233,7 +248,7 @@ export default function InterestsScreen() {
                           <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
                         )}
                       </View>
-                      
+
                       <View style={styles.spanTextContainer}>
                         <View style={styles.spanTitleRow}>
                           <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
@@ -259,7 +274,7 @@ export default function InterestsScreen() {
                           )}
                         </View>
                       </View>
-                      
+
                       <View style={styles.singleTitleRow}>
                         <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
                         {isSelected && (
@@ -368,7 +383,6 @@ const styles = StyleSheet.create({
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
     width: '100%',
   },
   bentoCardSingle: {

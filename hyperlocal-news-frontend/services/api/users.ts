@@ -4,33 +4,57 @@ import { request } from './client';
 
 export const usersApi = {
   me: async () => {
-    const response = await request<User>({ url: API_ROUTES.usersMe, method: 'GET' });
-    return response.data;
+    const response = await request<User>({ url: API_ROUTES.user.me, method: 'GET' });
+    return response;
+  },
+
+  updateMe: async (payload: Partial<User>) => {
+    const response = await request<User>({
+      url: API_ROUTES.user.me,
+      method: 'PUT',
+      data: payload,
+    });
+    return response;
   },
 
   updatePreferences: async (payload: Partial<UserPreferences>) => {
     const response = await request<UserPreferences>({
-      url: API_ROUTES.usersMePreferences,
+      url: API_ROUTES.user.preferences,
       method: 'PATCH',
       data: payload,
     });
-    return response.data;
+    return response;
   },
 
   updateAvatar: async (avatarUrl: string) => {
     const response = await request<User>({
-      url: API_ROUTES.usersMeAvatar,
+      url: `${API_ROUTES.user.me}/avatar`,
       method: 'PATCH',
       data: { avatarUrl },
     });
-    return response.data;
+    return response;
   },
 
   publisherProfile: async () => {
     const response = await request<PublisherProfile>({
-      url: `${API_ROUTES.usersMe}/publisher-profile`,
+      url: `${API_ROUTES.user.me}/publisher-profile`,
       method: 'GET',
     });
-    return response.data;
+    return response;
+  },
+
+  dashboard: async (params?: { detailed?: boolean; page?: number; limit?: number; recent_limit?: number }) => {
+    const response = await request<any>({
+      url: API_ROUTES.user.dashboard,
+      method: 'GET',
+      params: {
+        detailed: params?.detailed ?? false,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+        recent_limit: params?.recent_limit ?? 5,
+      },
+    });
+    return response;
   },
 };
+

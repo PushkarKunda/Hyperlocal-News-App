@@ -1,30 +1,22 @@
-
-**/android/**
-**/ios/**
-
-# Ignore local dependency and build artifacts recursively
-**/node_modules/**
-**/.expo/**
-**/dist/**
-**/web-build/**
-**/debug-build/**
-**/*.jks
-**/*.keystore
-**/*.p8
-**/*.p12
-**/*.mobileprovision
-**/*.key
-**/*.pem
-**/.env
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-
-**/.gradle/**
-**/.cxx/**
-**/build/**
-**/bin/**
-**/obj/**
-**.log
+/* # Ignore native folders in subprojects */
+**/android/ **/ios/
+/* # Ignore dependency and build artifacts in subprojects */
+**/node_modules/ **/.expo/ **/dist/ **/web-build/ **/debug-build/
+/* # Ignore keys, certificates, and logs */
+**
+/*.jks
+**/
+*.keystore **
+/*.p8
+**/
+*.p12 **
+/*.mobileprovision
+**/
+*.key **
+/*.pem
+**/
+*.log
+/* # Ignore environment variables */
+**/.env **/.env.local **/.env.development.local **/.env.test.local **/.env.production.local
+/* # Ignore cache files */
+**/.gradle/ **/.cxx/ **/build/ **/bin/ **/obj/

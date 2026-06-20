@@ -11,6 +11,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
+  DimensionValue,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +24,7 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 
 import { useStatesList } from '@/hooks/useApi';
+import { scaleFontSize } from '@/utils/responsive';
 
 interface StateItem {
   id: string;
@@ -34,9 +37,12 @@ interface StateCardProps {
   code: string;
   isSelected: boolean;
   onPress: () => void;
+  width?: DimensionValue;
+  marginRight?: DimensionValue;
+  marginBottom?: DimensionValue;
 }
 
-function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
+function StateCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: StateCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -65,25 +71,25 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={styles.regionCardContainer}
+      style={[styles.regionCardContainer, { width, marginRight, marginBottom }]}
     >
       <Animated.View
         style={[
           styles.regionCard,
           isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
         ]}
       >
-        <View 
+        <View
           style={[
             styles.flagCircle,
-            { 
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -93,12 +99,12 @@ function StateCard({ name, code, isSelected, onPress }: StateCardProps) {
             {code}
           </Text>
         </View>
-        <Text 
+        <Text
           style={[
-            styles.regionName, 
+            styles.regionName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.regionNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -199,7 +205,7 @@ export default function LocationScreen() {
 
   const handleUseCurrentLocation = async () => {
     if (isLocating) return;
-    
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -211,7 +217,7 @@ export default function LocationScreen() {
       }
 
       setIsLocating(true);
-      
+
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -228,8 +234,8 @@ export default function LocationScreen() {
         const cityName = address.city || address.subregion || address.district || '';
 
         // Match the state name to dynamic statesList
-        const matchedState = statesList.find(s => 
-          s.name.toLowerCase().includes(stateName.toLowerCase()) || 
+        const matchedState = statesList.find(s =>
+          s.name.toLowerCase().includes(stateName.toLowerCase()) ||
           stateName.toLowerCase().includes(s.name.toLowerCase())
         );
 
@@ -301,7 +307,11 @@ export default function LocationScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>HyperLocal</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -352,14 +362,14 @@ export default function LocationScreen() {
             onPressOut={handleGpsPressOut}
             disabled={isLocating}
           >
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.gpsButton, 
-                { 
+                styles.gpsButton,
+                {
                   backgroundColor: colors.card,
                   borderColor: colors.border,
-                  transform: [{ scale: gpsScale }] 
-                }, 
+                  transform: [{ scale: gpsScale }]
+                },
                 isLocating && styles.gpsButtonDisabled
               ]}
             >
@@ -380,15 +390,24 @@ export default function LocationScreen() {
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>INDIAN STATES</Text>
 
           <View style={styles.gridContainer}>
-            {filteredStates.map((state) => (
-              <StateCard
-                key={state.id}
-                name={state.name}
-                code={state.code}
-                isSelected={selectedState === state.id}
-                onPress={() => handleSelectState(state.id)}
-              />
-            ))}
+            {(() => {
+              let singleCount = 0;
+              return filteredStates.map((state) => {
+                const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
+                return (
+                  <StateCard
+                    key={state.id}
+                    name={state.name}
+                    code={state.code}
+                    isSelected={selectedState === state.id}
+                    onPress={() => handleSelectState(state.id)}
+                    width="47%"
+                    marginRight={marginRight}
+                    marginBottom={16}
+                  />
+                );
+              });
+            })()}
           </View>
         </View>
       </ScrollView>
@@ -451,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: scaleFontSize(20),
     fontWeight: '600',
     color: '#4648D4',
     fontFamily: 'Poppins_600SemiBold',
@@ -474,19 +493,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mainTitle: {
-    fontSize: 32,
+    fontSize: scaleFontSize(32),
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.64,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(16),
     fontWeight: '400',
     color: '#464554',
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: scaleFontSize(24),
   },
   searchContainer: {
     gap: 16,
@@ -530,7 +549,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   gpsButtonText: {
-    fontSize: 13,
+    fontSize: scaleFontSize(13),
     fontWeight: '600',
     color: '#4648D4',
     fontFamily: 'Poppins_600SemiBold',
@@ -540,7 +559,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   sectionHeader: {
-    fontSize: 12,
+    fontSize: scaleFontSize(12),
     fontWeight: '600',
     color: '#767586',
     fontFamily: 'Poppins_600SemiBold',
@@ -550,11 +569,9 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
+    width: '100%',
   },
   regionCardContainer: {
-    width: '47.5%',
     height: 120,
   },
   regionCard: {
@@ -609,7 +626,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
   },
   stateCodeText: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
@@ -625,7 +642,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   regionName: {
-    fontSize: 13,
+    fontSize: scaleFontSize(13),
     fontWeight: '500',
     fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
@@ -657,9 +674,9 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 20,
+    fontSize: scaleFontSize(20),
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
-    lineHeight: 28,
+    lineHeight: scaleFontSize(28),
   },
 });

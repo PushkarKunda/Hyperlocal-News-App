@@ -52,9 +52,8 @@ export default function SettingsScreen() {
 
 
 
-  const isGuest = user?.isGuest;
-  const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
-  const displayPhone = user?.phoneNumber || (isGuest ? 'No phone added' : 'Setup Phone');
+   const displayName = user?.name || 'Complete Profile';
+   const displayPhone = user?.phoneNumber || 'Setup Phone';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -121,35 +120,27 @@ export default function SettingsScreen() {
               <View style={styles.profileDetails}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
                 <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>{displayPhone}</Text>
-                {user?.email ? (
-                  <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
-                ) : (
-                  user?.isGuest && <Text style={[styles.profilePhone, { color: colors.textTertiary, fontSize: 11, marginTop: 2 }]}>No email added</Text>
-                )}
+                 {user?.email ? (
+                   <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
+                 ) : null}
                 
-                 <View style={styles.premiumBadgeContainer}>
-                  {user?.isPublisher ? (
-                    <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
-                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                      <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
-                    </View>
-                  ) : (
-                    isGuest ? (
-                      <View style={[styles.premiumBadge, { backgroundColor: darkModeEnabled ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
-                        <Text style={[styles.premiumBadgeText, { color: colors.primary }]}>Guest Account</Text>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
-                        onPress={() => router.push('/(onboarding)/profile')}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
-                        <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
-                      </TouchableOpacity>
-                    )
-                  )}
-                </View>
+                  <View style={styles.premiumBadgeContainer}>
+                   {user?.isPublisher ? (
+                     <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
+                       <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                       <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
+                     </View>
+                   ) : (
+                       <TouchableOpacity
+                         style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
+                         onPress={() => router.push('/(onboarding)/profile')}
+                         activeOpacity={0.8}
+                       >
+                         <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
+                         <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
+                       </TouchableOpacity>
+                     )}
+                 </View>
               </View>
 
               <TouchableOpacity 

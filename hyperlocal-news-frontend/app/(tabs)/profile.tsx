@@ -40,10 +40,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const isGuest = user?.isGuest;
-  const displayName = user?.name || (isGuest ? 'Guest User' : 'Complete Profile');
-  const displayPhone = user?.phoneNumber || (isGuest ? 'No phone added' : 'Setup Phone');
-
+  const displayName = user?.name;
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       
@@ -112,47 +109,36 @@ export default function ProfileScreen() {
                     <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 12, fontWeight: '800' }]}>Publisher</Text>
                   </View>
                 ) : (
-                  isGuest ? (
-                    <View style={[styles.premiumBadge, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(70, 72, 212, 0.08)' }]}>
-                      <Text style={[styles.premiumBadgeText, { color: colors.primary }]}>Guest Mode</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 14, paddingVertical: 6 }]}
-                      onPress={() => router.push('/(onboarding)/profile')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                      <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 11 }]}>Get Verified to Publish</Text>
-                    </TouchableOpacity>
-                  )
+                  <TouchableOpacity
+                    style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 14, paddingVertical: 6 }]}
+                    onPress={() => router.push('/(onboarding)/profile')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                    <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 11 }]}>Get Verified to Publish</Text>
+                  </TouchableOpacity>
                 )}
               </View>
 
               <Text style={[styles.userBio, { color: isDark ? colors.textSecondary : '#464554' }]}>
-                {isGuest 
-                  ? 'Enjoying HyperLocal? Log in to personalize your profile, customize your news feed, and save reading preferences.'
-                  : 'Tech enthusiast & daily reader. Always seeking the deeper story behind the headlines.'
-                }
+                Tech enthusiast & daily reader. Always seeking the deeper story behind the headlines.
               </Text>
             </View>
 
             {/* Stats Row */}
-            {!isGuest && (
-              <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.2)' }]}>
-                <View style={styles.statColumn}>
-                  <Text style={[styles.statNumber, { color: colors.primary }]}>124</Text>
-                  <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories Read</Text>
-                </View>
-                
-                <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.3)' }]} />
-                
-                <View style={styles.statColumn}>
-                  <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
-                  <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Active Lists</Text>
-                </View>
+            <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.2)' }]}>
+              <View style={styles.statColumn}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>124</Text>
+                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Stories Read</Text>
               </View>
-            )}
+              
+              <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(199, 196, 215, 0.3)' }]} />
+              
+              <View style={styles.statColumn}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
+                <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#464554' }]}>Active Lists</Text>
+              </View>
+            </View>
 
           </View>
         </View>
@@ -203,37 +189,12 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuTextContainer}>
               <Text style={[styles.menuTitle, { color: colors.text }]}>Account Settings</Text>
-              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>Security, Privacy & Email</Text>
+              <Text style={[styles.menuSubtitle, { color: isDark ? colors.textSecondary : '#464554' }]}>Security, privacy & Google account</Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
 
         </View>
-
-        {/* Guest Authentication Call to Action Banner */}
-        {isGuest ? (
-          <View style={[styles.subscriptionBanner, { backgroundColor: colors.primary }]}>
-            {/* Decorative Translucent Circles */}
-            <View style={styles.decorCircleLarge} />
-            <View style={styles.decorCircleSmall} />
-
-            <View style={styles.subBannerContent}>
-              <Text style={styles.subBannerTitle}>Unlock Full Access</Text>
-              <Text style={styles.subBannerSubtitle}>Log in or register to customize your news feed, bookmark stories, and unlock all features.</Text>
-              
-              <TouchableOpacity 
-                style={styles.billingButton} 
-                activeOpacity={0.8}
-                onPress={() => {
-                  logout();
-                  router.replace('/(auth)/login');
-                }}
-              >
-                <Text style={styles.billingButtonText}>Log In / Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
 
         {/* Logout Trigger */}
         <TouchableOpacity 
@@ -373,19 +334,6 @@ const styles = StyleSheet.create({
   badgeWrapper: {
     alignItems: 'center',
   },
-  premiumBadge: {
-    backgroundColor: '#86F2E4',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 9999,
-  },
-  premiumBadgeText: {
-    color: '#006F66',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
   userBio: {
     fontSize: 14,
     lineHeight: 20,
@@ -455,62 +403,6 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     fontSize: 13,
     fontWeight: '400',
-  },
-  subscriptionBanner: {
-    backgroundColor: '#4648D4',
-    borderRadius: 12,
-    padding: 24,
-    overflow: 'hidden',
-    position: 'relative',
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 4,
-  },
-  decorCircleLarge: {
-    position: 'absolute',
-    bottom: -32,
-    right: -32,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  decorCircleSmall: {
-    position: 'absolute',
-    right: 48,
-    top: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  subBannerContent: {
-    gap: 4,
-  },
-  subBannerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  subBannerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 15,
-    marginBottom: 16,
-  },
-  billingButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 9999,
-    alignSelf: 'flex-start',
-  },
-  billingButtonText: {
-    color: '#4648D4',
-    fontSize: 15,
-    fontWeight: '700',
   },
   logoutButton: {
     flexDirection: 'row',
