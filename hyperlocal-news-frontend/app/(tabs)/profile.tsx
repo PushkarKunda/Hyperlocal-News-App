@@ -849,12 +849,27 @@ export default function ProfileScreen() {
                           {/* Metadata row */}
                           {item.status === 'Approved' && (
                             <>
-                              <Text style={[styles.articleMeta, { color: colors.textSecondary }]}>
-                                📅 {item.date}   •   👁 {item.views}
-                              </Text>
-                              <Text style={[styles.articleStats, { color: colors.textSecondary }]}>
-                                ❤ {item.likes}   💬 {item.comments}   🔁 {item.shares}
-                              </Text>
+                              <View style={styles.articleMetaRow}>
+                                <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
+                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.date}</Text>
+                                <Text style={[styles.metaDivider, { color: colors.textSecondary }]}>•</Text>
+                                <Ionicons name="eye-outline" size={13} color={colors.textSecondary} />
+                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.views}</Text>
+                              </View>
+                              <View style={styles.articleStatsRow}>
+                                <View style={styles.statItem}>
+                                  <Ionicons name="heart-outline" size={13} color={colors.textSecondary} />
+                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.likes}</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
+                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.comments}</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Ionicons name="repeat-outline" size={13} color={colors.textSecondary} />
+                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.shares}</Text>
+                                </View>
+                              </View>
 
                               {/* Approved Actions */}
                               <View style={styles.articleActionsRow}>
@@ -897,9 +912,13 @@ export default function ProfileScreen() {
 
                           {item.status === 'Rejected' && (
                             <>
-                              <Text style={[styles.articleMeta, { color: colors.textSecondary }]}>
-                                📅 {item.date}   •   👁 {item.views}
-                              </Text>
+                              <View style={styles.articleMetaRow}>
+                                <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
+                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.date}</Text>
+                                <Text style={[styles.metaDivider, { color: colors.textSecondary }]}>•</Text>
+                                <Ionicons name="eye-outline" size={13} color={colors.textSecondary} />
+                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.views}</Text>
+                              </View>
                               <Text style={styles.rejectedReasonText}>
                                 Reason: {item.reason}
                               </Text>
@@ -1811,6 +1830,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     fontWeight: '500',
+  },
+  articleMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 4,
+  },
+  articleMetaText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_400Regular',
+  },
+  metaDivider: {
+    marginHorizontal: 4,
+    fontSize: 11,
+  },
+  articleStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statItemText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
   },
   articleActionsRow: {
     flexDirection: 'row',
