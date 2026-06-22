@@ -4,11 +4,23 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useAuthStore } from '@/store/authStore';
 import { BackendLoginResponse } from '@/services/api';
+import * as AuthSession from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const extra = Constants.expoConfig?.extra ?? Constants.manifest?.extra ?? {};
-const googleOAuth = (extra as any).googleOAuth ?? {};
+interface ExpoConfig {
+  extra?: {
+    googleOAuth?: {
+      webClientId?: string;
+      iosClientId?: string;
+      androidClientId?: string;
+    };
+  };
+}
+
+const expoConfig = Constants.expoConfig as ExpoConfig | null;
+const extra = expoConfig?.extra ?? {};
+const googleOAuth = extra.googleOAuth ?? {};
 
 const webClientId =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
@@ -34,6 +46,11 @@ export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}
   const { loginWithGoogle, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // const proxyRedirectUri = AuthSession.makeRedirectUri({
+  //   useProxy: true,
+  // });
+  const redirectUri = "https://auth.expo.io/@22mh1a0529/hyperlocal-news";
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
     {
       clientId: webClientId,
@@ -41,9 +58,19 @@ export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}
       iosClientId,
       androidClientId,
       selectAccount: true,
+      redirectUri: redirectUri,
+
     },
-    { scheme: 'hyperlocalnews' }
+    {
+      scheme: 'hyperlocalnews'
+    }
   );
+
+  useEffect(() => {
+    if (request) {
+      console.log('🔍 Manual forced Redirect URI:', request.redirectUri);
+    }
+  }, [request]);  //This is just for testing, remove it for production
 
   useEffect(() => {
     if (!response) return;

@@ -36,6 +36,47 @@ export interface User {
   isPublisher?: boolean;
 }
 
+const sanitizeUser = (user: User): User => {
+  const isPhone = (str: string | null | undefined): boolean => {
+    if (!str) return false;
+    const clean = str.replace(/[\s\-()]/g, '');
+    return /^\+?\d{7,15}$/.test(clean);
+  };
+
+  let updatedName = user.name;
+  let updatedPhone = user.phone;
+  let updatedPhoneNumber = user.phoneNumber;
+  let updatedMobileVerified = user.mobile_verified;
+
+  // 1. If name is actually a phone number, clear name and set phone fields
+  if (isPhone(user.name)) {
+    updatedName = null;
+    if (!updatedPhone) {
+      updatedPhone = user.name;
+    }
+  }
+
+  // 2. Sync phone and phoneNumber fields
+  if (updatedPhone && !updatedPhoneNumber) {
+    updatedPhoneNumber = updatedPhone;
+  } else if (updatedPhoneNumber && !updatedPhone) {
+    updatedPhone = updatedPhoneNumber;
+  }
+
+  // 3. If phone number is present and we logged in via OTP, set mobile_verified to true
+  if (updatedPhone) {
+    updatedMobileVerified = true;
+  }
+
+  return {
+    ...user,
+    name: updatedName,
+    phone: updatedPhone,
+    phoneNumber: updatedPhoneNumber,
+    mobile_verified: updatedMobileVerified,
+  };
+};
+
 interface AuthState {
   // State
   user: User | null;
@@ -122,7 +163,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.loginWithFirebase(firebaseToken);
 
           set({
-            user: response.user,
+            user: sanitizeUser(response.user),
             isAuthenticated: true,
             isOnboarded: !response.is_new_user,
             isLoading: false,
@@ -151,7 +192,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.loginWithFirebase(firebaseToken);
 
           set({
-            user: response.user,
+            user: sanitizeUser(response.user),
             isAuthenticated: true,
             isOnboarded: !response.is_new_user,
             isLoading: false,
@@ -225,12 +266,12 @@ export const useAuthStore = create<AuthState>()(
       ) => {
         if (typeof nameOrUpdates === 'object') {
           set((state) => ({
-            user: state.user ? { ...state.user, ...nameOrUpdates } : null,
+            user: state.user ? sanitizeUser({ ...state.user, ...nameOrUpdates }) : null,
           }));
         } else {
           set((state) => ({
             user: state.user
-              ? {
+              ? sanitizeUser({
                   ...state.user,
                   name: nameOrUpdates,
                   avatar: avatar ?? state.user.avatar,
@@ -238,7 +279,7 @@ export const useAuthStore = create<AuthState>()(
                   phone: phone ?? state.user.phone,
                   email_verified: emailVerified ?? state.user.email_verified,
                   mobile_verified: mobileVerified ?? state.user.mobile_verified,
-                }
+                })
               : null,
           }));
         }

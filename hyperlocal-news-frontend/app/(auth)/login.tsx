@@ -43,7 +43,7 @@ export default function LoginScreen() {
     isGoogleLoading,
   } = useGoogleFirebaseAuth({
     onSuccess: (response) => {
-      router.replace(response.is_new_user ? '/(onboarding)/profile' : '/(tabs)');
+      router.replace(response.is_new_user ? '/(onboarding)/language' : '/(tabs)');
     },
     onError: (error) => {
       Alert.alert('Google Sign-In Failed', error.message || 'Please try again.');

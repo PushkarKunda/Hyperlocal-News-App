@@ -2,22 +2,22 @@
 export const API_ROUTES = {
   // ─── Auth ───────────────────────────────────────
   auth: {
-    firebaseLogin: '/user/auth/firebase/login',      // POST - Phone & Google
-    refreshToken: '/user/auth/refresh',              // POST - Refresh token
-    logout: '/user/auth/logout',                     // POST - Logout
-    switchToPublisher: '/user/auth/switch-to-publisher', // POST
-    registerDevice: '/user/device/token/register',  // POST - FCM token
-    unregisterDevice: '/user/device/token/unregister', // DELETE
+    firebaseLogin: '/user/user/auth/firebase/login',      // POST - Phone & Google
+    refreshToken: '/user/user/auth/refresh',              // POST - Refresh token
+    logout: '/user/user/auth/logout',                     // POST - Logout
+    switchToPublisher: '/user/user/auth/switch-to-publisher', // POST
+    registerDevice: '/user/user/device/token/register',  // POST - FCM token
+    unregisterDevice: '/user/user/device/token/unregister', // DELETE
   },
 
   // ─── User ────────────────────────────────────────
   user: {
-    me: '/user/users/me',                           // GET, PATCH
+    me: '/user/user/users/me',                           // GET, PATCH
     publisherEligibility: '/user/users/me/publisher-eligibility', // GET
     suspensionStatus: '/user/users/me/suspension-status', // GET
-    preferences: '/user/preferences/me',            // GET, POST, PUT, PATCH, DELETE
-    dashboard: '/user/dashboard',                   // GET
-    uploadAvatar: '/user/users/me/avatar',          // POST
+    preferences: '/user/user/preferences/me',            // GET, POST, PUT, PATCH, DELETE
+    dashboard: '/user/user/dashboard',                   // GET
+    uploadAvatar: '/user/user/users/me/avatar',          // POST
   },
 
   // ─── News ────────────────────────────────────────

@@ -38,7 +38,7 @@ export default function ProfileCompletionScreen() {
   const avatarSize = Math.min(Math.max(width * 0.33, 96), 140);
 
   const [name, setName] = useState(user?.name || '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || user?.phone || '');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
   const [isFocused, setIsFocused] = useState(false);
   const [isGoogleVerified, setIsGoogleVerified] = useState(Boolean(user?.email_verified));
@@ -292,11 +292,13 @@ export default function ProfileCompletionScreen() {
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
               
               {/* Progress Indicator */}
-              <View style={styles.progressContainer}>
-                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
-                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
-                <View style={[styles.activeStepIndicatorLong, { backgroundColor: colors.primary }]} />
-              </View>
+              {!isOnboarded && (
+                <View style={styles.progressContainer}>
+                  <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                  <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
+                  <View style={[styles.activeStepIndicatorLong, { backgroundColor: colors.primary }]} />
+                </View>
+              )}
 
               {/* Headline & Subtext */}
               <View style={styles.headlineSection}>
@@ -476,9 +478,11 @@ export default function ProfileCompletionScreen() {
           </Animated.View>
         </Pressable>
 
-        <View style={styles.stepTextContainer}>
-          <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
-        </View>
+        {!isOnboarded && (
+          <View style={styles.stepTextContainer}>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
+          </View>
+        )}
       </View>
 
       {/* Premium Custom Alert Modal */}

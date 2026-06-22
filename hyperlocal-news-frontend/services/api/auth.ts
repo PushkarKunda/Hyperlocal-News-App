@@ -48,7 +48,8 @@ export const authApi = {
       method: 'POST',
       data: { firebase_token: firebaseToken }, // ✅ Correct field name
     });
-
+    console.log("firebaseToken", firebaseToken);
+    console.log("response", response);
     // Save tokens securely
     await saveTokens(
       (response as any).access_token,

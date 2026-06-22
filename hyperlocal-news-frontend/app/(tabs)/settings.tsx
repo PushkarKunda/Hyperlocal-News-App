@@ -53,7 +53,7 @@ export default function SettingsScreen() {
 
 
    const displayName = user?.name || 'Complete Profile';
-   const displayPhone = user?.phoneNumber || 'Setup Phone';
+   const displayPhone = user?.phoneNumber || user?.phone || 'Setup Phone';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
