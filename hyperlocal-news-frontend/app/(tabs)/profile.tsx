@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import MenuOptions from '@/components/MenuOptions';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
+import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
+import { useBookmarks } from '@/hooks/useBookmarks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -65,10 +68,44 @@ export default function ProfileScreen() {
   const [postCaption, setPostCaption] = useState('');
   const [postCoverImage, setPostCoverImage] = useState('');
 
-  // Mock Data States
-  const [posts, setPosts] = useState<any[]>(INITIAL_POSTS);
-  const [newsList, setNewsList] = useState<any[]>(INITIAL_NEWS);
-  const [savedPosts, setSavedPosts] = useState<any[]>([]);
+  // API hooks
+  const { all: myArticles = [], isLoading: isLoadingArticles } = usePublisherArticles();
+  const { mutate: deleteArticleMutate } = useDeleteArticle();
+  const { mutate: createArticleMutate } = useCreateArticle();
+  const { data: rawBookmarks = [], isLoading: isLoadingBookmarks } = useBookmarks();
+
+  // Local posts state (fallback empty)
+  const [posts, setPosts] = useState<any[]>([]);
+
+  // Map backend articles to profile news list format
+  const newsList = useMemo(() => {
+    return myArticles.map((article) => {
+      const dateFormatted = new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const viewsCount = article.stats?.views || 0;
+      return {
+        id: article.id,
+        title: article.headline,
+        date: dateFormatted,
+        views: `${viewsCount} Views`,
+        likes: article.stats?.likes || 0,
+        comments: article.stats?.comments || 0,
+        status: article.status === 'published' ? 'Approved' : (article.status === 'rejected' ? 'Rejected' : 'Pending'),
+        imageUrl: article.imageUrl,
+        reason: 'Under review by moderators',
+      };
+    });
+  }, [myArticles]);
+
+  // Map rawBookmarks to savedPosts
+  const savedPosts = useMemo(() => {
+    return rawBookmarks.map((b) => ({
+      id: b.id,
+      imageUrl: b.imageUrl,
+      likes: String(b.stats?.likes || 0),
+      comments: String(b.stats?.comments || 0),
+      title: b.headline,
+    }));
+  }, [rawBookmarks]);
 
   // Verification Form State
   const [fullName, setFullName] = useState('');
@@ -98,6 +135,14 @@ export default function ProfileScreen() {
     coins: '0',
     points: '0',
   };
+
+  if (isLoadingArticles || isLoadingBookmarks) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
+        <LoadingSpinner fullScreen text="Loading profile..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   const requestImagePermissions = async () => {
     if (Platform.OS !== 'web') {
@@ -202,19 +247,15 @@ export default function ProfileScreen() {
     readingTime: string;
     imageUrl: string;
   }) => {
-    const newArticle = {
-      id: 'n_' + Date.now(),
-      title: data.headline,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      views: '0 Views',
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      status: 'Approved',
+    createArticleMutate({
+      headline: data.headline,
+      summary: data.summary,
+      content: data.summary,
+      category: data.category,
+      sourceName: data.sourceName,
       imageUrl: data.imageUrl,
-    };
-    setNewsList([newArticle, ...newsList]);
-    Alert.alert('Published!', 'Your news article has been published and is now live under Approved news.');
+    });
+    Alert.alert('Published!', 'Your news article has been submitted to the database and will appear shortly.');
   };
 
   const handleCreatePost = () => {
@@ -250,7 +291,7 @@ export default function ProfileScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setNewsList(newsList.filter(item => item.id !== id));
+          deleteArticleMutate(id);
         },
       },
     ]);
@@ -931,7 +972,12 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.postsWrapper}>
                 {savedPosts.map((post) => (
-                  <View key={post.id} style={styles.postCard}>
+                  <TouchableOpacity
+                    key={post.id}
+                    style={styles.postCard}
+                    activeOpacity={0.9}
+                    onPress={() => router.push(`/news/${post.id}` as any)}
+                  >
                     <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
                     <View style={styles.postOverlay}>
                       <View style={styles.overlayStat}>
@@ -943,7 +989,7 @@ export default function ProfileScreen() {
                         <Text style={styles.overlayStatText}>{post.comments}</Text>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
