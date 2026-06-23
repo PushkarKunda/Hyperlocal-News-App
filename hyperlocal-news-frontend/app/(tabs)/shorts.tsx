@@ -151,6 +151,7 @@ export default function ShortsScreen() {
         snapToInterval={listHeight}
         snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum={true}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         bounces={false}

@@ -9,10 +9,13 @@ import {
   ActivityIndicator,
   Animated,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
@@ -29,13 +32,12 @@ export default function VerifyOTPScreen() {
 
   const [otp, setOtp] = useState('');
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(30); // resend cooldown
+  const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  // ─── Auto focus input on mount ─────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
       inputRef.current?.focus();
@@ -43,7 +45,6 @@ export default function VerifyOTPScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ─── Countdown timer for resend ────────────────────────────────────────────
   useEffect(() => {
     if (countdown <= 0) {
       setCanResend(true);
@@ -53,7 +54,6 @@ export default function VerifyOTPScreen() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // ─── Button animation ──────────────────────────────────────────────────────
   const animateButton = (toValue: number) => {
     Animated.spring(buttonScale, {
       toValue,
@@ -63,7 +63,6 @@ export default function VerifyOTPScreen() {
     }).start();
   };
 
-  // ─── Verify OTP ────────────────────────────────────────────────────────────
   const handleVerify = async () => {
     if (otp.length !== 6) {
       Alert.alert('Invalid OTP', 'Please enter the 6-digit code');
@@ -72,8 +71,6 @@ export default function VerifyOTPScreen() {
 
     try {
       const response = await verifyPhoneOTP(otp);
-
-      // Navigate based on new or existing user
       if (response.is_new_user) {
         router.replace('/(onboarding)/language');
       } else {
@@ -81,21 +78,20 @@ export default function VerifyOTPScreen() {
       }
     } catch (error: any) {
       Alert.alert('Verification Failed', error.message || 'Invalid OTP. Please try again.');
-      setOtp(''); // Clear OTP on failure
+      setOtp('');
     }
   };
 
-  // ─── Resend OTP ────────────────────────────────────────────────────────────
   const handleResend = async () => {
     if (!phone || !canResend) return;
 
     setResending(true);
     setCanResend(false);
-    setCountdown(30); // reset countdown
+    setCountdown(30);
 
     try {
       await sendPhoneOTP(phone);
-      setOtp(''); // Clear existing OTP
+      setOtp('');
       Alert.alert('OTP Sent', 'A new code has been sent to ' + phone);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to resend OTP');
@@ -104,7 +100,6 @@ export default function VerifyOTPScreen() {
     }
   };
 
-  // ─── Back ──────────────────────────────────────────────────────────────────
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -113,112 +108,125 @@ export default function VerifyOTPScreen() {
     }
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Feather name="arrow-left" size={24} color={colors.text} />
+      {/* Header - Top Navigation Anchor */}
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-
-        {/* Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
-          <Feather name="shield" size={32} color={colors.primary} />
-        </View>
-
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.text }]}>
-          Verify Your Number
-        </Text>
-
-        {/* Subtitle */}
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Enter the 6-digit code sent to{'\n'}
-          <Text style={[styles.phoneText, { color: colors.text }]}>
-            {phone}
-          </Text>
-        </Text>
-
-        {/* OTP Input */}
-        <TextInput
-          ref={inputRef}
-          style={[
-            styles.otpInput,
-            {
-              color: colors.text,
-              borderColor: otp.length === 6 ? colors.primary : colors.border,
-              backgroundColor: isDark ? colors.surface : '#EFF4FF',
-            },
-          ]}
-          value={otp}
-          onChangeText={(text) => {
-            setOtp(text.replace(/\D/g, '')); // numbers only
-          }}
-          keyboardType="number-pad"
-          maxLength={6}
-          placeholder="• • • • • •"
-          placeholderTextColor={isDark ? '#464554' : '#C7C4D7'}
-          textAlign="center"
-          autoComplete="sms-otp"  // Android auto-fill OTP
-          textContentType="oneTimeCode" // iOS auto-fill OTP
-        />
-
-        {/* Verify Button */}
-        <Animated.View
-          style={[styles.buttonWrapper, { transform: [{ scale: buttonScale }] }]}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Pressable
-            style={[
-              styles.button,
-              { backgroundColor: colors.primary },
-              (isLoading || otp.length !== 6) && { opacity: 0.7 },
-            ]}
-            onPressIn={() => animateButton(0.96)}
-            onPressOut={() => animateButton(1)}
-            onPress={handleVerify}
-            disabled={isLoading || otp.length !== 6}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Verify Code</Text>
-                <Feather name="check" size={18} color="#fff" />
-              </>
-            )}
-          </Pressable>
-        </Animated.View>
+          <View style={styles.mainContent}>
 
-        {/* Resend */}
-        <View style={styles.resendContainer}>
-          {canResend ? (
-            <TouchableOpacity
-              onPress={handleResend}
-              disabled={resending}
-              style={styles.resendBtn}
-            >
-              <Text style={[styles.resendText, { color: colors.primary }]}>
-                {resending ? 'Sending...' : 'Resend Code'}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <Text style={[styles.countdownText, { color: colors.textSecondary }]}>
-              Resend code in{' '}
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                {countdown}s
+            {/* Icon */}
+            <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
+              <Feather name="shield" size={32} color={colors.primary} />
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.title, { color: colors.text }]}>
+              Verify Your Number
+            </Text>
+
+            {/* Subtitle */}
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Enter the 6-digit code sent to{'\n'}
+              <Text style={[styles.phoneText, { color: colors.text }]}>
+                {phone}
               </Text>
             </Text>
-          )}
-        </View>
 
-      </View>
+            {/* OTP Input */}
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.otpInput,
+                {
+                  color: colors.text,
+                  borderColor: otp.length === 6 ? colors.primary : colors.border,
+                  backgroundColor: isDark ? colors.surface : '#EFF4FF',
+                },
+              ]}
+              value={otp}
+              onChangeText={(text) => {
+                setOtp(text.replace(/\D/g, ''));
+              }}
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholder="• • • • • •"
+              placeholderTextColor={isDark ? '#464554' : '#C7C4D7'}
+              textAlign="center"
+              autoComplete="sms-otp"
+              textContentType="oneTimeCode"
+            />
+
+            {/* Verify Button */}
+            <Animated.View
+              style={[styles.buttonWrapper, { transform: [{ scale: buttonScale }] }]}
+            >
+              <Pressable
+                style={[
+                  styles.button,
+                  { backgroundColor: colors.primary },
+                  (isLoading || otp.length !== 6) && { opacity: 0.7 },
+                ]}
+                onPressIn={() => animateButton(0.96)}
+                onPressOut={() => animateButton(1)}
+                onPress={handleVerify}
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Verify Code</Text>
+                    <Feather name="check" size={18} color="#fff" />
+                  </>
+                )}
+              </Pressable>
+            </Animated.View>
+
+            {/* Resend */}
+            <View style={styles.resendContainer}>
+              {canResend ? (
+                <TouchableOpacity
+                  onPress={handleResend}
+                  disabled={resending}
+                  style={styles.resendBtn}
+                >
+                  <Text style={[styles.resendText, { color: colors.primary }]}>
+                    {resending ? 'Sending...' : 'Resend Code'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[styles.countdownText, { color: colors.textSecondary }]}>
+                  Resend code in{' '}
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                    {countdown}s
+                  </Text>
+                </Text>
+              )}
+            </View>
+
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -242,6 +250,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 40,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  mainContent: {
+    flex: 1,
+    maxWidth: 448,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    alignItems: 'center',
   },
   iconContainer: {
     width: 72,

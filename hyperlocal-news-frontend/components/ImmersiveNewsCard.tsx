@@ -25,7 +25,7 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
   // Icon mapping for action buttons based on interaction state
   const likeIconName = liked ? 'heart' : 'heart-outline';
   const likeIconColor = liked ? '#FF4A6B' : (isDark ? '#94A3B8' : '#464554');
-  
+
   const saveIconName = bookmarked ? 'bookmark' : 'bookmark-outline';
   const saveIconColor = bookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
 
@@ -86,29 +86,29 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
 
             {/* Action Buttons Stack */}
             <View style={styles.actionsContainer}>
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
                 onPress={() => setLiked(!liked)}
               >
                 <Ionicons name={likeIconName} size={16} color={likeIconColor} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
                 onPress={handleShare}
               >
                 <Ionicons name="share-social-outline" size={16} color={actionIconColor} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
                 onPress={() => setBookmarked(!bookmarked)}
               >
                 <Ionicons name={saveIconName} size={16} color={saveIconColor} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
               >
                 <Feather name="more-vertical" size={16} color={actionIconColor} />

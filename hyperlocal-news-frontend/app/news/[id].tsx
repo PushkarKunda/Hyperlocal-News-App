@@ -40,7 +40,16 @@ export default function NewsDetailScreen() {
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
         <Text style={{ color: colors.text, fontFamily: 'Poppins_500Medium', fontSize: 16 }}>Article not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
+          }}
+          style={styles.backButton}
+        >
           <Text style={{ color: colors.primary, fontFamily: 'Poppins_600SemiBold' }}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -56,7 +65,13 @@ export default function NewsDetailScreen() {
       <View style={[styles.topBar, { top: Math.max(insets.top, 20) }]}>
         <TouchableOpacity 
           style={styles.circularButton} 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
+          }}
         >
           <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
             <MaterialIcons name="arrow-back" size={24} color="#FFF" />

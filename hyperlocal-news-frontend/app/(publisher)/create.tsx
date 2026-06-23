@@ -279,7 +279,7 @@ export default function CreateArticleScreen() {
       >
         {/* ── Header ── */}
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Pressable onPress={handleGatedBack} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Write Article</Text>
