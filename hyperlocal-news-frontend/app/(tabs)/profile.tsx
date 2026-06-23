@@ -191,7 +191,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email, user?.phoneNumber, isPublisher);
+        updateProfile(displayName, result.assets[0].uri, user?.email || undefined, user?.phoneNumber, isPublisher);
         Alert.alert('Success', 'Profile picture updated successfully!');
       }
     } catch (e) {
@@ -211,7 +211,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email, user?.phoneNumber, isPublisher);
+        updateProfile(displayName, result.assets[0].uri, user?.email || undefined, user?.phoneNumber, isPublisher);
         Alert.alert('Success', 'Profile picture updated successfully!');
       }
     } catch (e) {
@@ -456,7 +456,7 @@ export default function ProfileScreen() {
         {/* Want to Publish news banner? (Only if not verified publisher) */}
         {!isPublisher && (
           <View style={styles.verifyBannerWrapper}>
-            {!user?.emailVerified ? (
+            {!user?.email_verified ? (
               // Email Verification Banner
               <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#2D1F1F' : '#FFF0F0', borderColor: '#FFCDD2' }]}>
                 <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(244, 67, 54, 0.1)' }]}>
@@ -496,12 +496,12 @@ export default function ProfileScreen() {
                   <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            )}
 
             <View style={styles.infoRow}>
               <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
               <Text style={[styles.infoRowText, { color: colors.textSecondary }]}>
-                {!user?.emailVerified 
+                {!user?.email_verified 
                   ? 'Email verification is required before applying for publisher verification.' 
                   : 'News Publishing is available only for verified publishers. Learn More'
                 }

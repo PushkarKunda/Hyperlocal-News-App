@@ -1,14 +1,45 @@
-// services/firebase.ts
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes, GoogleAuthProvider } from '@react-native-firebase/auth';
 
-export const firebaseAuth = auth();
+// Lazy load to prevent "No Firebase App" crashes on startup
+export const getFirebaseAuth = (): FirebaseAuthTypes.Module => {
+  try {
+    return auth();
+  } catch (error: any) {
+    console.warn(
+      '⚠️ Native Firebase Auth is not available. Using fallback instance. ' +
+      'Please ensure you run a native build (npm run android) instead of standard Expo Go.',
+      error.message
+    );
+    return {
+      currentUser: null,
+      app: {
+        name: '[DEFAULT]',
+        options: { projectId: 'hypernews-bd322' },
+      },
+      onAuthStateChanged: () => () => {},
+      signInWithPhoneNumber: async () => {
+        throw new Error(
+          'Firebase Auth not initialized. Ensure you built the project natively ' +
+          '(npm run android) instead of running in Expo Go.'
+        );
+      },
+      signInWithCredential: async () => {
+        throw new Error(
+          'Firebase Auth not initialized. Ensure you built the project natively ' +
+          '(npm run android) instead of running in Expo Go.'
+        );
+      },
+      signOut: async () => {},
+    } as any;
+  }
+};
 
 // ─── Phone Auth - Send OTP ────────────────────────────────────────────────────
 export const sendPhoneOTP = async (
   phoneNumber: string
 ): Promise<FirebaseAuthTypes.ConfirmationResult> => {
   try {
-    const confirmation = await firebaseAuth.signInWithPhoneNumber(phoneNumber);
+    const confirmation = await getFirebaseAuth().signInWithPhoneNumber(phoneNumber);
     console.log('✅ OTP Sent to:', phoneNumber);
     return confirmation;
   } catch (error: any) {
@@ -37,8 +68,8 @@ export const verifyPhoneOTP = async (
 // ─── Google Sign-In ───────────────────────────────────────────────────────────
 export const signInWithGoogle = async (idToken: string): Promise<string> => {
   try {
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    const userCredential = await firebaseAuth.signInWithCredential(googleCredential);
+    const googleCredential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await getFirebaseAuth().signInWithCredential(googleCredential);
     const firebaseToken = await userCredential.user.getIdToken();
     console.log('✅ Google Sign-In Success');
     return firebaseToken;
@@ -51,7 +82,7 @@ export const signInWithGoogle = async (idToken: string): Promise<string> => {
 // ─── Get Current Firebase Token ───────────────────────────────────────────────
 export const getCurrentFirebaseToken = async (): Promise<string | null> => {
   try {
-    const currentUser = firebaseAuth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) return null;
     return await currentUser.getIdToken(true);
   } catch {
@@ -61,18 +92,19 @@ export const getCurrentFirebaseToken = async (): Promise<string | null> => {
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
 export const firebaseSignOut = async (): Promise<void> => {
-  await firebaseAuth.signOut();
+  await getFirebaseAuth().signOut();
 };
 
 // ─── Check Firebase Connection ────────────────────────────────────────────────
 export const checkFirebaseConnection = async (): Promise<void> => {
   try {
-    console.log('✅ Firebase Connected:', firebaseAuth.app.name);
-    console.log('🔑 Project:', firebaseAuth.app.options.projectId);
-    console.log('👤 User:', firebaseAuth.currentUser?.uid ?? 'None');
+    const authInstance = getFirebaseAuth();
+    console.log('✅ Firebase Connected:', authInstance.app.name);
+    console.log('🔑 Project:', authInstance.app.options.projectId);
+    console.log('👤 User:', authInstance.currentUser?.uid ?? 'None');
   } catch (error: any) {
     console.error('❌ Firebase Error:', error.message);
   }
 };
 
-export default firebaseAuth;
+export default getFirebaseAuth;

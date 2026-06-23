@@ -34,6 +34,7 @@ export interface User {
   state?: string;
   district?: string;
   isPublisher?: boolean;
+  isGuest?: boolean;
 }
 
 const sanitizeUser = (user: User): User => {
