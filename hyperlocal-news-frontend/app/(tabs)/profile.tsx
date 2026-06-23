@@ -80,27 +80,23 @@ export default function ProfileScreen() {
   const isGuest = user?.isGuest;
 
   // Custom simulation variables based on verification status
-  const displayName = user?.name || (isGuest ? 'Guest User' : 'John Doe');
+  const displayName = user?.name || (isGuest ? 'Guest User' : 'User');
   
   // Auto-generate username handle dynamically based on user name
   const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = user?.district ? `${user.district}, ${user.state || 'AP'}` : 'Visakhapatnam, AP';
+  const userLocation = user?.district ? `${user.district}, ${user.state || ''}`.trim() : 'Location not set';
   
+  const totalLikes = newsList.reduce((acc, curr) => acc + (curr.likes || 0), 0);
+  const totalComments = newsList.reduce((acc, curr) => acc + (curr.comments || 0), 0);
+
   // Dynamic Stats
-  const stats = isPublisher ? {
-    posts: '25',
-    likes: '1.2K',
-    comments: '323',
-    level: 'Level 3',
-    coins: '890',
-    points: '2,450',
-  } : {
-    posts: '12',
-    likes: '287',
-    comments: '64',
+  const stats = {
+    posts: String(newsList.length),
+    likes: String(totalLikes),
+    comments: String(totalComments),
     level: 'Level 1',
-    coins: '120',
-    points: '560',
+    coins: '0',
+    points: '0',
   };
 
   const requestImagePermissions = async () => {
@@ -170,9 +166,9 @@ export default function ProfileScreen() {
 
   const handleVerifyEmail = () => {
     updateProfile(
-      user?.name || 'John Doe',
+      user?.name || 'User',
       user?.avatar,
-      user?.email || 'john.doe@example.com',
+      user?.email || undefined,
       user?.phoneNumber,
       isPublisher,
       true
@@ -185,10 +181,10 @@ export default function ProfileScreen() {
     setIsSubmittingVerify(true);
     setTimeout(() => {
       updateProfile(
-        user?.name || 'John Doe',
-        user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        user?.email || 'john.doe@example.com',
-        user?.phoneNumber || '9876543210',
+        user?.name || 'User',
+        user?.avatar || undefined,
+        user?.email || undefined,
+        user?.phoneNumber || undefined,
         true,
         true
       );
