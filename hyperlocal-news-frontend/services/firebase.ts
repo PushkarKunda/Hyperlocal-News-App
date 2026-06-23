@@ -1,9 +1,16 @@
-import auth, { FirebaseAuthTypes, GoogleAuthProvider } from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
+import {
+  getAuth,
+  signOut,
+  GoogleAuthProvider,
+  FirebaseAuthTypes
+} from '@react-native-firebase/auth';
 
 // Lazy load to prevent "No Firebase App" crashes on startup
 export const getFirebaseAuth = (): FirebaseAuthTypes.Module => {
   try {
-    return auth();
+    const app = getApp();
+    return getAuth(app);
   } catch (error: any) {
     console.warn(
       '⚠️ Native Firebase Auth is not available. Using fallback instance. ' +
@@ -92,15 +99,21 @@ export const getCurrentFirebaseToken = async (): Promise<string | null> => {
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
 export const firebaseSignOut = async (): Promise<void> => {
-  await getFirebaseAuth().signOut();
+  try {
+    const authInstance = getFirebaseAuth();
+    await signOut(authInstance);
+  } catch (error: any) {
+    console.error('❌ Firebase Sign Out Failed:', error.message);
+  }
 };
 
 // ─── Check Firebase Connection ────────────────────────────────────────────────
 export const checkFirebaseConnection = async (): Promise<void> => {
   try {
+    const app = getApp();
     const authInstance = getFirebaseAuth();
-    console.log('✅ Firebase Connected:', authInstance.app.name);
-    console.log('🔑 Project:', authInstance.app.options.projectId);
+    console.log('✅ Firebase Connected:', app.name);
+    console.log('🔑 Project:', app.options.projectId);
     console.log('👤 User:', authInstance.currentUser?.uid ?? 'None');
   } catch (error: any) {
     console.error('❌ Firebase Error:', error.message);
