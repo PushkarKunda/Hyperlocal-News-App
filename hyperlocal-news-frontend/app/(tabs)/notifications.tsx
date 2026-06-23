@@ -6,6 +6,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useClearAllNotifications } from '@/hooks/useNotifications';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface NotificationItem {
   id: string;
@@ -17,44 +19,7 @@ interface NotificationItem {
   section: 'Today' | 'Earlier';
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: '1',
-    type: 'breaking',
-    title: 'Breaking: Main St. Closed Today',
-    body: 'Heavy parade activity and construction updates on Main Street. Plan your commute accordingly.',
-    time: '5m ago',
-    unread: true,
-    section: 'Today',
-  },
-  {
-    id: '2',
-    type: 'update',
-    title: 'New Community Park Opening',
-    body: 'The brand new Westside Green community park is now open to the public with modern amenities!',
-    time: '45m ago',
-    unread: true,
-    section: 'Today',
-  },
-  {
-    id: '3',
-    type: 'poll',
-    title: 'Poll Results Are In!',
-    body: '80% of neighbors in Kukatpally voted in favor of introducing more designated bike lanes on main streets.',
-    time: '4h ago',
-    unread: false,
-    section: 'Earlier',
-  },
-  {
-    id: '4',
-    type: 'reminder',
-    title: 'Community Town Hall Reminder',
-    body: 'The monthly ward development discussion is starting in 1 hour at the City Library Seminar Hall.',
-    time: '1d ago',
-    unread: false,
-    section: 'Earlier',
-  },
-];
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 export default function NotificationsScreen() {
   const colorScheme = useAppColorScheme();
@@ -62,16 +27,61 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  // API hooks
+  const { data: rawNotifications = [], isLoading, refetch } = useNotifications();
+  const { mutate: markRead } = useMarkNotificationRead();
+  const { mutate: markAllRead } = useMarkAllNotificationsRead();
+  const { mutate: clearAll } = useClearAllNotifications();
+
+  // Map backend notifications to UI format
+  const notifications: NotificationItem[] = React.useMemo(() => {
+    const now = Date.now();
+    return rawNotifications.map((n) => {
+      let uiType: 'breaking' | 'update' | 'poll' | 'reminder' = 'update';
+      if (n.type === 'alert' || n.type === 'system') uiType = 'breaking';
+      else if (n.type === 'poll') uiType = 'poll';
+      else if (n.type === 'event') uiType = 'reminder';
+
+      let timeStr = 'Just now';
+      try {
+        const diffMs = now - new Date(n.timestamp).getTime();
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 60) timeStr = `${Math.max(1, diffMin)}m ago`;
+        else {
+          const diffHr = Math.floor(diffMin / 60);
+          if (diffHr < 24) timeStr = `${diffHr}h ago`;
+          else timeStr = `${Math.floor(diffHr / 24)}d ago`;
+        }
+      } catch (e) {
+        timeStr = 'Recently';
+      }
+
+      let section: 'Today' | 'Earlier' = 'Earlier';
+      try {
+        const diffMs = now - new Date(n.timestamp).getTime();
+        if (diffMs < 24 * 3600 * 1000) {
+          section = 'Today';
+        }
+      } catch {}
+
+      return {
+        id: n.id,
+        type: uiType,
+        title: n.title,
+        body: n.message,
+        time: timeStr,
+        unread: !n.isRead,
+        section,
+      };
+    });
+  }, [rawNotifications]);
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+    markAllRead();
   };
 
   const toggleReadStatus = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, unread: !item.unread } : item))
-    );
+    markRead(id);
   };
 
   const getIconDetails = (type: NotificationItem['type']) => {
@@ -156,6 +166,14 @@ export default function NotificationsScreen() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <LoadingSpinner fullScreen text="Loading notifications..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
+
   const todayNotifications = notifications.filter((item) => item.section === 'Today');
   const earlierNotifications = notifications.filter((item) => item.section === 'Earlier');
 
@@ -190,29 +208,42 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Main List */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Today Group */}
-        {todayNotifications.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NEW</Text>
-            <View style={styles.listContainer}>
-              {todayNotifications.map(renderNotificationCard)}
+      {notifications.length > 0 ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          {/* Today Group */}
+          {todayNotifications.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NEW</Text>
+              <View style={styles.listContainer}>
+                {todayNotifications.map(renderNotificationCard)}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Earlier Group */}
-        {earlierNotifications.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>EARLIER</Text>
-            <View style={styles.listContainer}>
-              {earlierNotifications.map(renderNotificationCard)}
+          {/* Earlier Group */}
+          {earlierNotifications.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>EARLIER</Text>
+              <View style={styles.listContainer}>
+                {earlierNotifications.map(renderNotificationCard)}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        /* Empty State */
+        <View style={styles.emptyStateContainer}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: colors.primaryLight }]}>
+            <Ionicons name="notifications-off-outline" size={48} color={colors.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Notifications Yet</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            You will receive local news alerts, breaking updates, and community development reminders here.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -345,5 +376,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
     lineHeight: 18,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+    paddingBottom: 80,
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 12,
   },
 });

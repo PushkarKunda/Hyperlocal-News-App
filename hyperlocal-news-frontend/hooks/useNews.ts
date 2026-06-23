@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { NewsArticle } from '@/types';
-import { API_CONFIG, categoriesApi, newsApi } from '@/services/api';
+import { API_CONFIG, categoriesApi, newsApi, usersApi, mapNewsArticle } from '@/services/api';
 
 // ─── Helper: merge live bookmark state into articles ──────────────────────────
 
@@ -141,17 +141,75 @@ export const useNewsArticle = (id: string) => {
 // ─── Publisher's own articles ─────────────────────────────────────────────────
 
 export const usePublisherArticles = () => {
-  const allArticles = useStore((state) => state.allArticles);
-  const user = useStore((state) => state.user);
+  const query = useQuery({
+    queryKey: ['publisher-dashboard', 'api'],
+    queryFn: () => usersApi.dashboard({ detailed: true, limit: 100 }),
+  });
 
-  const myArticles = useMemo(
-    () => allArticles.filter((a) => a.publisherId === user?.id),
-    [allArticles, user?.id]
-  );
+  const myArticles: NewsArticle[] = useMemo(() => {
+    const data = query.data;
+    if (!data) return [];
+    const items = Array.isArray(data) ? data : (data.items || data.articles || []);
+    return items.map((item: any) => mapNewsArticle(item));
+  }, [query.data]);
 
-  const pending = useMemo(() => myArticles.filter((a) => a.status === 'pending'), [myArticles]);
-  const published = useMemo(() => myArticles.filter((a) => a.status === 'published'), [myArticles]);
-  const rejected = useMemo(() => myArticles.filter((a) => a.status === 'rejected'), [myArticles]);
+  const pending = useMemo(() => myArticles.filter((a: NewsArticle) => a.status === 'pending'), [myArticles]);
+  const published = useMemo(() => myArticles.filter((a: NewsArticle) => a.status === 'published'), [myArticles]);
+  const rejected = useMemo(() => myArticles.filter((a: NewsArticle) => a.status === 'rejected'), [myArticles]);
 
-  return { all: myArticles, pending, published, rejected, isLoading: false };
+  return { 
+    all: myArticles, 
+    pending, 
+    published, 
+    rejected, 
+    isLoading: query.isLoading,
+    refetch: query.refetch 
+  };
+};
+
+// ─── Create news article ──────────────────────────────────────────────────────
+
+export const useCreateArticle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      headline: string;
+      summary: string;
+      content: string;
+      category: string;
+      sourceName?: string;
+      imageUrl?: string;
+      language?: string;
+      location?: string;
+      tags?: string[];
+    }) => newsApi.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news', 'api'] });
+      queryClient.invalidateQueries({ queryKey: ['publisher-dashboard', 'api'] });
+    },
+  });
+};
+
+export const useDeleteArticle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (uid: string) => newsApi.delete(uid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news', 'api'] });
+      queryClient.invalidateQueries({ queryKey: ['publisher-dashboard', 'api'] });
+    },
+  });
+};
+
+export const useLocationNews = (location?: { state?: string; district?: string; city?: string }) => {
+  const query = useQuery({
+    queryKey: ['news-location', location, 'api'],
+    queryFn: () => newsApi.listByLocation(location),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  return {
+    ...query,
+    data: query.data,
+  };
 };

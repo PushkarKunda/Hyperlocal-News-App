@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,46 +14,19 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import MenuOptions from '@/components/MenuOptions';
+import { useBookmarks, useRemoveBookmark } from '@/hooks/useBookmarks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { formatTimeAgo, formatNumber } from '@/utils/formatters';
 
 interface MenuBookmarkItem {
   id: string;
-  category: 'TECH' | 'HEALTH' | 'BUSINESS';
+  category: string;
   title: string;
   description: string;
   imageUrl: string;
   timeAgo: string;
   reads: string;
 }
-
-const INITIAL_BOOKMARKS: MenuBookmarkItem[] = [
-  {
-    id: '1',
-    category: 'TECH',
-    title: 'The Future of Quantum Computing in Global Financial Systems',
-    description: 'Emerging research suggests that quantum-resistant encryption will become the primary protocol for secure digital asset transactions within the decade.',
-    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600',
-    timeAgo: '2h ago',
-    reads: '4.2k reads',
-  },
-  {
-    id: '2',
-    category: 'HEALTH',
-    title: 'New Breakthrough in Sustainable Mental Wellness Platforms',
-    description: 'Scientists have developed a new framework for digital therapeutic intervention that targets stress levels and reduces cognitive fatigue over continuous use.',
-    imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600',
-    timeAgo: '5h ago',
-    reads: '1.8k reads',
-  },
-  {
-    id: '3',
-    category: 'BUSINESS',
-    title: 'Global Markets Shift Towards Decentralized Assets',
-    description: 'Recent reports indicate a 40% increase in institutional interest for digital assets as secondary reserve currencies, driving significant regulatory shifts.',
-    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600',
-    timeAgo: '1d ago',
-    reads: '12.5k reads',
-  },
-];
 
 const CATEGORIES = [
   { label: 'All Items', value: 'all' },
@@ -69,25 +42,60 @@ export default function MenuBookmarksScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // API hooks
+  const { data: rawBookmarks = [], isLoading } = useBookmarks();
+  const { mutate: removeBookmarkMutate } = useRemoveBookmark();
+
   // Screen states
-  const [bookmarks, setBookmarks] = useState<MenuBookmarkItem[]>(INITIAL_BOOKMARKS);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Remove individual bookmark
   const toggleBookmark = (id: string) => {
-    setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    removeBookmarkMutate(id);
   };
+
+  // Map backend articles to local MenuBookmarkItem format
+  const bookmarks = useMemo(() => {
+    return rawBookmarks.map((article) => {
+      const categoryName = article.category?.name || 'General';
+      return {
+        id: article.id,
+        category: categoryName,
+        title: article.headline,
+        description: article.summary || '',
+        imageUrl: article.imageUrl,
+        timeAgo: formatTimeAgo(article.publishedAt),
+        reads: `${formatNumber(article.stats?.views || 0)} reads`,
+      };
+    });
+  }, [rawBookmarks]);
 
   // Filtered bookmark list logic
   const filteredBookmarks = bookmarks.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    
+    const catUpper = item.category.toUpperCase();
+    const filterUpper = selectedCategory.toUpperCase();
+    
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      catUpper === filterUpper ||
+      (filterUpper === 'TECH' && (catUpper === 'TECH' || catUpper === 'TECHNOLOGY'));
+
     return matchesSearch && matchesCategory;
   });
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#111122' : '#F8F9FF', justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
+        <LoadingSpinner fullScreen text="Loading bookmarks..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#111122' : '#F8F9FF', paddingTop: insets.top }]}>
@@ -190,24 +198,27 @@ export default function MenuBookmarksScreen() {
               // Custom category styles based on the type
               let categoryBg = 'rgba(70, 72, 212, 0.1)';
               let categoryColor = '#4648D4';
-              if (item.category === 'HEALTH') {
+              const catUpper = item.category.toUpperCase();
+              if (catUpper.includes('HEALTH')) {
                 categoryBg = 'rgba(0, 106, 97, 0.1)';
                 categoryColor = '#006A61';
-              } else if (item.category === 'BUSINESS') {
+              } else if (catUpper.includes('BUSINESS')) {
                 categoryBg = 'rgba(185, 5, 56, 0.1)';
                 categoryColor = '#B90538';
               }
 
               // Adjust category background in dark mode
               if (isDark) {
-                if (item.category === 'TECH') categoryBg = 'rgba(70, 72, 212, 0.25)';
-                if (item.category === 'HEALTH') categoryBg = 'rgba(0, 106, 97, 0.25)';
-                if (item.category === 'BUSINESS') categoryBg = 'rgba(185, 5, 56, 0.25)';
+                if (catUpper.includes('TECH') || catUpper.includes('TECHNOLOGY')) categoryBg = 'rgba(70, 72, 212, 0.25)';
+                if (catUpper.includes('HEALTH')) categoryBg = 'rgba(0, 106, 97, 0.25)';
+                if (catUpper.includes('BUSINESS')) categoryBg = 'rgba(185, 5, 56, 0.25)';
               }
 
               return (
-                <View
+                <TouchableOpacity
                   key={item.id}
+                  activeOpacity={0.9}
+                  onPress={() => router.push(`/news/${item.id}` as any)}
                   style={[
                     styles.articleCard,
                     {
@@ -269,7 +280,7 @@ export default function MenuBookmarksScreen() {
                       </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>

@@ -249,7 +249,7 @@ export default function LocationScreen() {
           setSearchQuery(cityName ? `${cityName}, ${stateName}` : 'Hyderabad, Telangana');
           Alert.alert(
             'Location Detected',
-            `We detected you are in ${stateName || 'another region'}. Defaulting to Telangana (Hyderabad) for mock data.`
+            `We detected you are in ${stateName || 'another region'}. Defaulting to Telangana (Hyderabad).`
           );
         }
       } else {

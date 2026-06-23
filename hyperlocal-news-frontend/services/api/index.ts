@@ -12,3 +12,4 @@ export * from './news';
 export * from './notifications';
 export * from './polls';
 export * from './users';
+export * from './bookmarks';

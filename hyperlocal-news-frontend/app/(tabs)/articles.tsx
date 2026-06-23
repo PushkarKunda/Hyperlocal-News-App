@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Share, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Share, ScrollView, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useRouter } from 'expo-router';
@@ -7,10 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import { useArticleStore, ArticleItem } from '@/store/articleStore';
 import MenuOptions from '@/components/MenuOptions';
 import { useAuthStore } from '@/store/authStore';
 import { StatusBar } from 'expo-status-bar';
+import { usePublisherArticles, useDeleteArticle } from '@/hooks/useNews';
+import { NewsArticle } from '@/types';
 
 
 export default function ArticlesScreen() {
@@ -20,26 +21,37 @@ export default function ArticlesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Zustand Store
-  const { articles, addArticle, deleteArticle, resetArticles } = useArticleStore();
+  // API hooks
   const { user } = useAuthStore();
-  const isPublisher = user?.isPublisher || false;
+  const isPublisher = (user?.role ?? 0) >= 2;
   const [showGatedView, setShowGatedView] = useState(false);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { all: articles, isLoading, refetch } = usePublisherArticles();
+  const { mutate: deleteArticleMutate } = useDeleteArticle();
+
   const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>({
-    '1': { count: 1200, liked: false },
-    '2': { count: 820, liked: false },
-    '3': { count: 2100, liked: false },
-  });
+  const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>({});
   const [bookmarksState, setBookmarksState] = useState<Record<string, boolean>>({});
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1200);
+    refetch();
+  };
+
+  const deleteArticle = (id: string) => {
+    Alert.alert('Delete Article', 'Are you sure you want to delete this article?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          deleteArticleMutate(id);
+        },
+      },
+    ]);
+  };
+
+  const resetArticles = () => {
+    refetch();
   };
 
   const handleLike = (id: string, initialLikesCount: number) => {
@@ -296,15 +308,27 @@ export default function ArticlesScreen() {
       {/* Articles List */}
       <FlatList
         data={articles}
-        keyExtractor={(item: ArticleItem) => item.id}
+        keyExtractor={(item: NewsArticle) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
-        refreshing={isRefreshing}
+        refreshing={isLoading}
         onRefresh={handleRefresh}
-        renderItem={({ item, index }: { item: ArticleItem; index: number }) => {
-          const initialLikesCount = parseInt(item.likes.replace(/k/, '000').replace(/[^\d]/g, '')) || 0;
+        renderItem={({ item, index }: { item: NewsArticle; index: number }) => {
+          const getFormattedDate = (dateStr: string) => {
+            try {
+              const d = new Date(dateStr);
+              if (isNaN(d.getTime())) return dateStr;
+              return d.toLocaleDateString();
+            } catch {
+              return dateStr;
+            }
+          };
+
+          const initialLikesCount = item.stats?.likes || 0;
           const likeData = likesState[item.id] || { count: initialLikesCount, liked: false };
           const isBookmarked = bookmarksState[item.id] || false;
+          const categoryName = typeof item.category === 'string' ? item.category : item.category?.name || 'General';
+          const sourceName = item.source?.name || 'Aura Reporter';
 
           // Render vertical card for first/major article, horizontal card for others
           const isFirstItem = index === 0;
@@ -318,17 +342,17 @@ export default function ArticlesScreen() {
               >
                 <View style={styles.horizontalLeft}>
                   <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
-                    <Text style={[styles.tagText, { color: colors.primary }]}>{item.category}</Text>
+                    <Text style={[styles.tagText, { color: colors.primary }]}>{categoryName}</Text>
                   </View>
                   <Text style={[styles.horizontalHeadline, { color: colors.text }]} numberOfLines={2}>
                     {item.headline}
                   </Text>
                   <View style={styles.metaRow}>
                     <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
-                      {item.sourceName}
+                      {sourceName}
                     </Text>
                     <View style={styles.dot} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.publishedAt}</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{getFormattedDate(item.publishedAt)}</Text>
                   </View>
 
                   {/* Actions Bar inside Horizontal Card */}
@@ -373,11 +397,11 @@ export default function ArticlesScreen() {
                 {/* Meta row: Tag, time, read duration */}
                 <View style={styles.verticalMetaRow}>
                   <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
-                    <Text style={[styles.tagText, { color: colors.primary }]}>{item.category}</Text>
+                    <Text style={[styles.tagText, { color: colors.primary }]}>{categoryName}</Text>
                   </View>
-                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.publishedAt}</Text>
+                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>{getFormattedDate(item.publishedAt)}</Text>
                   <View style={styles.dot} />
-                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.readingTime}</Text>
+                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.readTime || '3 min read'}</Text>
                 </View>
 
                 {/* Headline */}
@@ -393,9 +417,11 @@ export default function ArticlesScreen() {
                 {/* Publisher & View details */}
                 <View style={styles.publisherRow}>
                   <Text style={[styles.publisherName, { color: colors.text }]}>
-                    source: <Text style={{ fontWeight: '700' }}>{item.sourceName}</Text>
+                    source: <Text style={{ fontWeight: '700' }}>{sourceName}</Text>
                   </Text>
-                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.views}</Text>
+                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                    {item.stats?.views !== undefined ? `${item.stats.views} views` : '0 views'}
+                  </Text>
                 </View>
 
                 {/* Action button row */}

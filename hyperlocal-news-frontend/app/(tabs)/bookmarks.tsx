@@ -6,6 +6,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { useBookmarks, useRemoveBookmark } from '@/hooks/useBookmarks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface BookmarkItem {
   id: string;
@@ -18,38 +20,7 @@ interface BookmarkItem {
   dateGroup: 'Today' | 'Yesterday';
 }
 
-const INITIAL_BOOKMARKS: BookmarkItem[] = [
-  {
-    id: '1',
-    type: 'news',
-    category: 'BUSINESS',
-    title: 'Kukatpally Startups Raise $500M in Venture Capital',
-    publisher: 'Times of India',
-    timeAgo: '2 hours ago',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400',
-    dateGroup: 'Today',
-  },
-  {
-    id: '2',
-    type: 'events',
-    category: 'LOCAL EVENT',
-    title: 'Downtown Jazz Festival in Kukatpally Amphitheater',
-    publisher: 'Neighborhood Hub',
-    timeAgo: 'May 25 • 6:00 PM',
-    imageUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400',
-    dateGroup: 'Today',
-  },
-  {
-    id: '3',
-    type: 'shorts',
-    category: 'SHORT VIDEO',
-    title: 'Clean Hyderabad Lake Beautification Project Wraps Up',
-    publisher: 'Chronicle Shorts',
-    timeAgo: '1 day ago',
-    imageUrl: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=400',
-    dateGroup: 'Yesterday',
-  },
-];
+export const INITIAL_BOOKMARKS: BookmarkItem[] = [];
 
 export default function BookmarksScreen() {
   const colorScheme = useAppColorScheme();
@@ -59,14 +30,43 @@ export default function BookmarksScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
 
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'events' | 'shorts'>('all');
-  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(INITIAL_BOOKMARKS);
+
+  // API hooks
+  const { data: rawBookmarks = [], isLoading } = useBookmarks();
+  const { mutate: removeBookmarkMutate } = useRemoveBookmark();
+
+  // Map backend bookmark articles to BookmarkItem UI format
+  const bookmarks: BookmarkItem[] = React.useMemo(() => {
+    const now = Date.now();
+    return rawBookmarks.map((article) => {
+      let dateGroup: 'Today' | 'Yesterday' = 'Yesterday';
+      try {
+        const diffMs = now - new Date(article.publishedAt).getTime();
+        if (diffMs < 24 * 3600 * 1000) {
+          dateGroup = 'Today';
+        }
+      } catch {}
+
+      return {
+        id: article.id,
+        type: 'news',
+        category: article.category?.name?.toUpperCase() || 'GENERAL',
+        title: article.headline,
+        publisher: article.source?.name || 'Local Reporter',
+        timeAgo: new Date(article.publishedAt).toLocaleDateString(),
+        imageUrl: article.imageUrl,
+        dateGroup,
+      };
+    });
+  }, [rawBookmarks]);
 
   const removeBookmark = (id: string) => {
-    setBookmarks((prev) => prev.filter((item) => item.id !== id));
+    removeBookmarkMutate(id);
   };
 
   const clearAllBookmarks = () => {
-    setBookmarks([]);
+    // Clear all can map to removing all items
+    rawBookmarks.forEach(b => removeBookmarkMutate(b.id));
   };
 
   // Filter items based on segmented tab bar
@@ -116,6 +116,14 @@ export default function BookmarksScreen() {
       </TouchableOpacity>
     </TouchableOpacity>
   );
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <LoadingSpinner fullScreen text="Loading bookmarks..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
