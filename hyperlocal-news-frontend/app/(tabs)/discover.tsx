@@ -7,6 +7,7 @@ import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
 import MenuOptions from '@/components/MenuOptions';
+import { Image } from 'expo-image';
 
 import { useTrendingList, useCategoriesList, useSourcesList, useLocalitiesList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -47,18 +48,29 @@ export default function DiscoverScreen() {
   const mappedTopics = categories.map((cat) => {
     let library = 'MaterialIcons';
     let icon = cat.icon || 'star';
-    if (cat.slug === 'business') {
+    const slug = cat.slug?.toLowerCase();
+    
+    if (slug === 'business') {
       library = 'FontAwesome5';
       icon = 'briefcase';
-    } else if (cat.slug === 'politics') {
+    } else if (slug === 'politics') {
       library = 'FontAwesome5';
       icon = 'gavel';
-    } else if (cat.slug === 'technology') {
+    } else if (slug === 'technology' || slug === 'tech') {
       library = 'MaterialIcons';
       icon = 'laptop';
-    } else if (cat.slug === 'crime') {
+    } else if (slug === 'crime') {
       library = 'Ionicons';
       icon = 'shield';
+    } else if (slug === 'health' || slug === 'wellness') {
+      library = 'MaterialIcons';
+      icon = 'healing';
+    } else if (slug === 'sports') {
+      library = 'MaterialIcons';
+      icon = 'sports-soccer';
+    } else if (slug === 'education') {
+      library = 'MaterialIcons';
+      icon = 'school';
     }
     return {
       id: cat.id,
@@ -132,7 +144,15 @@ export default function DiscoverScreen() {
             {mappedTopics.map((topic) => (
               <TouchableOpacity key={topic.id} style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
-                  {renderIcon(topic.library, topic.icon, colors.primary, 20)}
+                  {topic.icon.startsWith('http') || topic.icon.includes('/') ? (
+                    <Image
+                      source={{ uri: topic.icon }}
+                      style={{ width: 20, height: 20, tintColor: colors.primary }}
+                      contentFit="contain"
+                    />
+                  ) : (
+                    renderIcon(topic.library, topic.icon, colors.primary, 20)
+                  )}
                 </View>
                 <Text style={[styles.gridItemText, { color: colors.text }]}>{topic.title}</Text>
               </TouchableOpacity>
