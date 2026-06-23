@@ -8,7 +8,7 @@ import {
   signInWithGoogle,
   firebaseSignOut,
 } from '@/services/firebase';
-import { authApi, BackendLoginResponse, usersApi } from '@/services/api';
+import { authApi, BackendLoginResponse, usersApi, PublisherEligibilityRequirement } from '@/services/api';
 import { clearTokens } from '@/services/api/token';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
@@ -35,6 +35,9 @@ export interface User {
   district?: string;
   isPublisher?: boolean;
   isGuest?: boolean;
+  gender?: string;
+  date_of_birth?: string;
+  profile_picture?: string;
 }
 
 const sanitizeUser = (user: User): User => {
@@ -111,6 +114,7 @@ interface AuthState {
   switchToPublisher: () => Promise<void>;
   checkPublisherEligibility: () => Promise<{
     eligible: boolean;
+    requirements: PublisherEligibilityRequirement[];
     missing_requirements: string[];
   }>;
 
@@ -252,7 +256,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkPublisherEligibility: async () => {
-        return await authApi.checkPublisherEligibility();
+        const response = await authApi.checkPublisherEligibility();
+        return {
+          eligible: response.can_become_reporter,
+          requirements: response.requirements,
+          missing_requirements: response.requirements
+            .filter((r) => r.status === 'missing' || r.status === 'not_verified')
+            .map((r) => r.field),
+        };
       },
 
       // ─── Profile ────────────────────────────────────────────────────────
@@ -305,13 +316,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { user } = get();
           if (user) {
-            // 1. Update main user profile info (PUT /user/users/me)
+            // 1. Update main user profile info (PATCH /user/user/users/me)
             await usersApi.updateMe({
               name: user.name ?? undefined,
-              email: user.email ?? undefined,
-              phone: user.phone ?? undefined,
-              emailVerified: user.email_verified,
-              mobileVerified: user.mobile_verified,
+              profile_picture: user.avatar ?? undefined,
+              gender: user.gender ?? undefined,
+              date_of_birth: user.date_of_birth ?? undefined,
             });
 
             // 2. Update preferences (PATCH /user/preferences/me)

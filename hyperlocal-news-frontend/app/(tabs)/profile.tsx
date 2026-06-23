@@ -11,6 +11,7 @@ import {
   TextInput,
   Platform,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -25,6 +26,7 @@ import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { usersApi } from '@/services/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -48,7 +50,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { user, logout, updateProfile } = useAuthStore();
+  const { user, logout, updateProfile, checkPublisherEligibility, switchToPublisher } = useAuthStore();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Profile Active Tab State
@@ -112,6 +114,38 @@ export default function ProfileScreen() {
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
+
+  // Real eligibility states
+  const [eligibility, setEligibility] = useState<{
+    eligible: boolean;
+    requirements: any[];
+    missing_requirements: string[];
+  } | null>(null);
+  const [isLoadingEligibility, setIsLoadingEligibility] = useState(false);
+  const [dob, setDob] = useState('');
+  const [genderState, setGenderState] = useState('');
+
+  const fetchEligibility = async () => {
+    setIsLoadingEligibility(true);
+    try {
+      const res = await checkPublisherEligibility();
+      setEligibility(res);
+      if (user?.name) setFullName(user.name);
+      if (user?.gender) setGenderState(user.gender);
+      if (user?.date_of_birth) setDob(user.date_of_birth);
+    } catch (err) {
+      console.error('Failed to fetch eligibility', err);
+    } finally {
+      setIsLoadingEligibility(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'verify') {
+      fetchEligibility();
+    }
+  }, [activeTab]);
+
 
   const isPublisher = user?.isPublisher || false;
   const isGuest = user?.isGuest;
@@ -234,22 +268,60 @@ export default function ProfileScreen() {
     Alert.alert('Email Verified', 'Your email address has been successfully verified.');
   };
 
-  const handleApplyVerification = () => {
-    // Sets isPublisher directly in the state to demonstrate verification approval
+
+  const handleApplyVerification = async () => {
+    if (!fullName.trim()) {
+      Alert.alert('Validation Error', 'Please enter your Full Name / Brand Name.');
+      return;
+    }
+    if (!dob.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      Alert.alert('Validation Error', 'Please enter your Date of Birth in YYYY-MM-DD format.');
+      return;
+    }
+    if (!genderState) {
+      Alert.alert('Validation Error', 'Please select your Gender.');
+      return;
+    }
+
     setIsSubmittingVerify(true);
-    setTimeout(() => {
-      updateProfile(
-        user?.name || 'User',
-        user?.avatar || undefined,
-        user?.email || undefined,
-        user?.phoneNumber || undefined,
-        true,
-        true
+    try {
+      // Step 1: Update profile on the backend
+      await usersApi.updateMe({
+        name: fullName.trim(),
+        gender: genderState.toLowerCase(),
+        date_of_birth: dob.trim(),
+      });
+
+      // Step 2: Switch to publisher role
+      await switchToPublisher();
+
+      // Update locally in store
+      updateProfile({
+        name: fullName.trim(),
+        gender: genderState.toLowerCase(),
+        date_of_birth: dob.trim(),
+        role: 2,
+        isPublisher: true,
+      } as any);
+
+      Alert.alert(
+        'Congratulations! 🎉',
+        'Your profile has been updated and upgraded to Publisher successfully! You can now write articles and polls.',
+        [
+          {
+            text: 'Go to Dashboard',
+            onPress: () => {
+              setActiveTab('posts');
+            },
+          },
+        ]
       );
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Verification Failed', error.message || 'Could not switch to publisher role. Please check all requirements.');
+    } finally {
       setIsSubmittingVerify(false);
-      setActiveTab('posts');
-      Alert.alert('Congratulations!', 'Your verification request has been approved instantly for demo purposes. You are now a Verified Publisher!');
-    }, 1200);
+    }
   };
 
   const handleCreateNewsArticle = (data: {
@@ -1024,53 +1096,120 @@ export default function ProfileScreen() {
                 </Text>
               </View>
 
-              <View style={styles.formWrapper}>
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
-                  <TextInput
-                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Enter full name or news brand"
-                    placeholderTextColor={colors.textTertiary}
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
-                </View>
+              {isLoadingEligibility ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+              ) : (
+                <View style={styles.formWrapper}>
+                  {/* Real requirements status */}
+                  {eligibility && (
+                    <View style={[styles.checklistCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                      <Text style={[styles.checklistTitle, { color: colors.text }]}>Verification Status Checklist</Text>
+                      {eligibility.requirements.map((req, i) => {
+                        const isDone = req.status === 'verified' || req.status === 'filled' || req.status === 'active';
+                        return (
+                          <View key={i} style={styles.checklistItem}>
+                            <Ionicons 
+                              name={isDone ? "checkmark-circle" : "close-circle"} 
+                              size={16} 
+                              color={isDone ? "#4CAF50" : "#F44336"} 
+                            />
+                            <Text style={[styles.checklistText, { color: colors.text }]}>{req.message}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
 
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
-                  <TextInput
-                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. Visakhapatnam, AP"
-                    placeholderTextColor={colors.textTertiary}
-                    value={city}
-                    onChangeText={setCity}
-                  />
-                </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="Enter full name or news brand"
+                      placeholderTextColor={colors.textTertiary}
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Describe your background or brand value proposition..."
-                    placeholderTextColor={colors.textTertiary}
-                    multiline
-                    numberOfLines={3}
-                    value={bio}
-                    onChangeText={setBio}
-                  />
-                </View>
+                  {/* Gender selection */}
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Gender</Text>
+                    <View style={styles.genderContainer}>
+                      {['Male', 'Female', 'Other'].map((g) => {
+                        const isActive = genderState.toLowerCase() === g.toLowerCase();
+                        return (
+                          <TouchableOpacity
+                            key={g}
+                            style={[
+                              styles.genderOption,
+                              { borderColor: colors.border, backgroundColor: colors.background },
+                              isActive && styles.genderOptionActive
+                            ]}
+                            onPress={() => setGenderState(g.toLowerCase())}
+                          >
+                            <Text style={[
+                              styles.genderOptionText,
+                              { color: colors.textSecondary },
+                              isActive && [styles.genderOptionTextActive, { color: colors.primary }]
+                            ]}>
+                              {g}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
 
-                <TouchableOpacity
-                  style={[styles.submitVerifyBtn, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                  onPress={handleApplyVerification}
-                  disabled={isSubmittingVerify}
-                >
-                  <Text style={styles.submitVerifyBtnText}>
-                    {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                  {/* Date of Birth */}
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Date of Birth (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. 1995-08-24"
+                      placeholderTextColor={colors.textTertiary}
+                      value={dob}
+                      onChangeText={setDob}
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. Visakhapatnam, AP"
+                      placeholderTextColor={colors.textTertiary}
+                      value={city}
+                      onChangeText={setCity}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="Describe your background or brand value proposition..."
+                      placeholderTextColor={colors.textTertiary}
+                      multiline
+                      numberOfLines={3}
+                      value={bio}
+                      onChangeText={setBio}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.submitVerifyBtn, { backgroundColor: colors.primary }]}
+                    activeOpacity={0.8}
+                    onPress={handleApplyVerification}
+                    disabled={isSubmittingVerify}
+                  >
+                    <Text style={styles.submitVerifyBtnText}>
+                      {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -2156,5 +2295,52 @@ const styles = StyleSheet.create({
   },
   pickerOptionLabel: {
     fontSize: 15,
+  },
+  checklistCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  checklistTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+    fontFamily: 'Poppins_700Bold',
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  checklistText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderOptionActive: {
+    borderColor: '#4648D4',
+    backgroundColor: 'rgba(70, 72, 212, 0.08)',
+  },
+  genderOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  genderOptionTextActive: {
+    color: '#4648D4',
+    fontWeight: '700',
   },
 });

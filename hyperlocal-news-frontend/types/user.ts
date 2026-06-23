@@ -12,6 +12,9 @@ export interface User {
   isPublisher?: boolean;
   emailVerified: boolean;
   mobileVerified: boolean;
+  gender?: string;
+  date_of_birth?: string;
+  profile_picture?: string;
   createdAt: string;
   updatedAt: string;
 }

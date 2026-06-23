@@ -77,7 +77,11 @@ export default function VerifyOTPScreen() {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.message || 'Invalid OTP. Please try again.');
+      let errorMsg = error.message || 'Invalid OTP. Please try again.';
+      if (error.config?.url) {
+        errorMsg += `\n\nURL: ${error.config.url}`;
+      }
+      Alert.alert('Verification Failed', errorMsg);
       setOtp('');
     }
   };

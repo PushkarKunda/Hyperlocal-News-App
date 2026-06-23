@@ -13,10 +13,10 @@ export const API_ROUTES = {
   // ─── User ────────────────────────────────────────
   user: {
     me: '/user/user/users/me',                           // GET, PATCH
-    publisherEligibility: '/user/users/me/publisher-eligibility', // GET
-    suspensionStatus: '/user/users/me/suspension-status', // GET
+    publisherEligibility: '/user/user/users/me/publisher-eligibility', // GET
+    suspensionStatus: '/user/user/users/me/suspension-status', // GET
     preferences: '/user/user/preferences/me',            // GET, POST, PUT, PATCH, DELETE
-    dashboard: '/user/user/dashboard',                   // GET
+    dashboard: '/user/user/dashboardnew',                // GET
     uploadAvatar: '/user/user/users/me/avatar',          // POST
   },
 
