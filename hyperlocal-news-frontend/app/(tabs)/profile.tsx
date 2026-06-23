@@ -35,68 +35,8 @@ const POST_PRESETS = [
   { id: '6', label: 'Forest Road', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500' },
 ];
 
-// Mock Data Constants
-const INITIAL_POSTS = [
-  { id: 'p1', imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500', status: 'Approved', likes: 45, comments: 12, caption: 'Beautiful sunny day at the beach!' },
-  { id: 'p2', imageUrl: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=500', status: 'Pending', likes: 32, comments: 8, caption: 'Boats at the local harbor.' },
-  { id: 'p3', imageUrl: 'https://images.unsplash.com/photo-1542397284385-6010176424b2?w=500', status: 'Approved', likes: 28, comments: 5, caption: 'Peaceful temple visit in the morning.' },
-  { id: 'p4', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Pending', likes: 14, comments: 2, caption: 'Sunset view from the hills.' },
-  { id: 'p5', imageUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500', status: 'Approved', likes: 56, comments: 18, caption: 'Stunning city line at night.' },
-  { id: 'p6', imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500', status: 'Rejected', likes: 3, comments: 1, caption: 'A walk down the forest road.' },
-];
-
-const INITIAL_NEWS = [
-  {
-    id: 'n1',
-    title: 'Breaking: New Local Policy Initiative Launched',
-    date: 'May 24, 2025',
-    views: '1,234 Views',
-    likes: 89,
-    comments: 23,
-    shares: 45,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=500',
-  },
-  {
-    id: 'n2',
-    title: 'Beach Road Development Project Update',
-    date: 'May 21, 2025',
-    views: '856 Views',
-    likes: 45,
-    comments: 12,
-    shares: 23,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500',
-  },
-  {
-    id: 'n3',
-    title: 'New Smart Classrooms Inaugurated in 10 Schools',
-    date: 'May 18, 2025',
-    views: '745 Views',
-    likes: 38,
-    comments: 9,
-    shares: 17,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=500',
-  },
-  {
-    id: 'n4',
-    title: 'Local Festival 2025 - Grand Celebrations Soon',
-    date: 'Submitted on May 23, 2025',
-    status: 'Pending',
-    estimatedTime: '24–48 hours',
-    imageUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=500',
-  },
-  {
-    id: 'n5',
-    title: 'Unverified Air Quality Report',
-    date: 'May 20, 2025',
-    views: '210 Views',
-    status: 'Rejected',
-    reason: 'Inaccurate information / No source provided',
-    imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500',
-  },
-];
+const INITIAL_POSTS: any[] = [];
+const INITIAL_NEWS: any[] = [];
 
 export default function ProfileScreen() {
   const colorScheme = useAppColorScheme();
@@ -126,12 +66,9 @@ export default function ProfileScreen() {
   const [postCoverImage, setPostCoverImage] = useState('');
 
   // Mock Data States
-  const [posts, setPosts] = useState(INITIAL_POSTS);
-  const [newsList, setNewsList] = useState(INITIAL_NEWS);
-  const [savedPosts, setSavedPosts] = useState([
-    { id: 's1', imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', status: 'Approved', likes: 120, comments: 40 },
-    { id: 's2', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Approved', likes: 88, comments: 19 },
-  ]);
+  const [posts, setPosts] = useState<any[]>(INITIAL_POSTS);
+  const [newsList, setNewsList] = useState<any[]>(INITIAL_NEWS);
+  const [savedPosts, setSavedPosts] = useState<any[]>([]);
 
   // Verification Form State
   const [fullName, setFullName] = useState('');
