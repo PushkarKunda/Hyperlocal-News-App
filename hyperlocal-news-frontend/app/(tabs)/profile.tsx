@@ -69,7 +69,7 @@ export default function ProfileScreen() {
   const [postCoverImage, setPostCoverImage] = useState('');
 
   // API hooks
-  const { all: myArticles = [], isLoading: isLoadingArticles } = usePublisherArticles();
+  const { all: myArticles = [], isLoading: isLoadingArticles, dashboard } = usePublisherArticles();
   const { mutate: deleteArticleMutate } = useDeleteArticle();
   const { mutate: createArticleMutate } = useCreateArticle();
   const { data: rawBookmarks = [], isLoading: isLoadingBookmarks } = useBookmarks();
@@ -116,25 +116,38 @@ export default function ProfileScreen() {
   const isPublisher = user?.isPublisher || false;
   const isGuest = user?.isGuest;
 
-  // Custom simulation variables based on verification status
-  const displayName = user?.name || (isGuest ? 'Guest User' : 'User');
+  // Custom variables mapped to live dashboard user profile info
+  const displayName = dashboard?.user?.name || user?.name || (isGuest ? 'Guest User' : 'User');
   
-  // Auto-generate username handle dynamically based on user name
-  const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = user?.district ? `${user.district}, ${user.state || ''}`.trim() : 'Location not set';
+  // Auto-generate username handle dynamically based on user name or fallback
+  const userHandle = dashboard?.user?.user_name 
+    ? '@' + dashboard.user.user_name
+    : '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
+  const userLocation = dashboard?.user?.location || (user?.district ? `${user.district}, ${user.state || ''}`.trim() : 'Location not set');
   
   const totalLikes = newsList.reduce((acc, curr) => acc + (curr.likes || 0), 0);
   const totalComments = newsList.reduce((acc, curr) => acc + (curr.comments || 0), 0);
 
-  // Dynamic Stats
+  // Dynamic Stats fetched from backend
   const stats = {
-    posts: String(newsList.length),
-    likes: String(totalLikes),
-    comments: String(totalComments),
-    level: 'Level 1',
-    coins: '0',
-    points: '0',
+    posts: String(dashboard?.stats?.total_posts ?? newsList.length),
+    likes: String(dashboard?.stats?.total_likes ?? totalLikes),
+    comments: String(dashboard?.stats?.total_comments ?? totalComments),
+    level: dashboard?.stats?.level_name || `Level ${dashboard?.stats?.level || 1}`,
+    coins: String(dashboard?.stats?.coins ?? 0),
+    points: String(dashboard?.stats?.points ?? 0),
   };
+
+  // Sourced from dynamic dashboard data
+  const joinedDateFormatted = useMemo(() => {
+    const rawDate = dashboard?.user?.joined_date;
+    if (!rawDate) return 'Joined Jan 2024';
+    try {
+      return `Joined ${new Date(rawDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    } catch {
+      return 'Joined Jan 2024';
+    }
+  }, [dashboard?.user?.joined_date]);
 
   if (isLoadingArticles || isLoadingBookmarks) {
     return (
@@ -401,13 +414,13 @@ export default function ProfileScreen() {
                   </View>
                   <View style={[styles.metaItem, { marginLeft: 12 }]}>
                     <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined Jan 2024</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{joinedDateFormatted}</Text>
                   </View>
                 </View>
 
                 {/* Followers */}
                 <Text style={[styles.followersText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '1,234' : '234'}</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '567' : '178'}</Text> Following
+                  <Text style={{ fontWeight: '700', color: colors.text }}>{dashboard?.user?.followers_count ?? (isPublisher ? '1,234' : '234')}</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>{dashboard?.user?.following_count ?? (isPublisher ? '567' : '178')}</Text> Following
                 </Text>
               </View>
             </View>
@@ -570,7 +583,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#4CAF50' }]}>
                     <Ionicons name="checkmark-sharp" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>18</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.approved ?? 0}</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approved</Text>
                 </View>
 
@@ -579,7 +592,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#FF9800' }]}>
                     <Ionicons name="time-outline" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>5</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.pending ?? 0}</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Pending</Text>
                 </View>
 
@@ -588,7 +601,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#F44336' }]}>
                     <Ionicons name="close-sharp" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>2</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.rejected ?? 0}</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Rejected</Text>
                 </View>
               </View>
@@ -597,7 +610,7 @@ export default function ProfileScreen() {
                 <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
                   <Ionicons name="document-text-outline" size={20} color={colors.primary} style={{ marginRight: 10 }} />
                   <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>25</Text>
+                    <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.total ?? 0}</Text>
                     <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Total News</Text>
                   </View>
                 </View>
@@ -605,7 +618,9 @@ export default function ProfileScreen() {
                 <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
                   <Ionicons name="trending-up-outline" size={20} color="#8B5CF6" style={{ marginRight: 10 }} />
                   <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>72%</Text>
+                    <Text style={[styles.newsStatVal, { color: colors.text }]}>
+                      {dashboard?.news_stats?.approval_rate != null ? `${dashboard.news_stats.approval_rate}%` : '0%'}
+                    </Text>
                     <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approval Rate</Text>
                   </View>
                 </View>

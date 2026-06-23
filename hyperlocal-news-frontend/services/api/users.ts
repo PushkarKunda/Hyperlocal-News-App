@@ -11,7 +11,7 @@ export const usersApi = {
   updateMe: async (payload: Partial<User>) => {
     const response = await request<User>({
       url: API_ROUTES.user.me,
-      method: 'PUT',
+      method: 'PATCH',
       data: payload,
     });
     return response;

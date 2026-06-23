@@ -149,7 +149,16 @@ export const usePublisherArticles = () => {
   const myArticles: NewsArticle[] = useMemo(() => {
     const data = query.data;
     if (!data) return [];
-    const items = Array.isArray(data) ? data : (data.items || data.articles || []);
+    let items = [];
+    if (Array.isArray(data)) {
+      items = data;
+    } else if ((data as any).detailed_news?.items) {
+      items = (data as any).detailed_news.items;
+    } else if ((data as any).recent_news?.items) {
+      items = (data as any).recent_news.items;
+    } else {
+      items = (data as any).items || (data as any).articles || [];
+    }
     return items.map((item: any) => mapNewsArticle(item));
   }, [query.data]);
 
@@ -163,7 +172,8 @@ export const usePublisherArticles = () => {
     published, 
     rejected, 
     isLoading: query.isLoading,
-    refetch: query.refetch 
+    refetch: query.refetch,
+    dashboard: query.data as any
   };
 };
 
