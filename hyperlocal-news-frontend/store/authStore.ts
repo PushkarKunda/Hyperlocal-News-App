@@ -8,7 +8,7 @@ import {
   signInWithGoogle,
   firebaseSignOut,
 } from '@/services/firebase';
-import { authApi, BackendLoginResponse, usersApi, API_CONFIG } from '@/services/api';
+import { authApi, BackendLoginResponse, usersApi } from '@/services/api';
 import { clearTokens } from '@/services/api/token';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
@@ -303,26 +303,24 @@ export const useAuthStore = create<AuthState>()(
       completeOnboarding: async () => {
         set({ isLoading: true, error: null });
         try {
-          if (!API_CONFIG.useMocks) {
-            const { user } = get();
-            if (user) {
-              // 1. Update main user profile info (PUT /user/users/me)
-              await usersApi.updateMe({
-                name: user.name ?? undefined,
-                email: user.email ?? undefined,
-                phone: user.phone ?? undefined,
-                emailVerified: user.email_verified,
-                mobileVerified: user.mobile_verified,
-              });
+          const { user } = get();
+          if (user) {
+            // 1. Update main user profile info (PUT /user/users/me)
+            await usersApi.updateMe({
+              name: user.name ?? undefined,
+              email: user.email ?? undefined,
+              phone: user.phone ?? undefined,
+              emailVerified: user.email_verified,
+              mobileVerified: user.mobile_verified,
+            });
 
-              // 2. Update preferences (PATCH /user/preferences/me)
-              await usersApi.updatePreferences({
-                language: user.language,
-                state: user.state,
-                district: user.district,
-                interests: user.interests,
-              } as any);
-            }
+            // 2. Update preferences (PATCH /user/preferences/me)
+            await usersApi.updatePreferences({
+              language: user.language,
+              state: user.state,
+              district: user.district,
+              interests: user.interests,
+            } as any);
           }
           set({ isOnboarded: true, isLoading: false });
         } catch (error: any) {

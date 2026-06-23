@@ -18,36 +18,15 @@ const useMergedNews = (newsArray: NewsArticle[] | undefined): NewsArticle[] => {
   }, [newsArray, bookmarkedArticleIds]);
 };
 
-// ─── API Simulation Layer (Future Supabase Integration Point) ────────────────
-
-const fetchNews = async (
-  allArticles: NewsArticle[],
-  categorySlug?: string
-): Promise<NewsArticle[]> => {
-  if (API_CONFIG.useMocks) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const published = allArticles.filter((a) => a.status === 'published');
-
-    if (!categorySlug || categorySlug === 'for-you') return published;
-
-    return published.filter((a) => a.category.slug === categorySlug);
-  }
-
-  return newsApi.list(categorySlug ? { category: categorySlug } : undefined);
-};
-
 // ─── Public-facing feed ───────────────────────────────────────────────────────
 
 export const useNews = (categorySlug?: string) => {
-  // We include allArticles in the queryKey to ensure reactivity when the store updates
-  const allArticles = useStore((state) => state.allArticles);
   const categoriesQuery = useQuery({
-    queryKey: ['categories', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['categories', 'api'],
     queryFn: () => categoriesApi.list(),
     staleTime: 1000 * 60 * 30,
-    enabled: !API_CONFIG.useMocks,
   });
+
   const resolvedCategoryId = useMemo(() => {
     if (!categorySlug || categorySlug === 'for-you') return undefined;
 
@@ -60,12 +39,8 @@ export const useNews = (categorySlug?: string) => {
   }, [categorySlug, categoriesQuery.data]);
 
   const query = useQuery({
-    queryKey: ['news', categorySlug, resolvedCategoryId ?? 'all', allArticles.length, API_CONFIG.useMocks ? 'mock' : 'api'], // Reactive to article count
+    queryKey: ['news', categorySlug, resolvedCategoryId ?? 'all', 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        return fetchNews(allArticles, categorySlug);
-      }
-
       if (!resolvedCategoryId) {
         return newsApi.list();
       }
@@ -85,17 +60,33 @@ export const useNews = (categorySlug?: string) => {
 
 export const usePrefetchNews = () => {
   const queryClient = useQueryClient();
-  const allArticles = useStore((state) => state.allArticles);
 
   const prefetch = useCallback(
-    (categorySlug: string) => {
+    async (categorySlug: string) => {
+      const categories = await queryClient.fetchQuery({
+        queryKey: ['categories', 'api'],
+        queryFn: () => categoriesApi.list(),
+        staleTime: 1000 * 60 * 30,
+      });
+
+      const matchedCategory = categories?.find(
+        (category) => category.slug === categorySlug || category.name.toLowerCase() === categorySlug.toLowerCase()
+      );
+      const parsedId = matchedCategory ? Number(matchedCategory.id) : Number.NaN;
+      const resolvedCategoryId = Number.isFinite(parsedId) ? parsedId : undefined;
+
       queryClient.prefetchQuery({
-        queryKey: ['news', categorySlug, allArticles.length, API_CONFIG.useMocks ? 'mock' : 'api'],
-        queryFn: () => fetchNews(allArticles, categorySlug),
+        queryKey: ['news', categorySlug, resolvedCategoryId ?? 'all', 'api'],
+        queryFn: () => {
+          if (!resolvedCategoryId) {
+            return newsApi.list();
+          }
+          return newsApi.listByCategory(resolvedCategoryId);
+        },
         staleTime: 1000 * 60 * 5,
       });
     },
-    [queryClient, allArticles]
+    [queryClient]
   );
 
   return prefetch;
@@ -124,16 +115,11 @@ export const useBookmarkedNews = () => {
 // ─── Single article by id ─────────────────────────────────────────────────────
 
 export const useNewsArticle = (id: string) => {
-  const allArticles = useStore((state) => state.allArticles);
   const bookmarkedArticleIds = useStore((state) => state.bookmarkedArticleIds);
 
   const query = useQuery({
-    queryKey: ['news-article', id, API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['news-article', id, 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        return allArticles.find((article) => article.id === id);
-      }
-
       return newsApi.getById(id);
     },
     enabled: Boolean(id),
@@ -141,10 +127,10 @@ export const useNewsArticle = (id: string) => {
   });
 
   const article = useMemo(() => {
-    const found = query.data ?? allArticles.find((a) => a.id === id);
+    const found = query.data;
     if (!found) return undefined;
     return { ...found, isBookmarked: bookmarkedArticleIds.includes(found.id) };
-  }, [allArticles, bookmarkedArticleIds, id, query.data]);
+  }, [bookmarkedArticleIds, query.data]);
 
   return {
     data: article,

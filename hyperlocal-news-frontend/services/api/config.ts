@@ -8,5 +8,4 @@ const parseTimeout = (value: string | undefined, fallback: number) => {
 export const API_CONFIG = {
   baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
   timeoutMs: parseTimeout(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
-  useMocks: process.env.EXPO_PUBLIC_USE_MOCKS === 'true',
 };

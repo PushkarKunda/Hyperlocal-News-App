@@ -1,19 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiService } from '@/utils/apiClient';
-import { API_CONFIG, locationApi, newsApi, categoriesApi } from '@/services/api';
+import { locationApi, newsApi, categoriesApi } from '@/services/api';
 
 // 1. News feed hook
 export function useNewsFeed() {
   return useQuery({
-    queryKey: ['news-feed', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['news-feed', 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        const response = await ApiService.getNews();
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to load news');
-        }
-        return response.data;
-      }
       return await newsApi.list();
     },
   });
@@ -25,11 +18,7 @@ export function useArticleDetails(id: string | undefined) {
     queryKey: ['article-details', id],
     queryFn: async () => {
       if (!id) return undefined;
-      const response = await ApiService.getArticleById(id);
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load article');
-      }
-      return response.data;
+      return await newsApi.getById(id);
     },
     enabled: !!id,
   });
@@ -38,15 +27,8 @@ export function useArticleDetails(id: string | undefined) {
 // 2b. Categories list hook
 export function useCategoriesList() {
   return useQuery({
-    queryKey: ['categories-list', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['categories-list', 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        const response = await ApiService.getCategories();
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to load categories');
-        }
-        return response.data;
-      }
       return await categoriesApi.list();
     },
   });
@@ -73,16 +55,8 @@ const getGlyphForLanguage = (code: string, name: string): string => {
 // 2c. Languages list hook
 export function useLanguagesList() {
   return useQuery({
-    queryKey: ['languages-list', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['languages-list', 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        const response = await ApiService.getLanguages();
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to load languages');
-        }
-        return response.data;
-      }
-      
       const response = await locationApi.getLanguages();
       return response.map(lang => ({
         id: lang.code, // Map to code ('en', 'te', 'hi') to preserve matching with local UI selectedLanguage default
@@ -96,16 +70,8 @@ export function useLanguagesList() {
 // 3. States list hook (for onboarding locations)
 export function useStatesList() {
   return useQuery({
-    queryKey: ['states-list', API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['states-list', 'api'],
     queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        const response = await ApiService.getStates();
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to load states');
-        }
-        return response.data;
-      }
-      
       const response = await locationApi.getStates();
       return response.map(state => ({
         id: state.name.toLowerCase() === 'andhra pradesh' ? 'ap' : (state.name.toLowerCase() === 'telangana' ? 'ts' : String(state.id)),
@@ -119,17 +85,9 @@ export function useStatesList() {
 // 4. Districts list hook (for onboarding locations)
 export function useDistrictsList(stateId: string | undefined) {
   return useQuery({
-    queryKey: ['districts-list', stateId, API_CONFIG.useMocks ? 'mock' : 'api'],
+    queryKey: ['districts-list', stateId, 'api'],
     queryFn: async () => {
       if (!stateId) return [];
-      if (API_CONFIG.useMocks) {
-        const response = await ApiService.getDistrictsByState(stateId);
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to load districts');
-        }
-        return response.data;
-      }
-      
       const response = await locationApi.getDistricts();
       
       let backendStateId: number | null = null;
