@@ -19,7 +19,7 @@ import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 
-// Mock Article Cover Presets
+// Article Cover Presets
 const COVER_PRESETS = [
   { id: 'business', label: 'Business', url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600' },
   { id: 'environment', label: 'Nature & Parks', url: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=600' },

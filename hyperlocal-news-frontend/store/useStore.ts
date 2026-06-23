@@ -2,28 +2,6 @@ import { create } from 'zustand';
 import { NewsArticle, User, Poll } from '@/types';
 import { usersApi } from '@/services/api';
 
-// const MOCK_USER: User = {
-//   id: '1',
-//   phone: '+919876543210',
-//   email: 'user@example.com',
-//   name: 'Rahul Kumar',
-//   avatar: 'https://via.placeholder.com/100',
-//   location: {
-//     state: 'Telangana',
-//     stateId: '1',
-//     district: 'Hyderabad',
-//     districtId: '1',
-//     city: 'Kukatpally',
-//     cityId: '1',
-//   },
-//   language: 'en',
-//   interests: ['technology', 'sports', 'local', 'business'],
-//   isVerified: true,
-//   isPublisher: false,
-//   createdAt: '2024-01-15T10:30:00Z',
-//   updatedAt: '2024-03-10T14:45:00Z',
-// };
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AppState {
@@ -39,7 +17,7 @@ interface AppState {
   requestPublisherAccess: () => void;
 
   // --- Publisher Articles ---
-  /** All articles ever created (mock seed + publisher-submitted) */
+  /** All articles ever created (publisher-submitted) */
   allArticles: NewsArticle[];
   /** Submit a new article from the publisher (goes to 'pending' status) */
   submitArticle: (
