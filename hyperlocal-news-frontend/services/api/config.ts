@@ -1,6 +1,6 @@
+// services/api/config.ts
 const parseTimeout = (value: string | undefined, fallback: number) => {
   if (!value) return fallback;
-
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };

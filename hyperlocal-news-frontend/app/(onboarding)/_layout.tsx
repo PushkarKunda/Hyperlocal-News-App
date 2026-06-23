@@ -28,7 +28,7 @@ export default function OnboardingLayout() {
 
   if (isOnboarded) {
     if (pathname.includes('profile')) {
-      // Allow rendering the profile screen to verify email
+      // Allow rendering the profile screen to verify Google identity
     } else {
       return null;
     }

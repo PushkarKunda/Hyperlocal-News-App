@@ -78,18 +78,18 @@ function StateCard({ name, code, isSelected, onPress, width, marginRight, margin
           styles.regionCard,
           isSelected ? styles.regionCardSelected : styles.regionCardUnselected,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2A2A4D' : '#E6E7FB') 
+            backgroundColor: isSelected
+              ? (isDark ? '#2A2A4D' : '#E6E7FB')
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
           { transform: [{ scale }] },
         ]}
       >
-        <View 
+        <View
           style={[
             styles.flagCircle,
-            { 
+            {
               backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
               borderColor: isSelected ? colors.primary : colors.border,
             }
@@ -99,12 +99,12 @@ function StateCard({ name, code, isSelected, onPress, width, marginRight, margin
             {code}
           </Text>
         </View>
-        <Text 
+        <Text
           style={[
-            styles.regionName, 
+            styles.regionName,
             { color: isSelected ? colors.primary : colors.text },
             isSelected && styles.regionNameSelected
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {name}
@@ -205,7 +205,7 @@ export default function LocationScreen() {
 
   const handleUseCurrentLocation = async () => {
     if (isLocating) return;
-    
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -217,7 +217,7 @@ export default function LocationScreen() {
       }
 
       setIsLocating(true);
-      
+
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -234,8 +234,8 @@ export default function LocationScreen() {
         const cityName = address.city || address.subregion || address.district || '';
 
         // Match the state name to dynamic statesList
-        const matchedState = statesList.find(s => 
-          s.name.toLowerCase().includes(stateName.toLowerCase()) || 
+        const matchedState = statesList.find(s =>
+          s.name.toLowerCase().includes(stateName.toLowerCase()) ||
           stateName.toLowerCase().includes(s.name.toLowerCase())
         );
 
@@ -362,14 +362,14 @@ export default function LocationScreen() {
             onPressOut={handleGpsPressOut}
             disabled={isLocating}
           >
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.gpsButton, 
-                { 
+                styles.gpsButton,
+                {
                   backgroundColor: colors.card,
                   borderColor: colors.border,
-                  transform: [{ scale: gpsScale }] 
-                }, 
+                  transform: [{ scale: gpsScale }]
+                },
                 isLocating && styles.gpsButtonDisabled
               ]}
             >

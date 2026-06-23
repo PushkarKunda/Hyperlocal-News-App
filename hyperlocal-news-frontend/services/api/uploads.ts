@@ -9,13 +9,13 @@ export interface UploadAvatarResponse {
 export const uploadsApi = {
   uploadAvatar: async (file: FormData) => {
     const response = await request<UploadAvatarResponse>({
-      url: API_ROUTES.uploadAvatar,
+      url: API_ROUTES.user.uploadAvatar,
       method: 'POST',
       data: file,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response;
   },
 };

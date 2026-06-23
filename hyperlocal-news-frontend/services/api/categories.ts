@@ -20,7 +20,7 @@ const mapCategory = (category: GeneratedCategoryOut): Category => ({
 
 export const categoriesApi = {
   list: async () => {
-    const response = await request<GeneratedCategoryOut[]>({ url: API_ROUTES.categories, method: 'GET' });
-    return response.data.map(mapCategory);
+    const response = await request<GeneratedCategoryOut[]>({ url: API_ROUTES.categories.all, method: 'GET' });
+    return response.map(mapCategory);
   },
 };

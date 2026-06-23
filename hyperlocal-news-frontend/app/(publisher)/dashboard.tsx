@@ -122,7 +122,7 @@ export default function PublisherDashboard() {
         <View style={styles.headerContent}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Publisher Dashboard</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            {user.name ?? 'Publisher'}
+            {user?.name ?? 'Publisher'}
           </Text>
         </View>
         <Pressable

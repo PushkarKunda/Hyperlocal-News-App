@@ -1,77 +1,87 @@
+// hooks/usePolls.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useStore } from '@/store/useStore';
-import { Poll } from '@/types';
-import { API_CONFIG, pollsApi } from '@/services/api';
+import { pollsApi, CreatePollPayload, VotePollPayload } from '@/services/api/polls';
+import { useAuthStore } from '@/store/authStore';
+import { getApiError } from '@/services/api/client';
 
-// ─── API Simulation Layer ───────────────────────────────────────────────────
-// These functions are where you would later add Supabase or REST API calls.
-// No UI changes will be needed once these are updated with real fetch/post logic.
+// ─── Query Keys ───────────────────────────────────────────────────────────────
+export const POLL_KEYS = {
+  all: ['polls'] as const,
+  active: () => [...POLL_KEYS.all, 'active'] as const,
+  detail: (uid: string) => [...POLL_KEYS.all, 'detail', uid] as const,
+};
 
-// ─── Hooks ──────────────────────────────────────────────────────────────────
-
-/** Fetch all community polls */
-export const usePolls = () => {
-  const pollsFromStore = useStore((state) => state.polls);
-
+// ─── Get Active Polls ─────────────────────────────────────────────────────────
+export const useActivePolls = (params?: { limit?: number; offset?: number }) => {
   return useQuery({
-    queryKey: ['polls', API_CONFIG.useMocks ? 'mock' : 'api'],
-    queryFn: async () => {
-      if (API_CONFIG.useMocks) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        return pollsFromStore;
-      }
-
-      return pollsApi.list();
-    },
-    placeholderData: pollsFromStore,
+    queryKey: POLL_KEYS.active(),
+    queryFn: () => pollsApi.getActivePolls(params),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
-/** Cast a vote in a poll */
+// ─── Get Single Poll ──────────────────────────────────────────────────────────
+export const usePollDetail = (pollUid: string) => {
+  return useQuery({
+    queryKey: POLL_KEYS.detail(pollUid),
+    queryFn: () => pollsApi.getPollById(pollUid),
+    enabled: !!pollUid,
+  });
+};
+
+// ─── Create Poll ──────────────────────────────────────────────────────────────
+export const useCreatePoll = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreatePollPayload) => pollsApi.createPoll(payload),
+    onSuccess: () => {
+      // Refresh active polls list
+      queryClient.invalidateQueries({ queryKey: POLL_KEYS.active() });
+    },
+    onError: (error) => {
+      console.error('Create poll failed:', getApiError(error));
+    },
+  });
+};
+
+// ─── Vote Poll ────────────────────────────────────────────────────────────────
 export const useVotePoll = () => {
   const queryClient = useQueryClient();
-  const votePollStore = useStore((state) => state.votePoll);
+  const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: ({ pollId, optionId }: { pollId: string; optionId: string }) =>
-      API_CONFIG.useMocks ? Promise.resolve(undefined) : pollsApi.vote(pollId, optionId),
-    // Optimistic Update: Update the UI immediately
-    onMutate: async ({ pollId, optionId }) => {
-      // Cancel refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: ['polls'] });
+    mutationFn: (params: { pollUid: string; optionIndex: number }) => {
+      if (!user?.user_uid) throw new Error('Must be logged in to vote');
 
-      if (API_CONFIG.useMocks) {
-        // Update the local state (store) immediately
-        votePollStore(pollId, optionId);
-      }
-      
-      return { pollId, optionId };
+      const payload: VotePollPayload = {
+        poll_uid: params.pollUid,
+        option_index: params.optionIndex,
+        user_uid: user.user_uid,
+      };
+      return pollsApi.votePoll(payload);
     },
-    onSettled: () => {
-      // Refresh to ensure sync with "server"
-      queryClient.invalidateQueries({ queryKey: ['polls'] });
+    onSuccess: (_, variables) => {
+      // Refresh the specific poll
+      queryClient.invalidateQueries({
+        queryKey: POLL_KEYS.detail(variables.pollUid),
+      });
+      queryClient.invalidateQueries({ queryKey: POLL_KEYS.active() });
+    },
+    onError: (error) => {
+      console.error('Vote failed:', getApiError(error));
     },
   });
 };
 
-/** Undo a previously cast vote */
-export const useUndoVotePoll = () => {
+// ─── Delete Poll ──────────────────────────────────────────────────────────────
+export const useDeletePoll = () => {
   const queryClient = useQueryClient();
-  const undoVotePollStore = useStore((state) => state.undoVotePoll);
 
   return useMutation({
-    mutationFn: (pollId: string) =>
-      API_CONFIG.useMocks ? Promise.resolve(undefined) : pollsApi.undoVote(pollId),
-    // Optimistic Update
-    onMutate: async (pollId) => {
-      await queryClient.cancelQueries({ queryKey: ['polls'] });
-      if (API_CONFIG.useMocks) {
-        undoVotePollStore(pollId);
-      }
-      return { pollId };
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['polls'] });
+    mutationFn: (pollId: number) => pollsApi.deletePoll(pollId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: POLL_KEYS.active() });
     },
   });
 };

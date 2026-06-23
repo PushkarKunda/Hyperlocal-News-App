@@ -1,49 +1,115 @@
+// services/api/auth.ts
 import { request } from './client';
 import { API_ROUTES } from './routes';
+import { saveTokens, clearTokens } from './token';
 
-export interface FirebaseAuthTokenPayload {
-  idToken: string;
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface BackendLoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_expires_in: number;
+  user: {
+    user_uid: string;
+    user_name: string | null;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    role: number;
+    email_verified: boolean;
+    mobile_verified: boolean;
+    is_suspended: boolean;
+    created_at: string;
+  };
+  is_new_user: boolean;
 }
 
-export interface DeviceTokenPayload {
-  token: string;
-  platform: 'ios' | 'android' | 'web';
+export interface RegisterDevicePayload {
+  fcm_token: string;
+  device_type: 'android' | 'ios';
+  device_name?: string;
+  app_version?: string;
 }
+
+// ─── Auth API ─────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  exchangeFirebaseToken: async (payload: FirebaseAuthTokenPayload) => {
-    const response = await request<{ customToken?: string }>({
-      url: API_ROUTES.auth.firebaseToken,
+  /**
+   * Exchange Firebase token for backend JWT
+   * Used for BOTH Phone Auth and Google OAuth
+   */
+  loginWithFirebase: async (
+    firebaseToken: string
+  ): Promise<BackendLoginResponse> => {
+    const response = await request<BackendLoginResponse>({
+      url: API_ROUTES.auth.firebaseLogin,
       method: 'POST',
-      data: payload,
+      data: { firebase_token: firebaseToken }, // ✅ Correct field name
     });
-    return response.data;
+    console.log("firebaseToken", firebaseToken);
+    console.log("response", response);
+    // Save tokens securely
+    await saveTokens(
+      (response as any).access_token,
+      (response as any).refresh_token
+    );
+
+    return response;
   },
 
-  linkGoogleAccount: async (payload: FirebaseAuthTokenPayload) => {
-    const response = await request<void>({
-      url: API_ROUTES.auth.linkGoogle,
-      method: 'POST',
-      data: payload,
-    });
-    return response.data;
+  /**
+   * Logout - invalidates all tokens
+   */
+  logout: async (): Promise<void> => {
+    try {
+      await request({
+        url: API_ROUTES.auth.logout,
+        method: 'POST',
+      });
+    } finally {
+      await clearTokens();
+    }
   },
 
-  linkEmailAccount: async (payload: FirebaseAuthTokenPayload) => {
-    const response = await request<void>({
-      url: API_ROUTES.auth.linkEmail,
+  /**
+   * Switch user role to Publisher
+   * Requirements: email verified + phone verified
+   */
+  switchToPublisher: async (): Promise<void> => {
+    await request({
+      url: API_ROUTES.auth.switchToPublisher,
       method: 'POST',
-      data: payload,
     });
-    return response.data;
   },
 
-  registerDeviceToken: async (payload: DeviceTokenPayload) => {
-    const response = await request<void>({
-      url: API_ROUTES.auth.deviceToken,
+  /**
+   * Check if user can become publisher
+   */
+  checkPublisherEligibility: async (): Promise<{
+    eligible: boolean;
+    email_verified: boolean;
+    mobile_verified: boolean;
+    name_filled: boolean;
+    missing_requirements: string[];
+  }> => {
+    return await request({
+      url: API_ROUTES.user.publisherEligibility,
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Register FCM device token for push notifications
+   */
+  registerDeviceToken: async (
+    payload: RegisterDevicePayload
+  ): Promise<void> => {
+    await request({
+      url: API_ROUTES.auth.registerDevice,
       method: 'POST',
       data: payload,
     });
-    return response.data;
   },
 };

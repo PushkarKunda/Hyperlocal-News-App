@@ -103,31 +103,32 @@ const pickList = (data: unknown): GeneratedNewsOut[] => {
 export const newsApi = {
   list: async (filters?: NewsFilters) => {
     const response = await request<unknown>({
-      url: API_ROUTES.news,
+      url: API_ROUTES.news.feed,
       method: 'GET',
       params: filters,
     });
 
-    return pickList(response.data).map(mapNewsArticle);
+    return pickList(response).map(mapNewsArticle);
   },
 
   listByCategory: async (categoryId: number) => {
     const response = await request<unknown>({
-      url: API_ROUTES.newsByCategory(categoryId),
+      url: API_ROUTES.news.byCategory(categoryId),
       method: 'GET',
     });
 
-    return pickList(response.data).map(mapNewsArticle);
+    return pickList(response).map(mapNewsArticle);
   },
 
   getById: async (id: string) => {
     const response = await request<unknown>({
-      url: API_ROUTES.newsById(id),
+      url: API_ROUTES.news.byId(id),
       method: 'GET',
     });
 
-    const raw = Array.isArray(response.data) ? response.data[0] : (response.data as GeneratedNewsOut | undefined);
+    const raw = Array.isArray(response) ? response[0] : (response as GeneratedNewsOut | undefined);
     if (!raw) return undefined;
     return mapNewsArticle(raw as Partial<GeneratedNewsOut> & Record<string, unknown>);
   },
 };
+

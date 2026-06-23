@@ -441,7 +441,8 @@ export default function ProfileCompletionScreen() {
                     maxLength={50}
                   />
                   <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
-                </View>                 {!isVerified && !showOtpField && (
+                </View>
+                 {!isVerified && !showOtpField && (
                   <TouchableOpacity
                     style={[styles.verifyButton, { backgroundColor: colors.primaryLight }]}
                     onPress={handleVerifyEmail}

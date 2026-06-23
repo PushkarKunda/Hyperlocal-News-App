@@ -832,14 +832,13 @@ export const ApiService = {
   verifyOtp: async (phoneNumber: string, otp: string): Promise<ApiResponse<any>> => {
     try {
       await delay(600);
-      return {
-        success: true,
-        data: {
-          id: Math.random().toString(36).substr(2, 9),
-          phoneNumber,
-          isGuest: false,
-        }
-      };
+       return {
+         success: true,
+         data: {
+           id: Math.random().toString(36).substr(2, 9),
+           phoneNumber,
+         }
+       };
     } catch (error: any) {
       return {
         success: false,

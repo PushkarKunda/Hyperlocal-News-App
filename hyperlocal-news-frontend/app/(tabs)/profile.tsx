@@ -496,7 +496,7 @@ export default function ProfileScreen() {
                   <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            </View>
 
             <View style={styles.infoRow}>
               <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />

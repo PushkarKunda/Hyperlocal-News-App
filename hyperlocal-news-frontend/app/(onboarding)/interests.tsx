@@ -140,7 +140,7 @@ export default function InterestsScreen() {
       useAuthStore.setState((prev) => ({
         user: prev.user ? { ...prev.user, interests: selectedTopics } : null
       }));
-      router.push('/(onboarding)/profile');
+      router.push('/(onboarding)/setup-feed');
     }
   };
 

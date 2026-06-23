@@ -159,8 +159,8 @@ export const usePublisherArticles = () => {
   const user = useStore((state) => state.user);
 
   const myArticles = useMemo(
-    () => allArticles.filter((a) => a.publisherId === user.id),
-    [allArticles, user.id]
+    () => allArticles.filter((a) => a.publisherId === user?.id),
+    [allArticles, user?.id]
   );
 
   const pending = useMemo(() => myArticles.filter((a) => a.status === 'pending'), [myArticles]);

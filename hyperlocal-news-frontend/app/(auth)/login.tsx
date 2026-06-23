@@ -15,14 +15,13 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Feather } from '@expo/vector-icons';
-import { useRouter, useNavigation } from 'expo-router';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-
+import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳' },
@@ -33,25 +32,31 @@ export default function LoginScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
-  const navigation = useNavigation();
-  const { sendOtp, loginAsGuest } = useAuthStore();
   const { width } = useWindowDimensions();
   const heroCardHeight = Math.min(Math.max(width * 0.46, 160), 220);
 
-
+  // ✅ Only from store - no duplicate useState for isLoading
+  const { sendPhoneOTP, isLoading } = useAuthStore();
+  const {
+    signInWithGoogle,
+    isGoogleReady,
+    isGoogleLoading,
+  } = useGoogleFirebaseAuth({
+    onSuccess: (response) => {
+      router.replace(response.is_new_user ? '/(onboarding)/language' : '/(tabs)');
+    },
+    onError: (error) => {
+      Alert.alert('Google Sign-In Failed', error.message || 'Please try again.');
+    },
+  });
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Animated values
   const primaryButtonScale = useRef(new Animated.Value(1)).current;
-  const emailButtonScale = useRef(new Animated.Value(1)).current;
-
   const pickerDropdownOpacity = useRef(new Animated.Value(0)).current;
-
-  // Hero Radar animations
   const sweepRotation = useRef(new Animated.Value(0)).current;
   const ring1Rotation = useRef(new Animated.Value(0)).current;
   const ring2Rotation = useRef(new Animated.Value(0)).current;
@@ -63,26 +68,22 @@ export default function LoginScreen() {
   const centerPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Radar sweep
     Animated.loop(
       Animated.timing(sweepRotation, { toValue: 1, duration: 2400, useNativeDriver: true })
     ).start();
-    // Ring 1 slow clockwise
     Animated.loop(
       Animated.timing(ring1Rotation, { toValue: 1, duration: 8000, useNativeDriver: true })
     ).start();
-    // Ring 2 slow counter-clockwise
     Animated.loop(
       Animated.timing(ring2Rotation, { toValue: -1, duration: 12000, useNativeDriver: true })
     ).start();
-    // Center pulse
     Animated.loop(
       Animated.sequence([
         Animated.timing(centerPulse, { toValue: 1.12, duration: 900, useNativeDriver: true }),
         Animated.timing(centerPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
       ])
     ).start();
-    // Ping dots blinking at different offsets
+
     const makePing = (anim: Animated.Value, delay: number) =>
       setTimeout(() => {
         Animated.loop(
@@ -94,6 +95,7 @@ export default function LoginScreen() {
           ])
         ).start();
       }, delay);
+
     makePing(ping1, 0);
     makePing(ping2, 700);
     makePing(ping3, 1300);
@@ -101,30 +103,34 @@ export default function LoginScreen() {
     makePing(ping5, 2700);
   }, []);
 
-  const sweepDeg = sweepRotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const ring1Deg = ring1Rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const ring2Deg = ring2Rotation.interpolate({ inputRange: [-1, 0], outputRange: ['-360deg', '0deg'] });
+  const sweepDeg = sweepRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const ring1Deg = ring1Rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const ring2Deg = ring2Rotation.interpolate({
+    inputRange: [-1, 0],
+    outputRange: ['-360deg', '0deg'],
+  });
 
-  // Handles phone number input and formats to (555) 000-0000
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
   const handlePhoneChange = (text: string, country = selectedCountry) => {
     const cleaned = text.replace(/\D/g, '');
-    
     if (cleaned.length === 0) {
       setPhoneNumber('');
       return;
     }
-    
     let formatted = '';
     if (country.code === '+91') {
-      // Indian format: XXXXX XXXXX (10 digits)
       const limited = cleaned.slice(0, 10);
-      if (limited.length <= 5) {
-        formatted = limited;
-      } else {
-        formatted = `${limited.slice(0, 5)} ${limited.slice(5)}`;
-      }
+      formatted = limited.length <= 5
+        ? limited
+        : `${limited.slice(0, 5)} ${limited.slice(5)}`;
     } else {
-      // US and other formats: (XXX) XXX-XXXX (10 digits)
       const limited = cleaned.slice(0, 10);
       if (limited.length <= 3) {
         formatted = `(${limited}`;
@@ -134,11 +140,9 @@ export default function LoginScreen() {
         formatted = `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
       }
     }
-    
     setPhoneNumber(formatted);
   };
 
-  // Button micro-interactions (press scale animations)
   const animateButton = (value: Animated.Value, toValue: number) => {
     Animated.spring(value, {
       toValue,
@@ -165,49 +169,25 @@ export default function LoginScreen() {
     }
   };
 
+  // ✅ Single clean handleSendOTP using Firebase via store
   const handleSendOTP = async () => {
     const rawDigits = phoneNumber.replace(/\D/g, '');
-    
+
     if (rawDigits.length < 10) {
       Alert.alert('Invalid Number', 'Please enter a valid 10-digit phone number.');
       return;
     }
 
-    setIsLoading(true);
     const fullPhone = `${selectedCountry.code}${rawDigits}`;
-    
+
     try {
-      const success = await sendOtp(fullPhone);
-      if (success) {
-        router.push({
-          pathname: '/(auth)/verify-otp',
-          params: { phone: fullPhone },
-        });
-      } else {
-        Alert.alert('Error', 'Failed to send verification code. Please try again.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGuestLogin = () => {
-    loginAsGuest();
-    (navigation as any).reset({
-      index: 0,
-      routes: [{ name: '(tabs)' }],
-    });
-  };
-
-
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
+      await sendPhoneOTP(fullPhone); // ✅ Firebase OTP via store
+      router.push({
+        pathname: '/(auth)/verify-otp',
+        params: { phone: fullPhone },
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send OTP. Please try again.');
     }
   };
 
@@ -218,17 +198,12 @@ export default function LoginScreen() {
     );
   };
 
-  const handleEmailLogin = () => {
-    Alert.alert('Continue with Email', 'Email login will be implemented in a future update.');
-  };
-
-
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* Header - Top Navigation Anchor */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
@@ -246,45 +221,33 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Main Content Area */}
           <View style={styles.mainContent}>
-            
+
             {/* Hero Section */}
             <View style={styles.heroSection}>
-              {/* Radar Illustration Card */}
               <View style={[
                 styles.heroCard,
-                { 
+                {
                   height: heroCardHeight,
-                  backgroundColor: isDark ? '#0F0F2E' : colors.card, 
-                  borderWidth: isDark ? 0 : 1, 
-                  borderColor: isDark ? 'transparent' : colors.border 
+                  backgroundColor: isDark ? '#0F0F2E' : colors.card,
+                  borderWidth: isDark ? 0 : 1,
+                  borderColor: isDark ? 'transparent' : colors.border,
                 }
               ]}>
-                {/* Radar base circle + grid */}
                 <View style={styles.radarBase}>
-                  {/* Concentric rings */}
                   <View style={[styles.radarRing, styles.radarRingLg, { borderColor: isDark ? 'rgba(99,102,241,0.25)' : 'rgba(70,72,212,0.12)' }]} />
                   <View style={[styles.radarRing, styles.radarRingMd, { borderColor: isDark ? 'rgba(99,102,241,0.35)' : 'rgba(70,72,212,0.2)' }]} />
                   <View style={[styles.radarRing, styles.radarRingSm, { borderColor: isDark ? 'rgba(99,102,241,0.5)' : 'rgba(70,72,212,0.35)' }]} />
-
-                  {/* Cross-hair lines */}
                   <View style={[styles.crossH, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(70,72,212,0.1)' }]} />
                   <View style={[styles.crossV, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(70,72,212,0.1)' }]} />
-
-                  {/* Rotating outer ring 1 */}
                   <Animated.View style={[styles.radarRing, styles.radarRingXl, { borderColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(70,72,212,0.08)', transform: [{ rotate: ring1Deg }] }]} />
-
-                  {/* Rotating outer dashed ring 2 */}
                   <Animated.View style={[styles.radarRing, styles.radarRingXl2, { borderColor: isDark ? 'rgba(139,92,246,0.2)' : 'rgba(70,72,212,0.1)', borderStyle: 'dashed', transform: [{ rotate: ring2Deg }] }]} />
 
-                  {/* Radar sweep arm */}
                   <Animated.View style={[styles.sweepWrap, { transform: [{ rotate: sweepDeg }] }]}>
                     <View style={[styles.sweepArm, { backgroundColor: isDark ? 'rgba(99,102,241,0.9)' : 'rgba(70,72,212,0.7)' }]} />
                     <View style={[styles.sweepGlow, { backgroundColor: isDark ? 'rgba(99,102,241,0.06)' : 'rgba(70,72,212,0.06)' }]} />
                   </Animated.View>
 
-                  {/* Ping dots at fixed positions */}
                   <Animated.View style={[styles.ping, { top: 28, left: 52, opacity: ping1 }]}>
                     <View style={[styles.pingDot, { backgroundColor: '#34D399' }]} />
                     <View style={[styles.pingRipple, { borderColor: '#34D399' }]} />
@@ -306,25 +269,23 @@ export default function LoginScreen() {
                     <View style={[styles.pingRipple, { borderColor: '#38BDF8' }]} />
                   </Animated.View>
 
-                  {/* Center pulsing logo */}
                   <Animated.View style={[styles.radarCenter, { backgroundColor: isDark ? '#FFFFFF' : colors.primaryLight, transform: [{ scale: centerPulse }] }]}>
-                    <Image 
-                      source={require('../../assets/logo.png')} 
-                      style={styles.radarLogoImage} 
-                      resizeMode="contain" 
+                    <Image
+                      source={require('../../assets/logo.png')}
+                      style={styles.radarLogoImage}
+                      resizeMode="contain"
                     />
                   </Animated.View>
                 </View>
 
-                {/* LIVE label */}
                 <View style={styles.liveLabel}>
                   <View style={[styles.liveDot, { backgroundColor: '#34D399' }]} />
-                  <Text style={[styles.liveLabelText, { color: isDark ? 'rgba(255,255,255,0.45)' : colors.textSecondary }]}>LIVE  LOCAL  NEWS</Text>
+                  <Text style={[styles.liveLabelText, { color: isDark ? 'rgba(255,255,255,0.45)' : colors.textSecondary }]}>
+                    LIVE  LOCAL  NEWS
+                  </Text>
                 </View>
               </View>
 
-
-              {/* Headings */}
               <View style={styles.headingContainer}>
                 <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome</Text>
                 <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
@@ -333,14 +294,13 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Login Form Section */}
+            {/* Form Section */}
             <View style={styles.formSection}>
-              {/* Input Label */}
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PHONE NUMBER</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                PHONE NUMBER
+              </Text>
 
-              {/* Input Row */}
               <View style={styles.phoneInputRow}>
-                {/* Country Selector */}
                 <TouchableOpacity
                   style={[styles.countryPicker, { backgroundColor: isDark ? colors.surface : '#EFF4FF' }]}
                   onPress={() => toggleDropdown(!showCountryPicker)}
@@ -352,7 +312,6 @@ export default function LoginScreen() {
                   <Feather name="chevron-down" size={16} color={colors.text} />
                 </TouchableOpacity>
 
-                {/* Number Input Field */}
                 <View style={[styles.phoneInputContainer, { backgroundColor: isDark ? colors.surface : '#EFF4FF' }]}>
                   <TextInput
                     style={[styles.phoneInput, { color: colors.text }]}
@@ -366,13 +325,12 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* Country Code Picker Dropdown Overlay */}
               {showCountryPicker && (
-                <Animated.View 
+                <Animated.View
                   style={[
                     styles.countryDropdown,
                     { backgroundColor: colors.card, borderColor: colors.border },
-                    { opacity: pickerDropdownOpacity }
+                    { opacity: pickerDropdownOpacity },
                   ]}
                 >
                   {COUNTRY_CODES.map((country) => (
@@ -381,7 +339,7 @@ export default function LoginScreen() {
                       style={[
                         styles.countryOption,
                         { borderBottomColor: colors.border },
-                        selectedCountry.code === country.code && { backgroundColor: colors.primaryLight }
+                        selectedCountry.code === country.code && { backgroundColor: colors.primaryLight },
                       ]}
                       onPress={() => {
                         setSelectedCountry(country);
@@ -401,12 +359,15 @@ export default function LoginScreen() {
               )}
             </View>
 
-            {/* Form Actions Section */}
+            {/* Actions */}
             <View style={styles.actionsSection}>
-              {/* Primary "Send Code" Button */}
               <Animated.View style={{ transform: [{ scale: primaryButtonScale }] }}>
                 <Pressable
-                  style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                  style={[
+                    styles.primaryButton,
+                    { backgroundColor: colors.primary },
+                    isLoading && { opacity: 0.7 },
+                  ]}
                   onPressIn={() => animateButton(primaryButtonScale, 0.96)}
                   onPressOut={() => animateButton(primaryButtonScale, 1)}
                   onPress={handleSendOTP}
@@ -421,18 +382,41 @@ export default function LoginScreen() {
                 </Pressable>
               </Animated.View>
 
-
+              <TouchableOpacity
+                style={[
+                  styles.googleButton,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                  (!isGoogleReady || isGoogleLoading) && { opacity: 0.7 },
+                ]}
+                onPress={signInWithGoogle}
+                disabled={!isGoogleReady || isGoogleLoading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="logo-google" size={18} color={colors.text} />
+                <Text style={[styles.googleButtonText, { color: colors.text }]}>
+                  {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Footer Legal Terms */}
+            {/* Footer */}
             <View style={styles.footer}>
               <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 By continuing, you agree to our{' '}
-                <Text style={[styles.footerLink, { color: colors.primary }]} onPress={() => handleLinkPress('terms')}>
+                <Text
+                  style={[styles.footerLink, { color: colors.primary }]}
+                  onPress={() => handleLinkPress('terms')}
+                >
                   Terms of Service
                 </Text>
                 {' and '}
-                <Text style={[styles.footerLink, { color: colors.primary }]} onPress={() => handleLinkPress('privacy')}>
+                <Text
+                  style={[styles.footerLink, { color: colors.primary }]}
+                  onPress={() => handleLinkPress('privacy')}
+                >
                   Privacy Policy
                 </Text>
                 .
@@ -447,10 +431,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FF',
-  },
+  container: { flex: 1 },
   header: {
     height: 64,
     width: '100%',
@@ -458,13 +439,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#F8F9FF',
-    borderBottomWidth: 0,
-  },
-  backButton: {
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 21,
@@ -474,21 +448,8 @@ const styles = StyleSheet.create({
     color: '#4648D4',
     textAlign: 'center',
   },
-  skipButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  skipButtonText: {
-    fontSize: 16,
-    color: '#4648D4',
-    fontFamily: 'Poppins_400Regular',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   mainContent: {
     flex: 1,
     maxWidth: 448,
@@ -498,12 +459,8 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 24,
   },
-  heroSection: {
-    marginBottom: 32,
-    width: '100%',
-  },
+  heroSection: { marginBottom: 32, width: '100%' },
   heroCard: {
-    backgroundColor: '#E5EEFF',
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
@@ -513,13 +470,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  // Radar illustration
   radarBase: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -528,88 +481,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
   },
-  radarRingSm: {
-    width: 64,
-    height: 64,
-  },
-  radarRingMd: {
-    width: 108,
-    height: 108,
-  },
-  radarRingLg: {
-    width: 152,
-    height: 152,
-  },
-  radarRingXl: {
-    width: 188,
-    height: 188,
-    borderWidth: 1,
-  },
-  radarRingXl2: {
-    width: 210,
-    height: 210,
-    borderWidth: 1,
-  },
-  crossH: {
-    position: 'absolute',
-    width: 210,
-    height: 1,
-  },
-  crossV: {
-    position: 'absolute',
-    width: 1,
-    height: 192,
-  },
+  radarRingSm: { width: 64, height: 64 },
+  radarRingMd: { width: 108, height: 108 },
+  radarRingLg: { width: 152, height: 152 },
+  radarRingXl: { width: 188, height: 188, borderWidth: 1 },
+  radarRingXl2: { width: 210, height: 210, borderWidth: 1 },
+  crossH: { position: 'absolute', width: 210, height: 1 },
+  crossV: { position: 'absolute', width: 1, height: 192 },
   sweepWrap: {
     position: 'absolute',
-    width: 192,
-    height: 192,
+    width: 192, height: 192,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sweepArm: {
     position: 'absolute',
-    width: 96,
-    height: 1.5,
-    backgroundColor: 'rgba(99,102,241,0.9)',
-    left: '50%',
-    top: '50%',
-    transformOrigin: 'left center',
+    width: 96, height: 1.5,
+    left: '50%', top: '50%',
   },
   sweepGlow: {
     position: 'absolute',
-    width: 60,
-    height: 60,
+    width: 60, height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(99,102,241,0.06)',
-    right: 10,
-    top: '50%',
+    right: 10, top: '50%',
     transform: [{ translateY: -30 }],
   },
   ping: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 20,
-    height: 20,
+    width: 20, height: 20,
   },
   pingDot: {
-    width: 7,
-    height: 7,
+    width: 7, height: 7,
     borderRadius: 4,
     position: 'absolute',
   },
   pingRipple: {
-    width: 18,
-    height: 18,
+    width: 18, height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
     position: 'absolute',
     opacity: 0.5,
   },
   radarCenter: {
-    width: 44,
-    height: 44,
+    width: 44, height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
@@ -619,38 +535,23 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  radarLogoImage: {
-    width: '80%',
-    height: '80%',
-    borderRadius: 18,
-  },
+  radarLogoImage: { width: '80%', height: '80%', borderRadius: 18 },
   liveLabel: {
     position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
+    bottom: 10, left: 0, right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34D399',
-  },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
   liveLabelText: {
     fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
-    color: 'rgba(255,255,255,0.45)',
     letterSpacing: 2.5,
   },
-  headingContainer: {
-    marginTop: 16,
-    width: '100%',
-  },
+  headingContainer: { marginTop: 16, width: '100%' },
   welcomeTitle: {
     fontSize: 32,
     fontWeight: '700',
@@ -661,15 +562,10 @@ const styles = StyleSheet.create({
   },
   welcomeSubtitle: {
     fontSize: 16,
-    fontWeight: '400',
     lineHeight: 24,
     fontFamily: 'Poppins_400Regular',
   },
-  formSection: {
-    marginBottom: 24,
-    width: '100%',
-    position: 'relative',
-  },
+  formSection: { marginBottom: 24, width: '100%', position: 'relative' },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
@@ -678,24 +574,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     fontFamily: 'Poppins_600SemiBold',
   },
-  phoneInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-    height: 56,
-    width: '100%',
-  },
+  phoneInputRow: { flexDirection: 'row', gap: 8, height: 56, width: '100%' },
   countryPicker: {
-    backgroundColor: '#EFF4FF',
     height: 56,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 1,
     elevation: 1,
   },
   countryPickerText: {
@@ -705,15 +591,10 @@ const styles = StyleSheet.create({
   },
   phoneInputContainer: {
     flex: 1,
-    backgroundColor: '#EFF4FF',
     height: 56,
     borderRadius: 8,
     paddingHorizontal: 16,
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 1,
     elevation: 1,
   },
   phoneInput: {
@@ -723,13 +604,9 @@ const styles = StyleSheet.create({
   },
   countryDropdown: {
     position: 'absolute',
-    top: 84,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
+    top: 84, left: 0, right: 0,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -745,23 +622,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  selectedOption: {
-    backgroundColor: '#F8F9FF',
   },
   countryOptionText: {
     fontSize: 15,
     fontWeight: '500',
     fontFamily: 'Poppins_500Medium',
   },
-  actionsSection: {
-    width: '100%',
-    gap: 16,
-    marginBottom: 32,
-  },
+  actionsSection: { width: '100%', gap: 16, marginBottom: 32 },
   primaryButton: {
-    backgroundColor: '#4648D4',
     height: 56,
     borderRadius: 28,
     flexDirection: 'row',
@@ -780,17 +648,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
   },
-  buttonIcon: {
-    marginTop: 1,
-  },
-  mailIcon: {
-    marginTop: 1,
-  },
-  footer: {
-    width: '100%',
+  buttonIcon: { marginTop: 1 },
+  googleButton: {
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'center',
+    gap: 8,
   },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  footer: { width: '100%', alignItems: 'center', paddingVertical: 12 },
   footerText: {
     fontSize: 11,
     lineHeight: 16,
@@ -798,8 +671,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Poppins_500Medium',
   },
-  footerLink: {
-    color: '#4648D4',
-    fontWeight: '500',
-  },
+  footerLink: { fontWeight: '500' },
 });

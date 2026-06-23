@@ -1,16 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiService } from '@/utils/apiClient';
+import { API_CONFIG, locationApi, newsApi, categoriesApi } from '@/services/api';
 
 // 1. News feed hook
 export function useNewsFeed() {
   return useQuery({
-    queryKey: ['news-feed'],
+    queryKey: ['news-feed', API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: async () => {
-      const response = await ApiService.getNews();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load news');
+      if (API_CONFIG.useMocks) {
+        const response = await ApiService.getNews();
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load news');
+        }
+        return response.data;
       }
-      return response.data;
+      return await newsApi.list();
     },
   });
 }
@@ -34,27 +38,57 @@ export function useArticleDetails(id: string | undefined) {
 // 2b. Categories list hook
 export function useCategoriesList() {
   return useQuery({
-    queryKey: ['categories-list'],
+    queryKey: ['categories-list', API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: async () => {
-      const response = await ApiService.getCategories();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load categories');
+      if (API_CONFIG.useMocks) {
+        const response = await ApiService.getCategories();
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load categories');
+        }
+        return response.data;
       }
-      return response.data;
+      return await categoriesApi.list();
     },
   });
 }
 
+const getGlyphForLanguage = (code: string, name: string): string => {
+  switch (code.toLowerCase()) {
+    case 'en': return 'Aa';
+    case 'hi': return 'अ';
+    case 'te': return 'అ';
+    case 'ta': return 'அ';
+    case 'ml': return 'അ';
+    case 'kn': return 'അ';
+    case 'bn': return 'অ';
+    case 'gu': return 'અ';
+    case 'mr': return 'अ';
+    case 'or': return 'ଅ';
+    case 'pa': return 'ਅ';
+    case 'ur': return 'ا';
+    default: return name.charAt(0);
+  }
+};
+
 // 2c. Languages list hook
 export function useLanguagesList() {
   return useQuery({
-    queryKey: ['languages-list'],
+    queryKey: ['languages-list', API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: async () => {
-      const response = await ApiService.getLanguages();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load languages');
+      if (API_CONFIG.useMocks) {
+        const response = await ApiService.getLanguages();
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load languages');
+        }
+        return response.data;
       }
-      return response.data;
+      
+      const response = await locationApi.getLanguages();
+      return response.map(lang => ({
+        id: lang.code, // Map to code ('en', 'te', 'hi') to preserve matching with local UI selectedLanguage default
+        name: lang.name,
+        glyph: getGlyphForLanguage(lang.code, lang.name),
+      }));
     },
   });
 }
@@ -62,13 +96,22 @@ export function useLanguagesList() {
 // 3. States list hook (for onboarding locations)
 export function useStatesList() {
   return useQuery({
-    queryKey: ['states-list'],
+    queryKey: ['states-list', API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: async () => {
-      const response = await ApiService.getStates();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load states');
+      if (API_CONFIG.useMocks) {
+        const response = await ApiService.getStates();
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load states');
+        }
+        return response.data;
       }
-      return response.data;
+      
+      const response = await locationApi.getStates();
+      return response.map(state => ({
+        id: state.name.toLowerCase() === 'andhra pradesh' ? 'ap' : (state.name.toLowerCase() === 'telangana' ? 'ts' : String(state.id)),
+        name: state.name,
+        code: state.name.toLowerCase() === 'andhra pradesh' ? 'AP' : (state.name.toLowerCase() === 'telangana' ? 'TS' : state.name.substring(0, 2).toUpperCase()),
+      }));
     },
   });
 }
@@ -76,14 +119,39 @@ export function useStatesList() {
 // 4. Districts list hook (for onboarding locations)
 export function useDistrictsList(stateId: string | undefined) {
   return useQuery({
-    queryKey: ['districts-list', stateId],
+    queryKey: ['districts-list', stateId, API_CONFIG.useMocks ? 'mock' : 'api'],
     queryFn: async () => {
       if (!stateId) return [];
-      const response = await ApiService.getDistrictsByState(stateId);
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load districts');
+      if (API_CONFIG.useMocks) {
+        const response = await ApiService.getDistrictsByState(stateId);
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load districts');
+        }
+        return response.data;
       }
-      return response.data;
+      
+      const response = await locationApi.getDistricts();
+      
+      let backendStateId: number | null = null;
+      if (stateId === 'ap') {
+        backendStateId = 1;
+      } else if (stateId === 'ts') {
+        backendStateId = 2;
+      } else {
+        const parsed = Number(stateId);
+        if (Number.isFinite(parsed)) backendStateId = parsed;
+      }
+
+      if (backendStateId === null) return [];
+
+      return response
+        .filter(d => d.state_id === backendStateId)
+        .map(d => ({
+          id: d.name.toLowerCase() === 'hyderabad' ? 'hyderabad' : (d.name.toLowerCase() === 'visakhapatnam' ? 'visakhapatnam' : String(d.id)),
+          name: d.name,
+          code: d.name.substring(0, 3).toUpperCase(),
+          stateId: stateId,
+        }));
     },
     enabled: !!stateId,
   });

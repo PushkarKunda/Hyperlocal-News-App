@@ -1,28 +1,29 @@
 import { create } from 'zustand';
 import { NewsArticle, User, Poll } from '@/types';
 import { API_DATABASE } from '@/utils/apiClient';
+import { usersApi } from '@/services/api';
 
-const MOCK_USER: User = {
-  id: '1',
-  phone: '+919876543210',
-  email: 'user@example.com',
-  name: 'Rahul Kumar',
-  avatar: 'https://via.placeholder.com/100',
-  location: {
-    state: 'Telangana',
-    stateId: '1',
-    district: 'Hyderabad',
-    districtId: '1',
-    city: 'Kukatpally',
-    cityId: '1',
-  },
-  language: 'en',
-  interests: ['technology', 'sports', 'local', 'business'],
-  isVerified: true,
-  isPublisher: false,
-  createdAt: '2024-01-15T10:30:00Z',
-  updatedAt: '2024-03-10T14:45:00Z',
-};
+// const MOCK_USER: User = {
+//   id: '1',
+//   phone: '+919876543210',
+//   email: 'user@example.com',
+//   name: 'Rahul Kumar',
+//   avatar: 'https://via.placeholder.com/100',
+//   location: {
+//     state: 'Telangana',
+//     stateId: '1',
+//     district: 'Hyderabad',
+//     districtId: '1',
+//     city: 'Kukatpally',
+//     cityId: '1',
+//   },
+//   language: 'en',
+//   interests: ['technology', 'sports', 'local', 'business'],
+//   isVerified: true,
+//   isPublisher: false,
+//   createdAt: '2024-01-15T10:30:00Z',
+//   updatedAt: '2024-03-10T14:45:00Z',
+// };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,9 @@ interface AppState {
   toggleBookmark: (articleId: string) => void;
 
   // --- User / Publisher status ---
-  user: User;
+  user: User | null;
+  loadUser: () => Promise<void>;
+  setUser: (user: User | null) => void;
   publisherRequestStatus: 'none' | 'pending' | 'approved' | 'rejected';
   requestPublisherAccess: () => void;
 
@@ -71,13 +74,22 @@ export const useStore = create<AppState>((set) => ({
     })),
 
   // --- User ---
-  user: MOCK_USER,
+  user: null,
+  loadUser: async () => {
+    try {
+      const user = await usersApi.me();
+      set({ user });
+    } catch {
+      set({ user: null });
+    }
+  },
+  setUser: (user) => set({ user }),
   publisherRequestStatus: 'none',
 
   requestPublisherAccess: () =>
     set((state) => {
       // Only allow requesting if not already a publisher
-      if (state.user.isPublisher || state.publisherRequestStatus !== 'none') {
+      if (state.user?.isPublisher || state.publisherRequestStatus !== 'none') {
         return state;
       }
       return { publisherRequestStatus: 'pending' };
@@ -88,6 +100,10 @@ export const useStore = create<AppState>((set) => ({
 
   submitArticle: (draft) =>
     set((state) => {
+      if (!state.user) {
+        return state;
+      }
+
       const newArticle: NewsArticle = {
         ...draft,
         id: `pub-${Date.now()}`,
@@ -98,7 +114,7 @@ export const useStore = create<AppState>((set) => ({
         source: {
           id: state.user.id,
           name: state.user.name ?? 'Community Publisher',
-          isVerified: state.user.isPublisher,
+          isVerified: state.user.isPublisher ?? false,
         },
         stats: { views: 0, likes: 0, shares: 0, comments: 0, bookmarks: 0 },
       };

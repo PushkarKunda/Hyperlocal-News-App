@@ -31,7 +31,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
   const pathname = usePathname();
   const { width: screenWidth } = useWindowDimensions();
   const DRAWER_WIDTH = Math.min(screenWidth * 0.85, MAX_DRAWER_WIDTH);
-  
+
   const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -138,6 +138,13 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
       icon: 'notifications-outline',
       activeIcon: 'notifications',
       route: '/notifications',
+    },
+    {
+      id: 'polls',
+      label: 'Polls',
+      icon: 'bar-chart-outline',
+      activeIcon: 'bar-chart',
+      route: '/polls',
     },
     {
       id: 'profile',
@@ -262,32 +269,30 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
             </TouchableOpacity>
           </View>
 
-          {/* User detail info headings */}
-          <View style={styles.userInfoContainer}>
-            <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
-            {user?.isGuest ? (
-              <Text style={[styles.userSubtitle, { color: colors.textSecondary }]}>Guest Account</Text>
-            ) : user?.isPublisher ? (
-              <View style={styles.drawerPublisherBadge}>
-                <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
-                <Text style={[styles.drawerPublisherText, { color: colors.primary }]}>Publisher</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  handleClose();
-                  setTimeout(() => {
-                    router.push('/(onboarding)/profile');
-                  }, 280);
-                }}
-                activeOpacity={0.7}
-                style={styles.drawerVerifyButton}
-              >
-                <Text style={[styles.userSubtitle, { color: colors.primary, fontWeight: '700', marginTop: 0 }]}>Not Verified</Text>
-                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-          </View>
+           {/* User detail info headings */}
+           <View style={styles.userInfoContainer}>
+             <Text style={[styles.userName, { color: isDark ? colors.text : '#4648D4' }]}>{displayName}</Text>
+             {user?.isPublisher ? (
+               <View style={styles.drawerPublisherBadge}>
+                 <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+                 <Text style={[styles.drawerPublisherText, { color: colors.primary }]}>Publisher</Text>
+               </View>
+             ) : (
+               <TouchableOpacity
+                 onPress={() => {
+                   handleClose();
+                   setTimeout(() => {
+                     router.push('/(onboarding)/profile');
+                   }, 280);
+                 }}
+                 activeOpacity={0.7}
+                 style={styles.drawerVerifyButton}
+               >
+                 <Text style={[styles.userSubtitle, { color: colors.primary, fontWeight: '700', marginTop: 0 }]}>Not Verified</Text>
+                 <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+               </TouchableOpacity>
+             )}
+           </View>
 
           {/* Navigation Links Scroll List */}
           <ScrollView
@@ -302,7 +307,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                 const activeBgColor = isDark ? 'rgba(134, 242, 228, 0.15)' : '#86F2E4';
                 const activeTextColor = isDark ? '#86F2E4' : '#006F66';
                 const inactiveColor = colors.textSecondary;
-                
+
                 return (
                   <TouchableOpacity
                     key={option.id}
@@ -343,7 +348,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                 const activeBgColor = isDark ? 'rgba(134, 242, 228, 0.15)' : '#86F2E4';
                 const activeTextColor = isDark ? '#86F2E4' : '#006F66';
                 const inactiveColor = colors.textSecondary;
-                
+
                 return (
                   <TouchableOpacity
                     style={[

@@ -1,6 +1,5 @@
 export interface AuthState {
   isAuthenticated: boolean;
-  isGuest: boolean;
   isLoading: boolean;
   user: import('./user').User | null;
   token: string | null;
