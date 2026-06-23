@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { NewsArticle, User, Poll } from '@/types';
-import { API_DATABASE } from '@/utils/apiClient';
 import { usersApi } from '@/services/api';
 
 // const MOCK_USER: User = {
@@ -59,7 +58,7 @@ interface AppState {
 
 // ─── Initial seed data ────────────────────────────────────────────────────────
 
-const SEED_ARTICLES = [...API_DATABASE.news, ...API_DATABASE.breakingNews];
+const SEED_ARTICLES: NewsArticle[] = [];
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -136,7 +135,7 @@ export const useStore = create<AppState>((set) => ({
     })),
 
   // --- Polls ---
-  polls: API_DATABASE.polls,
+  polls: [],
 
   votePoll: (pollId, optionId) =>
     set((state) => ({

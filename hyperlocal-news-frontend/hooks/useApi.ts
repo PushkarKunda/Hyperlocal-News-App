@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ApiService } from '@/utils/apiClient';
-import { locationApi, newsApi, categoriesApi } from '@/services/api';
+import { locationApi, newsApi, categoriesApi, eventsApi } from '@/services/api';
+
+const STATIC_INTERESTS = [
+  { id: 'tech', name: 'Tech', slug: 'tech', emoji: '💻', description: 'Tech & innovation' },
+  { id: 'design', name: 'Design', slug: 'design', emoji: '🎨', description: 'Design & creativity' },
+  { id: 'sports', name: 'Sports', slug: 'sports', emoji: '⚽', description: 'Games & athletics' },
+  { id: 'music', name: 'Music', slug: 'music', emoji: '🎵', description: 'Songs & artists' },
+  { id: 'art', name: 'Art', slug: 'art', emoji: '🖌️', description: 'Visual & fine arts' },
+  { id: 'travel', name: 'Travel', slug: 'travel', emoji: '🧭', description: 'Journeys & nature' },
+  { id: 'food', name: 'Food', slug: 'food', emoji: '🥪', description: 'Culinary & cooking' },
+  { id: 'gaming', name: 'Gaming', slug: 'gaming', emoji: '🎮', description: 'E-sports & updates' },
+  { id: 'wellness', name: 'Health & Wellness', slug: 'wellness', emoji: '🏥', description: 'Mindfulness and healthy living' },
+];
 
 // 1. News feed hook
 export function useNewsFeed() {
@@ -120,11 +131,7 @@ export function useInterestsList() {
   return useQuery({
     queryKey: ['interests-list'],
     queryFn: async () => {
-      const response = await ApiService.getInterests();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load interests');
-      }
-      return response.data;
+      return STATIC_INTERESTS;
     },
   });
 }
@@ -134,11 +141,7 @@ export function useShortsList() {
   return useQuery({
     queryKey: ['shorts-list'],
     queryFn: async () => {
-      const response = await ApiService.getShorts();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load shorts');
-      }
-      return response.data;
+      return [];
     },
   });
 }
@@ -148,11 +151,7 @@ export function useEventsList() {
   return useQuery({
     queryKey: ['events-list'],
     queryFn: async () => {
-      const response = await ApiService.getEvents();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load events');
-      }
-      return response.data;
+      return await eventsApi.list();
     },
   });
 }
@@ -162,11 +161,7 @@ export function useTrendingList() {
   return useQuery({
     queryKey: ['trending-list'],
     queryFn: async () => {
-      const response = await ApiService.getTrending();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load trending');
-      }
-      return response.data;
+      return [];
     },
   });
 }
@@ -176,11 +171,7 @@ export function useSourcesList() {
   return useQuery({
     queryKey: ['sources-list'],
     queryFn: async () => {
-      const response = await ApiService.getSources();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load sources');
-      }
-      return response.data;
+      return [];
     },
   });
 }
@@ -190,11 +181,7 @@ export function useLocalitiesList() {
   return useQuery({
     queryKey: ['localities-list'],
     queryFn: async () => {
-      const response = await ApiService.getLocalities();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load localities');
-      }
-      return response.data;
+      return [];
     },
   });
 }
@@ -204,11 +191,7 @@ export function useImmersiveNewsList() {
   return useQuery({
     queryKey: ['immersive-news-list'],
     queryFn: async () => {
-      const response = await ApiService.getImmersiveNews();
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load immersive news');
-      }
-      return response.data;
+      return [];
     },
   });
 }

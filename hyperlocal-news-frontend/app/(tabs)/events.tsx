@@ -48,7 +48,31 @@ export default function EventsScreen() {
 
   useEffect(() => {
     if (apiEvents && apiEvents.length > 0) {
-      setEventsList(apiEvents);
+      const mapped = apiEvents.map((item: any): CustomEventItem => {
+        let dateMonth = 'MAY';
+        let dateDay = '25';
+        try {
+          const d = new Date(item.date);
+          if (!isNaN(d.getTime())) {
+            dateMonth = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+            dateDay = d.getDate().toString();
+          }
+        } catch {}
+
+        return {
+          id: String(item.id),
+          category: typeof item.category === 'object' && item.category !== null ? item.category.name : String(item.category ?? 'Community'),
+          title: item.title ?? 'Untitled Event',
+          description: item.description ?? '',
+          distance: item.distance ?? '0.5 km away',
+          schedule: item.schedule ?? `${item.date || ''} • ${item.time || ''}`,
+          locationName: item.locationName ?? item.location?.name ?? 'Community Center',
+          imageUrl: item.imageUrl ?? 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=600',
+          dateMonth,
+          dateDay,
+        };
+      });
+      setEventsList(mapped);
     }
   }, [apiEvents]);
 
