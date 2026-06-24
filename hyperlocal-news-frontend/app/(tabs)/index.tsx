@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -47,6 +47,95 @@ export default function HomeScreen() {
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeCategory, setActiveCategory] = useState('for-you');
+
+  // Animation values and state for the header auto-hide/pop feature
+  const headerAnim = useRef(new Animated.Value(1)).current;
+  const isHeaderVisible = useRef(true);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef({ x: 0, y: 0, time: 0 });
+
+  const headerHeight = insets.top + 72 + 48; // 72 (header) + 48 (categories)
+
+  const headerTranslateY = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-72, 0], // Translate up only by the top header height (72px)
+  });
+
+  const headerOpacity = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const showHeader = () => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    isHeaderVisible.current = true;
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+
+    // Auto-hide after 3 seconds of inactivity
+    hideTimerRef.current = setTimeout(() => {
+      hideHeader();
+    }, 3000);
+  };
+
+  const hideHeader = () => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    isHeaderVisible.current = false;
+    Animated.timing(headerAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleTouchStart = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    touchStartPos.current = { x: pageX, y: pageY, time: Date.now() };
+  };
+
+  const handleTouchEnd = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    const dx = Math.abs(pageX - touchStartPos.current.x);
+    const dy = Math.abs(pageY - touchStartPos.current.y);
+    const dt = Date.now() - touchStartPos.current.time;
+
+    // A tap is defined as a short duration touch with very little movement
+    if (dx < 10 && dy < 10 && dt < 300) {
+      // Ignore taps in the active header/categories area
+      const threshold = isHeaderVisible.current ? (insets.top + 72 + 48) : (insets.top + 48);
+      if (pageY < threshold) return;
+      // Ignore taps in the bottom actions/footer area of the news card
+      if (pageY > screenHeight - 80) return;
+
+      if (!isHeaderVisible.current) {
+        showHeader();
+      } else {
+        hideHeader();
+      }
+    }
+  };
+
+  // Initial display and auto-hide on mount
+  useEffect(() => {
+    hideTimerRef.current = setTimeout(() => {
+      hideHeader();
+    }, 5000);
+
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, []);
 
   // Load news dynamically from our simulated backend using React Query
   const { data: news = [], isLoading } = useNewsFeed();
@@ -97,86 +186,101 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
 
-      {/* Styled Symmetrical Theme-Aware Header Section */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.headerLeftButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
+      {/* Absolute pop-style Animated Header Container */}
+      <Animated.View style={[
+        styles.animatedHeaderContainer,
+        {
+          transform: [{ translateY: headerTranslateY }],
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+          paddingTop: insets.top,
+        }
+      ]}>
+        {/* Styled Symmetrical Theme-Aware Header Section */}
+        <Animated.View style={[styles.header, { borderBottomColor: colors.border, opacity: headerOpacity }]}>
+          <TouchableOpacity
+            style={[styles.headerLeftButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
+            onPress={() => setIsMenuVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color={colors.text} />
+          </TouchableOpacity>
 
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
-            <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
-            <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
-          </Text>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-sharp" size={12} color={isDark ? '#818CF8' : colors.primary} style={styles.locationIcon} />
-            <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-              {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'HYDERABAD, TS')}
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+              <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
+              <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
             </Text>
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-sharp" size={12} color={isDark ? '#818CF8' : colors.primary} style={styles.locationIcon} />
+              <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+                {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'HYDERABAD, TS')}
+              </Text>
+            </View>
           </View>
+
+          <TouchableOpacity
+            style={[styles.headerRightButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
+            onPress={() => router.push('/(tabs)/notifications')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            <View style={styles.notificationDot} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Horizontally Scrollable Categories Tab List */}
+        <View style={[styles.categoriesContainer, { borderBottomColor: colors.border }]}>
+          <FlatList
+            ref={categoryFlatListRef}
+            data={CATEGORIES}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesScrollContent}
+            keyExtractor={(item) => item.id}
+            onScrollToIndexFailed={(info) => {
+              const wait = new Promise(resolve => setTimeout(resolve, 50));
+              wait.then(() => {
+                categoryFlatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
+              });
+            }}
+            renderItem={({ item, index }) => {
+              const isActive = activeCategory === item.slug;
+              return (
+                <TouchableOpacity
+                  style={styles.categoryTab}
+                  onPress={() => {
+                    isProgrammaticScroll.current = true;
+                    setActiveCategory(item.slug);
+                    horizontalFlatListRef.current?.scrollToIndex({ index, animated: true });
+                    categoryFlatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.categoryText,
+                    {
+                      color: isActive ? colors.primary : colors.textSecondary,
+                      fontWeight: isActive ? '700' : '500'
+                    }
+                  ]}>
+                    {item.name}
+                  </Text>
+                  {isActive && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
+                </TouchableOpacity>
+              );
+            }}
+          />
         </View>
-
-        <TouchableOpacity
-          style={[styles.headerRightButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
-          onPress={() => router.push('/(tabs)/notifications')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="notifications-outline" size={22} color={colors.text} />
-          <View style={styles.notificationDot} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Horizontally Scrollable Categories Tab List */}
-      <View style={[styles.categoriesContainer, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
-        <FlatList
-          ref={categoryFlatListRef}
-          data={CATEGORIES}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesScrollContent}
-          keyExtractor={(item) => item.id}
-          onScrollToIndexFailed={(info) => {
-            const wait = new Promise(resolve => setTimeout(resolve, 50));
-            wait.then(() => {
-              categoryFlatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
-            });
-          }}
-          renderItem={({ item, index }) => {
-            const isActive = activeCategory === item.slug;
-            return (
-              <TouchableOpacity
-                style={styles.categoryTab}
-                onPress={() => {
-                  isProgrammaticScroll.current = true;
-                  setActiveCategory(item.slug);
-                  horizontalFlatListRef.current?.scrollToIndex({ index, animated: true });
-                  categoryFlatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.categoryText,
-                  {
-                    color: isActive ? colors.primary : colors.textSecondary,
-                    fontWeight: isActive ? '700' : '500'
-                  }
-                ]}>
-                  {item.name}
-                </Text>
-                {isActive && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </View>
+      </Animated.View>
 
       {/* Main Snap Scrolling Feed Container (Horizontal Pager) */}
       <View
@@ -305,6 +409,18 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  animatedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    elevation: 5,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   loaderContainer: {
     flex: 1,

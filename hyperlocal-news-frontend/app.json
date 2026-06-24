@@ -49,7 +49,15 @@
       "expo-video",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableProguardInReleaseBuilds": true
+          }
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

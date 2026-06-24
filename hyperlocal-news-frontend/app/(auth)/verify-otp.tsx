@@ -302,8 +302,10 @@ const styles = StyleSheet.create({
     height: 64,
     borderWidth: 1.5,
     borderRadius: 16,
-    fontSize: 30,
+    fontSize: 22,
     letterSpacing: 14,
+    textAlign: 'center',
+    paddingLeft: 14, // Offset letterSpacing to ensure true centering
     marginBottom: 28,
     fontFamily: 'Poppins_600SemiBold',
   },
