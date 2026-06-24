@@ -133,7 +133,7 @@ export default function SettingsScreen() {
                    ) : (
                        <TouchableOpacity
                          style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
-                         onPress={() => router.push('/(onboarding)/profile')}
+                         onPress={() => router.push('/(onboarding)/edit-profile')}
                          activeOpacity={0.8}
                        >
                          <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
@@ -146,7 +146,7 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 style={[styles.editProfileButton, { backgroundColor: colors.primaryLight }]}
                 activeOpacity={0.7}
-                onPress={() => router.push('/(onboarding)/profile')}
+                onPress={() => router.push('/(onboarding)/edit-profile')}
               >
                 <MaterialIcons name="edit" size={20} color={colors.primary} />
               </TouchableOpacity>

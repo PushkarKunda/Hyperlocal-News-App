@@ -151,7 +151,7 @@ export default function CreateArticleScreen() {
 
             <TouchableOpacity
               style={[styles.gatedButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(onboarding)/profile')}
+              onPress={() => router.push('/(onboarding)/edit-profile')}
               activeOpacity={0.8}
             >
               <Text style={styles.gatedButtonText}>Verify Gmail Now</Text>

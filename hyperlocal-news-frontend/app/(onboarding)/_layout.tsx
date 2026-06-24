@@ -15,7 +15,7 @@ export default function OnboardingLayout() {
     if (!isAuthenticated) {
       router.replace('/(auth)/login');
     } else if (isOnboarded) {
-      if (pathname.includes('profile')) {
+      if (pathname.includes('edit-profile')) {
         return;
       }
       router.replace('/(tabs)');
@@ -27,7 +27,7 @@ export default function OnboardingLayout() {
   }
 
   if (isOnboarded) {
-    if (pathname.includes('profile')) {
+    if (pathname.includes('edit-profile')) {
       // Allow rendering the profile screen to verify Google identity
     } else {
       return null;
@@ -46,7 +46,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="location" />
       <Stack.Screen name="districts" />
       <Stack.Screen name="interests" />
-      <Stack.Screen name="profile" />
+      <Stack.Screen name="edit-profile" />
       <Stack.Screen name="setup-feed" />
       <Stack.Screen name="complete" />
     </Stack>

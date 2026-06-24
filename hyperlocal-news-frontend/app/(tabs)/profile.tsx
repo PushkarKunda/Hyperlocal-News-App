@@ -530,7 +530,7 @@ export default function ProfileScreen() {
 
             {/* Profile Action Buttons */}
             <View style={styles.profileActionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/profile')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/edit-profile')}>
                 <Ionicons name="pencil" size={14} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit Profile</Text>
               </TouchableOpacity>

@@ -282,7 +282,7 @@ export default function MenuOptions({ isVisible, onClose }: MenuOptionsProps) {
                  onPress={() => {
                    handleClose();
                    setTimeout(() => {
-                     router.push('/(onboarding)/profile');
+                     router.push('/(onboarding)/edit-profile');
                    }, 280);
                  }}
                  activeOpacity={0.7}
