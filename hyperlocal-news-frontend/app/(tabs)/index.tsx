@@ -44,6 +44,15 @@ export default function HomeScreen() {
   const verticalRefs = useRef<{ [key: string]: FlatList | null }>({});
   const isProgrammaticScroll = useRef(false);
 
+  // Load news dynamically from our simulated backend using React Query
+  const { data: news = [], isLoading } = useNewsFeed();
+
+  // Filter news dynamically based on the selected category slug
+  const getFilteredNews = (slug: string) => {
+    if (slug === 'for-you') return news;
+    return news.filter(item => item.category?.slug === slug);
+  };
+
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeCategory, setActiveCategory] = useState('for-you');
@@ -124,27 +133,22 @@ export default function HomeScreen() {
     }
   };
 
-  // Initial display and auto-hide on mount
+  // Initial display and auto-hide when the feed finishes loading
   useEffect(() => {
-    hideTimerRef.current = setTimeout(() => {
-      hideHeader();
-    }, 5000);
+    if (!isLoading) {
+      hideTimerRef.current = setTimeout(() => {
+        hideHeader();
+      }, 5000);
+    }
 
     return () => {
       if (hideTimerRef.current) {
         clearTimeout(hideTimerRef.current);
       }
     };
-  }, []);
+  }, [isLoading]);
 
-  // Load news dynamically from our simulated backend using React Query
-  const { data: news = [], isLoading } = useNewsFeed();
 
-  // Filter news dynamically based on the selected category slug
-  const getFilteredNews = (slug: string) => {
-    if (slug === 'for-you') return news;
-    return news.filter(item => item.category?.slug === slug);
-  };
 
   // Sync scroll for deep link newsId
   useEffect(() => {
