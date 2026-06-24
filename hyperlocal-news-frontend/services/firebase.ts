@@ -25,7 +25,7 @@ export const getFirebaseAuth = (): FirebaseAuthTypes.Module => {
         name: '[DEFAULT]',
         options: { projectId: 'hypernews-bd322' },
       },
-      onAuthStateChanged: () => () => {},
+      onAuthStateChanged: () => () => { },
       signInWithPhoneNumber: async () => {
         throw new Error(
           'Firebase Auth not initialized. Ensure you built the project natively ' +
@@ -38,7 +38,7 @@ export const getFirebaseAuth = (): FirebaseAuthTypes.Module => {
           '(npm run android) instead of running in Expo Go.'
         );
       },
-      signOut: async () => {},
+      signOut: async () => { },
     } as any;
   }
 };

@@ -153,13 +153,13 @@ export default function ProfileScreen() {
 
   // Custom variables mapped to live dashboard user profile info
   const displayName = dashboard?.user?.name || user?.name || (isGuest ? 'Guest User' : 'User');
-  
+
   // Auto-generate username handle dynamically based on user name or fallback
-  const userHandle = dashboard?.user?.user_name 
+  const userHandle = dashboard?.user?.user_name
     ? '@' + dashboard.user.user_name
     : '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
   const userLocation = dashboard?.user?.location || (user?.district ? `${user.district}, ${user.state || ''}`.trim() : 'Location not set');
-  
+
   const totalLikes = newsList.reduce((acc, curr) => acc + (curr.likes || 0), 0);
   const totalComments = newsList.reduce((acc, curr) => acc + (curr.comments || 0), 0);
 
@@ -285,7 +285,7 @@ export default function ProfileScreen() {
   const handleVerifyEmail = () => {
     updateProfile(
       user?.name || 'User',
-      user?.avatar,
+      user?.avatar || '',
       user?.email || undefined,
       user?.phoneNumber,
       isPublisher,
@@ -432,7 +432,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      
+
       {/* Symmetrical Svelte Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -442,9 +442,9 @@ export default function ProfileScreen() {
         >
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>
-        
+
         <TouchableOpacity
           style={styles.headerIconButton}
           onPress={() => router.push('/(tabs)/notifications')}
@@ -459,11 +459,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} 
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Profile Card Block with City background gradient */}
         <View style={styles.profileSection}>
           <LinearGradient
@@ -494,7 +494,7 @@ export default function ProfileScreen() {
                     <Ionicons name="checkmark-circle" size={18} color="#1E88E5" style={{ marginLeft: 6 }} />
                   )}
                 </View>
-                
+
                 <View style={styles.handleRow}>
                   <Text style={[styles.profileHandle, { color: colors.textSecondary }]}>{userHandle}</Text>
                   {isPublisher ? (
@@ -591,8 +591,8 @@ export default function ProfileScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
               <Text style={[styles.infoRowText, { color: colors.textSecondary }]}>
-                {!user?.email_verified 
-                  ? 'Email verification is required before applying for publisher verification.' 
+                {!user?.email_verified
+                  ? 'Email verification is required before applying for publisher verification.'
                   : 'News Publishing is available only for verified publishers. Learn More'
                 }
               </Text>
@@ -790,14 +790,14 @@ export default function ProfileScreen() {
               {posts.map((post) => (
                 <View key={post.id} style={styles.postCard}>
                   <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
-                  
+
                   {/* Status Badge */}
                   <View style={[
                     styles.postBadge,
                     {
                       backgroundColor:
                         post.status === 'Approved' ? 'rgba(76, 175, 80, 0.9)' :
-                        post.status === 'Pending' ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)'
+                          post.status === 'Pending' ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)'
                     }
                   ]}>
                     <Text style={styles.postBadgeText}>{post.status}</Text>
@@ -885,8 +885,8 @@ export default function ProfileScreen() {
                       </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                      style={[styles.filterPill, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+                    <TouchableOpacity
+                      style={[styles.filterPill, { backgroundColor: colors.surface, borderColor: colors.border }]}
                       activeOpacity={0.7}
                       onPress={() => setShowSortModal(true)}
                     >
@@ -902,11 +902,11 @@ export default function ProfileScreen() {
                 <View style={styles.articleList}>
                   {(() => {
                     const sortedNews = getFilteredAndSortedNews();
-                    
+
                     const renderArticleCard = (item: any) => (
                       <View key={item.id} style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Image source={{ uri: item.imageUrl }} style={styles.articleImage} />
-                        
+
                         <View style={styles.articleDetails}>
                           <View style={styles.articleHeaderRow}>
                             {/* Status badge */}
@@ -915,10 +915,10 @@ export default function ProfileScreen() {
                               {
                                 backgroundColor:
                                   item.status === 'Approved' ? 'rgba(76, 175, 80, 0.1)' :
-                                  item.status === 'Pending' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+                                    item.status === 'Pending' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
                                 borderColor:
                                   item.status === 'Approved' ? '#4CAF50' :
-                                  item.status === 'Pending' ? '#FF9800' : '#F44336'
+                                    item.status === 'Pending' ? '#FF9800' : '#F44336'
                               }
                             ]}>
                               <Text style={[
@@ -926,7 +926,7 @@ export default function ProfileScreen() {
                                 {
                                   color:
                                     item.status === 'Approved' ? '#4CAF50' :
-                                    item.status === 'Pending' ? '#FF9800' : '#F44336'
+                                      item.status === 'Pending' ? '#FF9800' : '#F44336'
                                 }
                               ]}>{item.status}</Text>
                             </View>
@@ -937,7 +937,7 @@ export default function ProfileScreen() {
                           </View>
 
                           <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-                          
+
                           {/* Metadata row */}
                           {item.status === 'Approved' && (
                             <>
@@ -1065,7 +1065,7 @@ export default function ProfileScreen() {
                     } else if (newsFilter === 'rejected') {
                       return renderSection('Rejected', rejected.length, rejected, '#F44336');
                     }
-                    
+
                     return null;
                   })()}
                 </View>
@@ -1117,7 +1117,7 @@ export default function ProfileScreen() {
         {activeTab === 'verify' && (
           <View style={styles.verifySection}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>Apply for Publisher Verification</Text>
-            
+
             <View style={[styles.verifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.verifyStepHeader}>
                 <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
@@ -1139,10 +1139,10 @@ export default function ProfileScreen() {
                         const isDone = req.status === 'verified' || req.status === 'filled' || req.status === 'active';
                         return (
                           <View key={i} style={styles.checklistItem}>
-                            <Ionicons 
-                              name={isDone ? "checkmark-circle" : "close-circle"} 
-                              size={16} 
-                              color={isDone ? "#4CAF50" : "#F44336"} 
+                            <Ionicons
+                              name={isDone ? "checkmark-circle" : "close-circle"}
+                              size={16}
+                              color={isDone ? "#4CAF50" : "#F44336"}
                             />
                             <Text style={[styles.checklistText, { color: colors.text }]}>{req.message}</Text>
                           </View>
@@ -1251,9 +1251,9 @@ export default function ProfileScreen() {
       <View style={styles.fabContainer}>
         {showFabMenu && (
           <View style={[styles.fabMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <TouchableOpacity 
-              style={styles.fabMenuItem} 
-              activeOpacity={0.7} 
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              activeOpacity={0.7}
               onPress={() => {
                 setShowFabMenu(false);
                 setShowCreatePostModal(true);
@@ -1262,9 +1262,9 @@ export default function ProfileScreen() {
               <Ionicons name="create-outline" size={16} color={colors.text} style={{ marginRight: 10 }} />
               <Text style={[styles.fabMenuText, { color: colors.text }]}>Create Post</Text>
             </TouchableOpacity>
-            
+
             <View style={[styles.fabDivider, { backgroundColor: colors.border }]} />
-            
+
             <TouchableOpacity
               style={styles.fabMenuItem}
               activeOpacity={0.7}
@@ -1323,7 +1323,7 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-              
+
               {/* Caption */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Caption</Text>
@@ -1387,9 +1387,9 @@ export default function ProfileScreen() {
         animationType="fade"
         onRequestClose={() => setShowSortModal(false)}
       >
-        <TouchableOpacity 
-          style={styles.pickerOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
           onPress={() => setShowSortModal(false)}
         >
           <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>

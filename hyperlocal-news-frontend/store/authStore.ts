@@ -28,7 +28,7 @@ export interface User {
   // UI extras
   language?: string;
   theme?: 'light' | 'dark' | 'system';
-  avatar?: string;
+  avatar?: string | null;
   phoneNumber?: string;
   interests?: string[];
   state?: string;
@@ -37,7 +37,7 @@ export interface User {
   isGuest?: boolean;
   gender?: string;
   date_of_birth?: string;
-  profile_picture?: string;
+  profile_picture?: string | null;
 }
 
 type RawUser = Omit<User, 'is_suspended' | 'created_at'> & {
@@ -298,14 +298,14 @@ export const useAuthStore = create<AuthState>()(
           set((state) => ({
             user: state.user
               ? sanitizeUser({
-                  ...state.user,
-                  name: nameOrUpdates,
-                  avatar: avatar ?? state.user.avatar,
-                  email: email ?? state.user.email,
-                  phone: phone ?? state.user.phone,
-                  email_verified: emailVerified ?? state.user.email_verified,
-                  mobile_verified: mobileVerified ?? state.user.mobile_verified,
-                })
+                ...state.user,
+                name: nameOrUpdates,
+                avatar: avatar ?? state.user.avatar,
+                email: email ?? state.user.email,
+                phone: phone ?? state.user.phone,
+                email_verified: emailVerified ?? state.user.email_verified,
+                mobile_verified: mobileVerified ?? state.user.mobile_verified,
+              })
               : null,
           }));
         }
