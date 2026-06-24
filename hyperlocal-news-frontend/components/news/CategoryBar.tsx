@@ -24,6 +24,21 @@ interface CategoryBarProps {
   onViewFocused?: (slug: string) => void;
 }
 
+const getCategoryIcon = (slug: string): string => {
+  const cleanSlug = slug?.toLowerCase().trim();
+  switch (cleanSlug) {
+    case 'politics': return 'gavel';
+    case 'crime': return 'security';
+    case 'education': return 'school';
+    case 'health': return 'local-hospital';
+    case 'business': return 'business-center';
+    case 'sports': return 'sports-soccer';
+    case 'entertainment': return 'movie';
+    case 'agriculture': return 'agriculture';
+    default: return 'grid-view';
+  }
+};
+
 const CategoryCard = memo(({ 
   item, 
   isFocused, 
@@ -57,7 +72,7 @@ const CategoryCard = memo(({
         { backgroundColor: isFocused ? 'rgba(255,255,255,0.25)' : colors.primaryLight }
       ]}>
         <MaterialIcons
-          name={item.icon as any}
+          name={getCategoryIcon(item.slug) as any}
           size={24}
           color={isFocused ? '#FFFFFF' : colors.primary}
         />

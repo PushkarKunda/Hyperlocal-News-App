@@ -227,37 +227,20 @@ export default function ProfileInterestsScreen() {
                     // Normal 2-column bento card
                     <View style={styles.singleLayout}>
                       <View style={styles.singleTopRow}>
-                        <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
+                        <View style={[
+                          styles.iconContainer,
+                          isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
+                        ]}>
                           {topic.iconType === 'feather' ? (
                             <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
                           ) : (
                             <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
                           )}
                         </View>
-                        <View style={styles.spanTextContainer}>
-                          <View style={styles.spanTitleRow}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
-                            {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
-                          </View>
-                          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
-                        </View>
                       </View>
-                    ) : (
-                      // Normal 2-column bento card
-                      <View style={styles.singleLayout}>
-                        <View style={styles.singleTopRow}>
-                          <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
-                            {topic.iconType === 'feather' ? (
-                              <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
-                            ) : (
-                              <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
-                            )}
-                          </View>
-                        </View>
-                        <View style={styles.singleTitleRow}>
-                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
-                          {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
-                        </View>
+                      <View style={styles.singleTitleRow}>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                        {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
                       </View>
                     </View>
                   )}
