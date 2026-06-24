@@ -49,9 +49,9 @@ export const usersApi = {
       method: 'GET',
       params: {
         detailed: params?.detailed ?? false,
-        page: params?.page ?? 1,
-        limit: params?.limit ?? 20,
-        recent_limit: params?.recent_limit ?? 5,
+        page: String(params?.page ?? 1),
+        limit: String(params?.limit ?? 20),
+        recent_limit: String(params?.recent_limit ?? 5),
       },
     });
     return response;

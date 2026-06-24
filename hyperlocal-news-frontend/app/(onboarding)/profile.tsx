@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Alert,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { uploadsApi, usersApi } from '@/services/api';
 
 
 export default function ProfileCompletionScreen() {
@@ -45,6 +47,7 @@ export default function ProfileCompletionScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showOtpField, setShowOtpField] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const [dialogConfig, setDialogConfig] = useState<{
     visible: boolean;
@@ -252,19 +255,62 @@ export default function ProfileCompletionScreen() {
     }).start();
   };
 
-  const handleFinishSetup = () => {
-    if (name.trim().length >= 2) {
-      // Update profile in store
+  const handleFinishSetup = async () => {
+    if (name.trim().length < 2) return;
+
+    if (isOnboarded) {
+      setIsSaving(true);
+      try {
+        let finalAvatarUrl = selectedAvatar || undefined;
+
+        // 1. If avatar is local, upload it
+        if (selectedAvatar && (selectedAvatar.startsWith('file://') || selectedAvatar.startsWith('content://') || (!selectedAvatar.startsWith('http://') && !selectedAvatar.startsWith('https://')))) {
+          try {
+            const { compressImage, uriToFormData } = require('@/services/image');
+            const compressed = await compressImage(selectedAvatar);
+            const formData = await uriToFormData(compressed.uri);
+            const uploadRes = await uploadsApi.uploadAvatar(formData);
+            finalAvatarUrl = uploadRes.url;
+          } catch (uploadErr) {
+            console.error('Failed to upload avatar:', uploadErr);
+            Alert.alert('Upload Error', 'Failed to upload profile picture, but saving other details.');
+          }
+        }
+
+        // 2. Call backend updateMe (PATCH /user/user/users/me)
+        await usersApi.updateMe({
+          name: name.trim(),
+          profile_picture: finalAvatarUrl,
+        });
+
+        // 3. Update locally in store
+        updateProfile({
+          name: name.trim(),
+          avatar: finalAvatarUrl,
+          profile_picture: finalAvatarUrl,
+          email: email.trim(),
+          phoneNumber: phoneNumber.trim(),
+        });
+
+        Alert.alert('Profile Saved!', 'Your changes have been saved successfully.', [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.replace('/(tabs)/profile');
+            }
+          }
+        ]);
+      } catch (err: any) {
+        console.error('Failed to save profile:', err);
+        Alert.alert('Error', err.message || 'Failed to save profile changes. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      // Onboarding flow: only update store local state and go to next step
       const finalAvatar = selectedAvatar || undefined;
       updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim(), isVerified, isVerified);
-
-      if (isOnboarded) {
-        Alert.alert('Profile Saved!', 'Your changes have been saved successfully.');
-        router.replace('/(tabs)/profile');
-      } else {
-        // Trigger navigation loader state
-        router.push('/(onboarding)/setup-feed' as any);
-      }
+      router.push('/(onboarding)/setup-feed' as any);
     }
   };
 
@@ -512,7 +558,7 @@ export default function ProfileCompletionScreen() {
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           style={styles.buttonWrapper}
-          disabled={isButtonDisabled}
+          disabled={isButtonDisabled || isSaving}
           onPress={handleFinishSetup}
           onPressIn={handleButtonPressIn}
           onPressOut={handleButtonPressOut}
@@ -520,7 +566,7 @@ export default function ProfileCompletionScreen() {
           <Animated.View
             style={[
               styles.finishButton,
-              isButtonDisabled 
+              (isButtonDisabled || isSaving)
                 ? [styles.finishButtonDisabled, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(199, 196, 215, 0.4)' }] 
                 : [styles.finishButtonActive, { backgroundColor: colors.primary }],
               { transform: [{ scale: buttonScale }] }
@@ -528,9 +574,13 @@ export default function ProfileCompletionScreen() {
           >
             <Text style={[
               styles.finishButtonText,
-              isButtonDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(118, 117, 134, 0.6)' }
-            ]}>Finish Setup</Text>
-            <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(118, 117, 134, 0.4)") : "#FFFFFF"} />
+              (isButtonDisabled || isSaving) && { color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(118, 117, 134, 0.6)' }
+            ]}>{isSaving ? 'Saving...' : 'Finish Setup'}</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: 6 }} />
+            ) : (
+              <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(118, 117, 134, 0.4)") : "#FFFFFF"} />
+            )}
           </Animated.View>
         </Pressable>
 

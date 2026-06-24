@@ -26,7 +26,7 @@ import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { usersApi } from '@/services/api';
+import { usersApi, uploadsApi } from '@/services/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -114,6 +114,7 @@ export default function ProfileScreen() {
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Real eligibility states
   const [eligibility, setEligibility] = useState<{
@@ -204,6 +205,33 @@ export default function ProfileScreen() {
     return true;
   };
 
+  const uploadAndSaveAvatar = async (localUri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const { compressImage, uriToFormData } = require('@/services/image');
+      const compressed = await compressImage(localUri);
+      const formData = await uriToFormData(compressed.uri);
+      const uploadRes = await uploadsApi.uploadAvatar(formData);
+      const serverUrl = uploadRes.url;
+
+      await usersApi.updateMe({
+        profile_picture: serverUrl,
+      });
+
+      updateProfile({
+        avatar: serverUrl,
+        profile_picture: serverUrl,
+      });
+
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error: any) {
+      console.error('Failed to update profile picture:', error);
+      Alert.alert('Error', error.message || 'Failed to upload profile picture. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleTakePhoto = async () => {
     const hasPermission = await requestImagePermissions();
     if (!hasPermission) return;
@@ -216,8 +244,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email || undefined, user?.phoneNumber, isPublisher);
-        Alert.alert('Success', 'Profile picture updated successfully!');
+        await uploadAndSaveAvatar(result.assets[0].uri);
       }
     } catch (e) {
       Alert.alert('Error', 'Could not open camera.');
@@ -236,8 +263,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email || undefined, user?.phoneNumber, isPublisher);
-        Alert.alert('Success', 'Profile picture updated successfully!');
+        await uploadAndSaveAvatar(result.assets[0].uri);
       }
     } catch (e) {
       Alert.alert('Error', 'Could not open gallery.');
@@ -451,7 +477,12 @@ export default function ProfileScreen() {
                   source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200' }}
                   style={styles.avatarImage}
                 />
-                <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress}>
+                {isUploadingAvatar && (
+                  <View style={styles.avatarLoader}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+                <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress} disabled={isUploadingAvatar}>
                   <Ionicons name="camera" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -1483,6 +1514,17 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 3,
     borderColor: '#FFFFFF',
+  },
+  avatarLoader: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarEditBadge: {
     position: 'absolute',

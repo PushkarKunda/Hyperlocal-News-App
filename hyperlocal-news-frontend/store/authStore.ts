@@ -8,7 +8,7 @@ import {
   signInWithGoogle,
   firebaseSignOut,
 } from '@/services/firebase';
-import { authApi, BackendLoginResponse, usersApi, PublisherEligibilityRequirement } from '@/services/api';
+import { authApi, BackendLoginResponse, usersApi, uploadsApi, PublisherEligibilityRequirement } from '@/services/api';
 import { clearTokens } from '@/services/api/token';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
@@ -78,6 +78,7 @@ const sanitizeUser = (user: User): User => {
     phone: updatedPhone,
     phoneNumber: updatedPhoneNumber,
     mobile_verified: updatedMobileVerified,
+    isPublisher: user.role >= 2,
   };
 };
 
@@ -243,7 +244,7 @@ export const useAuthStore = create<AuthState>()(
           await authApi.switchToPublisher();
           // Update role in store
           set((state) => ({
-            user: state.user ? { ...state.user, role: 2 } : null,
+            user: state.user ? sanitizeUser({ ...state.user, role: 2 }) : null,
             isLoading: false,
           }));
         } catch (error: any) {
@@ -316,10 +317,30 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { user } = get();
           if (user) {
+            let uploadedAvatarUrl = user.avatar ?? undefined;
+
+            // Detect and upload local image URI to server
+            if (
+              user.avatar &&
+              (user.avatar.startsWith('file://') ||
+                user.avatar.startsWith('content://') ||
+                (!user.avatar.startsWith('http://') && !user.avatar.startsWith('https://')))
+            ) {
+              try {
+                const { compressImage, uriToFormData } = require('@/services/image');
+                const compressed = await compressImage(user.avatar);
+                const formData = await uriToFormData(compressed.uri);
+                const uploadRes = await uploadsApi.uploadAvatar(formData);
+                uploadedAvatarUrl = uploadRes.url;
+              } catch (uploadErr) {
+                console.error('Failed to upload avatar during onboarding:', uploadErr);
+              }
+            }
+
             // 1. Update main user profile info (PATCH /user/user/users/me)
             await usersApi.updateMe({
               name: user.name ?? undefined,
-              profile_picture: user.avatar ?? undefined,
+              profile_picture: uploadedAvatarUrl,
               gender: user.gender ?? undefined,
               date_of_birth: user.date_of_birth ?? undefined,
             });
@@ -331,6 +352,15 @@ export const useAuthStore = create<AuthState>()(
               district: user.district,
               interests: user.interests,
             } as any);
+
+            // Update local user state with the saved server data + uploaded avatar
+            set((state) => ({
+              user: state.user ? sanitizeUser({
+                ...state.user,
+                avatar: uploadedAvatarUrl,
+                profile_picture: uploadedAvatarUrl,
+              }) : null,
+            }));
           }
           set({ isOnboarded: true, isLoading: false });
         } catch (error: any) {
