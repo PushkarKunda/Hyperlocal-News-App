@@ -45,7 +45,7 @@ export default function BookmarksScreen() {
         if (diffMs < 24 * 3600 * 1000) {
           dateGroup = 'Today';
         }
-      } catch {}
+      } catch { }
 
       return {
         id: article.id,
@@ -182,7 +182,7 @@ export default function BookmarksScreen() {
       {/* Main List Area */}
       {filteredBookmarks.length > 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           {/* Today Group */}
           {todayBookmarks.length > 0 && (
             <View style={styles.groupSection}>
