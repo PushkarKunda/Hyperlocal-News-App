@@ -183,31 +183,50 @@ export default function ProfileInterestsScreen() {
                     }
                   ]}
                 >
-                  <Animated.View
-                    style={[
-                      styles.cardInner,
-                      isSelected
-                        ? [
-                          styles.cardSelected,
-                          {
-                            backgroundColor: isDark ? topic.darkSelectedBg : topic.selectedBg,
-                            borderColor: topic.iconColor,
-                            shadowColor: topic.iconColor,
-                          },
-                        ]
-                        : [
-                          styles.cardUnselected,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                          },
-                        ],
-                      { transform: [{ scale }] },
-                    ]}
-                  >
-                    {topic.span ? (
-                      // Full-width span layout (Wellness)
-                      <View style={styles.spanRow}>
+                <Animated.View
+                  style={[
+                    styles.cardInner,
+                    isSelected
+                      ? [
+                        styles.cardSelected,
+                        {
+                          backgroundColor: isDark ? topic.darkSelectedBg : topic.selectedBg,
+                          borderColor: topic.iconColor,
+                          shadowColor: topic.iconColor,
+                        },
+                      ]
+                      : [
+                        styles.cardUnselected,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ],
+                    { transform: [{ scale }] },
+                  ]}
+                >
+                  {topic.span ? (
+                    // Full-width span layout (Wellness)
+                    <View style={styles.spanRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
+                        {topic.iconType === 'feather' ? (
+                          <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                        ) : (
+                          <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                        )}
+                      </View>
+                      <View style={styles.spanTextContainer}>
+                        <View style={styles.spanTitleRow}>
+                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                          {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
+                        </View>
+                        <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    // Normal 2-column bento card
+                    <View style={styles.singleLayout}>
+                      <View style={styles.singleTopRow}>
                         <View style={[styles.iconContainer, { backgroundColor: isSelected ? topic.iconColor : topic.iconBg }]}>
                           {topic.iconType === 'feather' ? (
                             <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
@@ -240,9 +259,10 @@ export default function ProfileInterestsScreen() {
                           {isSelected && <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />}
                         </View>
                       </View>
-                    )}
-                  </Animated.View>
-                </Pressable>
+                    </View>
+                  )}
+                </Animated.View>
+              </Pressable>
               );
             });
           })()}

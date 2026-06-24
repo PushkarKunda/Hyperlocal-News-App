@@ -9,6 +9,7 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 export function Header() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
   return (
@@ -24,7 +25,11 @@ export function Header() {
           <MaterialIcons name="menu" size={28} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: colors.text }]}>HyperLocal</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
+          <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
+          <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+        </Text>
 
         <View style={styles.rightActions}>
           <TouchableOpacity style={styles.iconButton}>
@@ -52,10 +57,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 21,
     fontFamily: 'Poppins_700Bold',
     fontWeight: '700',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   rightActions: {
     flexDirection: 'row',
