@@ -25,7 +25,7 @@ export default function VerifyOTPScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
-  const { verifyPhoneOTP, sendPhoneOTP, isLoading } = useAuthStore();
+  const { verifyPhoneOTP, sendPhoneOTP, isLoading, isOnboarded } = useAuthStore();
 
   const [otp, setOtp] = useState('');
   const [resending, setResending] = useState(false);
@@ -73,8 +73,15 @@ export default function VerifyOTPScreen() {
     try {
       const response = await verifyPhoneOTP(otp);
 
+      // Server returns is_new_user inside the user object (response.user.is_new_user),
+      // but also sometimes at root (response.is_new_user) — check both.
+      const isNewUser =
+        (response as any)?.user?.is_new_user ??
+        (response as any)?.is_new_user ??
+        !useAuthStore.getState().isOnboarded;
+
       // Navigate based on new or existing user
-      if (response.is_new_user) {
+      if (isNewUser) {
         router.replace('/(onboarding)/language');
       } else {
         router.replace('/(tabs)');

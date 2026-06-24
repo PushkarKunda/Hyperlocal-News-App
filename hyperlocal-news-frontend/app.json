@@ -49,6 +49,12 @@
       "expo-video",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.849371654758-jb831p3e0mv4n8bupaep4cu691ifbpr5"
+        }
+      ],
       "expo-build-properties",
       "@react-native-community/datetimepicker"
     ],
@@ -66,7 +72,7 @@
       "googleOAuth": {
         "webClientId": "849371654758-oc0ne88p18ikcdamc7ns62ve8caa7n6e.apps.googleusercontent.com",
         "iosClientId": "849371654758-jb831p3e0mv4n8bupaep4cu691ifbpr5.apps.googleusercontent.com",
-        "androidClientId": "849371654758-oc0ne88p18ikcdamc7ns62ve8caa7n6e.apps.googleusercontent.com"
+        "androidClientId": "849371654758-tk9um9rv6a81l11nl65qq2qsekq83372.apps.googleusercontent.com"
       }
     }
   }

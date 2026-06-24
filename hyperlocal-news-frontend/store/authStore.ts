@@ -36,7 +36,16 @@ export interface User {
   isPublisher?: boolean;
 }
 
-const sanitizeUser = (user: User): User => {
+type RawUser = Omit<User, 'is_suspended' | 'created_at'> & {
+  is_suspended?: boolean;
+  created_at?: string;
+  // Extra fields that may come from the server response
+  role_name?: string;
+  is_new_user?: boolean;
+  profile_picture?: string | null;
+};
+
+const sanitizeUser = (user: RawUser): User => {
   const isPhone = (str: string | null | undefined): boolean => {
     if (!str) return false;
     const clean = str.replace(/[\s\-()]/g, '');
@@ -70,6 +79,8 @@ const sanitizeUser = (user: User): User => {
 
   return {
     ...user,
+    is_suspended: user.is_suspended ?? false,
+    created_at: user.created_at ?? '',
     name: updatedName,
     phone: updatedPhone,
     phoneNumber: updatedPhoneNumber,
@@ -165,7 +176,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: sanitizeUser(response.user),
             isAuthenticated: true,
-            isOnboarded: !response.is_new_user,
+            // Server returns is_new_user inside user object; fall back to root level
+            isOnboarded: !((response as any).user?.is_new_user ?? (response as any).is_new_user),
             isLoading: false,
             phoneConfirmation: null,
           });
@@ -194,7 +206,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: sanitizeUser(response.user),
             isAuthenticated: true,
-            isOnboarded: !response.is_new_user,
+            // Server returns is_new_user inside user object; fall back to root level
+            isOnboarded: !((response as any).user?.is_new_user ?? (response as any).is_new_user),
             isLoading: false,
           });
 
