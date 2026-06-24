@@ -13,11 +13,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
-import { Text, StyleSheet, Appearance } from 'react-native';
+import { Text, StyleSheet, Appearance, Linking } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
 import { useStore } from '@/store/useStore';
 import { checkFirebaseConnection } from '@/services/firebase';
 import '../services/firebase';
+
+// Must be at module level, BEFORE any component
+import * as WebBrowser from 'expo-web-browser';
+WebBrowser.maybeCompleteAuthSession(); //Critical for OAuth or internal browser redirect
+
 
 // ─── Global Text Interceptor ──────────────────────────────────────────────────
 // Enforces Poppins font family and dynamic text scaling app-wide
@@ -113,7 +118,8 @@ export default function RootLayout() {
     Poppins_700Bold,
   });
 
-  // ✅ Firebase connection check - correctly placed inside component
+
+  // Firebase connection check - correctly placed inside component
   useEffect(() => {
     checkFirebaseConnection();
   }, []);

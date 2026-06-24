@@ -1,40 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { useAuthStore } from '@/store/authStore';
 import { BackendLoginResponse } from '@/services/api';
-
-WebBrowser.maybeCompleteAuthSession();
 
 interface ExpoConfig {
   extra?: {
     googleOAuth?: {
       webClientId?: string;
-      iosClientId?: string;
-      androidClientId?: string;
     };
   };
 }
 
 const expoConfig = Constants.expoConfig as ExpoConfig | null;
-const extra = expoConfig?.extra ?? {};
-const googleOAuth = extra.googleOAuth ?? {};
-
 const webClientId =
-  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
-  googleOAuth.webClientId ??
+  expoConfig?.extra?.googleOAuth?.webClientId ??
   '849371654758-oc0ne88p18ikcdamc7ns62ve8caa7n6e.apps.googleusercontent.com';
-
-const iosClientId =
-  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ??
-  googleOAuth.iosClientId ??
-  '849371654758-jb831p3e0mv4n8bupaep4cu691ifbpr5.apps.googleusercontent.com';
-
-const androidClientId =
-  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
-  googleOAuth.androidClientId ??
-  webClientId;
 
 type UseGoogleFirebaseAuthOptions = {
   onSuccess?: (response: BackendLoginResponse) => void;
@@ -44,79 +25,112 @@ type UseGoogleFirebaseAuthOptions = {
 export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}) {
   const { loginWithGoogle, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  // const proxyRedirectUri = AuthSession.makeRedirectUri({
-  //   useProxy: true,
-  // });
-  const redirectUri = "https://auth.expo.io/@22mh1a0529/hyperlocal-news";
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
-    {
-      clientId: webClientId,
-      webClientId,
-      iosClientId,
-      androidClientId,
-      selectAccount: true,
-      redirectUri: redirectUri,
-
-    },
-    {
-      scheme: 'hyperlocalnews'
-    }
-  );
+  const [isConfigured, setIsConfigured] = useState(false);
 
   useEffect(() => {
-    if (request) {
-      console.log('🔍 Manual forced Redirect URI:', request.redirectUri);
-    }
-  }, [request]);  //This is just for testing, remove it for production
-
-  useEffect(() => {
-    if (!response) return;
-
-    const finishGoogleSignIn = async () => {
-      if (response.type !== 'success') {
-        setIsGoogleLoading(false);
-        return;
-      }
-
-      const idToken =
-        response.params.id_token ??
-        (response as any).authentication?.idToken;
-
-      if (!idToken) {
-        const error = new Error('Google did not return an ID token.');
-        options.onError?.(error);
-        setIsGoogleLoading(false);
-        return;
-      }
-
+    const configure = async () => {
       try {
-        const backendResponse = await loginWithGoogle(idToken);
-        options.onSuccess?.(backendResponse);
+        await GoogleSignin.configure({
+          webClientId,
+          offlineAccess: false,
+        });
+        console.log('✅ Google Sign-In configured');
+        setIsConfigured(true);
       } catch (error: any) {
-        options.onError?.(error);
-      } finally {
-        setIsGoogleLoading(false);
+        console.error('❌ Google Sign-In config error:', error.message);
       }
     };
-
-    finishGoogleSignIn();
-  }, [response]);
+    configure();
+  }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    setIsGoogleLoading(true);
-    try {
-      await promptAsync();
-    } catch (error: any) {
-      setIsGoogleLoading(false);
-      options.onError?.(error);
+    if (!isConfigured) {
+      console.warn('⚠️ Google Sign-In not configured yet');
+      return;
     }
-  }, [promptAsync, options]);
+
+    setIsGoogleLoading(true);
+    console.log('🚀 Starting Google Sign-In...');
+
+    try {
+      await GoogleSignin.hasPlayServices();
+      console.log('✅ Google Play Services available');
+
+      const userInfo = await GoogleSignin.signIn();
+      console.log('✅ Google Sign-In successful');
+      console.log('👤 User:', userInfo.data?.user?.email);
+
+      const idToken = userInfo.data?.idToken;
+      console.log('🔑 ID Token received:', !!idToken);
+
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+
+      console.log('🚀 Calling backend loginWithGoogle...');
+      const backendResponse = await loginWithGoogle(idToken);
+      console.log('✅ Backend login successful');
+
+      options.onSuccess?.(backendResponse);
+    } catch (error: any) {
+      console.error('❌ Google Sign-In failed:', error.message);
+      console.error('❌ Error code:', error.code);
+
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('🚫 User cancelled sign-in');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('⏳ Sign-in already in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        console.error('❌ Google Play Services not available');
+      }
+
+      options.onError?.(error);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [isConfigured, loginWithGoogle, options]);
 
   return {
     signInWithGoogle,
-    isGoogleReady: !!request,
+    isGoogleReady: isConfigured,
     isGoogleLoading: isGoogleLoading || isLoading,
   };
 }
+
+// import { useCallback, useEffect, useState } from 'react';
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// import Constants from 'expo-constants';
+// import { useAuthStore } from '@/store/authStore';
+// import { BackendLoginResponse } from '@/services/api';
+
+// interface ExpoConfig { extra?: { googleOAuth?: { webClientId?: string } } }
+// const webClientId = (Constants.expoConfig as ExpoConfig | null)?.extra?.googleOAuth?.webClientId ?? '849371654758-oc0ne88p18ikcdamc7ns62ve8caa7n6e.apps.googleusercontent.com';
+
+// type UseGoogleFirebaseAuthOptions = { onSuccess?: (response: BackendLoginResponse) => void; onError?: (error: Error) => void; };
+
+// export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}) {
+//   const { loginWithGoogle, isLoading } = useAuthStore();
+//   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+//   useEffect(() => {
+//     GoogleSignin.configure({ webClientId, offlineAccess: false });
+//   }, []);
+
+//   const signInWithGoogle = useCallback(async () => {
+//     setIsGoogleLoading(true);
+//     try {
+//       await GoogleSignin.hasPlayServices();
+//       const userInfo = await GoogleSignin.signIn();
+//       const idToken = userInfo.data?.idToken;
+//       if (!idToken) throw new Error('No ID token received');
+//       const backendResponse = await loginWithGoogle(idToken);
+//       options.onSuccess?.(backendResponse);
+//     } catch (error: any) {
+//       if (error.code !== statusCodes.SIGN_IN_CANCELLED) options.onError?.(error);
+//     } finally {
+//       setIsGoogleLoading(false);
+//     }
+//   }, [loginWithGoogle, options]);
+
+//   return { signInWithGoogle, isGoogleReady: true, isGoogleLoading: isGoogleLoading || isLoading };
+// }
