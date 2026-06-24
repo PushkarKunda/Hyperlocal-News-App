@@ -9,8 +9,18 @@ export interface BackendLoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  expires_in: number;
-  refresh_expires_in: number;
+  message?: string;
+  success?: boolean;
+  verification_added?: boolean;
+  expires_in?: number;
+  refresh_expires_in?: number;
+  // Note: server returns is_new_user inside the user object
+  is_new_user?: boolean;
+  reporter_eligibility?: {
+    can_become_reporter: boolean;
+    requirements: Array<{ field: string; status: string; message: string }>;
+    switch_endpoint: string;
+  };
   user: {
     user_uid: string;
     user_name: string | null;
@@ -18,12 +28,14 @@ export interface BackendLoginResponse {
     email: string | null;
     phone: string | null;
     role: number;
+    role_name?: string;
     email_verified: boolean;
     mobile_verified: boolean;
-    is_suspended: boolean;
-    created_at: string;
+    is_suspended?: boolean;
+    is_new_user?: boolean;   // actual location in server response
+    profile_picture?: string | null;
+    created_at?: string;
   };
-  is_new_user: boolean;
 }
 
 export interface RegisterDevicePayload {
