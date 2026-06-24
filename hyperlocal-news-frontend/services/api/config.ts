@@ -7,6 +7,6 @@ const parseTimeout = (value: string | undefined, fallback: number) => {
 };
 
 export const API_CONFIG = {
-  baseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/[\r\n\t ]/g, '').trim(),
-  timeoutMs: parseTimeout(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
+  baseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/[\r\n\t ]/g, '').trim() || 'https://hypernews-production.up.railway.app',
+  timeoutMs: parseTimeout(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 60000),
 };
