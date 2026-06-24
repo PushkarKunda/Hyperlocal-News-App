@@ -530,12 +530,12 @@ export default function ProfileScreen() {
 
             {/* Profile Action Buttons */}
             <View style={styles.profileActionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/profile')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/profile')}>
                 <Ionicons name="pencil" size={14} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit Profile</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/settings')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/settings')}>
                 <Ionicons name="settings-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Settings</Text>
               </TouchableOpacity>
@@ -733,7 +733,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Navigation Tabs Header */}
-        <View style={[styles.tabsHeader, { borderBottomColor: colors.border }]}>
+        <View style={[styles.tabsHeader, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]}
             onPress={() => setActiveTab('posts')}
@@ -817,7 +817,7 @@ export default function ProfileScreen() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
+            <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7}>
               <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More</Text>
             </TouchableOpacity>
@@ -852,41 +852,41 @@ export default function ProfileScreen() {
                 <View style={{ height: 50 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                     <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'all' && [styles.filterPillActive, { backgroundColor: colors.primary }]]}
+                      style={[styles.filterPill, { backgroundColor: newsFilter === 'all' ? colors.primary : colors.surface, borderColor: newsFilter === 'all' ? colors.primary : colors.border }]}
                       onPress={() => setNewsFilter('all')}
                     >
-                      <Text style={[styles.filterLabel, newsFilter === 'all' && styles.filterLabelActive]}>All ({newsList.length})</Text>
+                      <Text style={[styles.filterLabel, { color: newsFilter === 'all' ? '#FFFFFF' : colors.textSecondary }]}>All ({newsList.length})</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'approved' && [styles.filterPillActive, { backgroundColor: '#4CAF50' }]]}
+                      style={[styles.filterPill, { backgroundColor: newsFilter === 'approved' ? '#4CAF50' : colors.surface, borderColor: newsFilter === 'approved' ? '#4CAF50' : colors.border }]}
                       onPress={() => setNewsFilter('approved')}
                     >
-                      <Text style={[styles.filterLabel, newsFilter === 'approved' && styles.filterLabelActive]}>
+                      <Text style={[styles.filterLabel, { color: newsFilter === 'approved' ? '#FFFFFF' : colors.textSecondary }]}>
                         Approved ({newsList.filter((item) => item.status === 'Approved').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'pending' && [styles.filterPillActive, { backgroundColor: '#FF9800' }]]}
+                      style={[styles.filterPill, { backgroundColor: newsFilter === 'pending' ? '#FF9800' : colors.surface, borderColor: newsFilter === 'pending' ? '#FF9800' : colors.border }]}
                       onPress={() => setNewsFilter('pending')}
                     >
-                      <Text style={[styles.filterLabel, newsFilter === 'pending' && styles.filterLabelActive]}>
+                      <Text style={[styles.filterLabel, { color: newsFilter === 'pending' ? '#FFFFFF' : colors.textSecondary }]}>
                         Pending ({newsList.filter((item) => item.status === 'Pending').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'rejected' && [styles.filterPillActive, { backgroundColor: '#F44336' }]]}
+                      style={[styles.filterPill, { backgroundColor: newsFilter === 'rejected' ? '#F44336' : colors.surface, borderColor: newsFilter === 'rejected' ? '#F44336' : colors.border }]}
                       onPress={() => setNewsFilter('rejected')}
                     >
-                      <Text style={[styles.filterLabel, newsFilter === 'rejected' && styles.filterLabelActive]}>
+                      <Text style={[styles.filterLabel, { color: newsFilter === 'rejected' ? '#FFFFFF' : colors.textSecondary }]}>
                         Rejected ({newsList.filter((item) => item.status === 'Rejected').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
-                      style={[styles.filterPill, { borderColor: colors.border }]} 
+                      style={[styles.filterPill, { backgroundColor: colors.surface, borderColor: colors.border }]} 
                       activeOpacity={0.7}
                       onPress={() => setShowSortModal(true)}
                     >
@@ -1070,7 +1070,7 @@ export default function ProfileScreen() {
                   })()}
                 </View>
 
-                <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
+                <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7}>
                   <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
                   <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More News</Text>
                 </TouchableOpacity>

@@ -3,7 +3,9 @@ import {
   getAuth,
   signOut,
   GoogleAuthProvider,
-  FirebaseAuthTypes
+  FirebaseAuthTypes,
+  signInWithPhoneNumber,
+  signInWithCredential
 } from '@react-native-firebase/auth';
 
 // Lazy load to prevent "No Firebase App" crashes on startup
@@ -46,7 +48,8 @@ export const sendPhoneOTP = async (
   phoneNumber: string
 ): Promise<FirebaseAuthTypes.ConfirmationResult> => {
   try {
-    const confirmation = await getFirebaseAuth().signInWithPhoneNumber(phoneNumber);
+    const authInstance = getFirebaseAuth();
+    const confirmation = await signInWithPhoneNumber(authInstance, phoneNumber);
     console.log('✅ OTP Sent to:', phoneNumber);
     return confirmation;
   } catch (error: any) {
@@ -76,7 +79,8 @@ export const verifyPhoneOTP = async (
 export const signInWithGoogle = async (idToken: string): Promise<string> => {
   try {
     const googleCredential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await getFirebaseAuth().signInWithCredential(googleCredential);
+    const authInstance = getFirebaseAuth();
+    const userCredential = await signInWithCredential(authInstance, googleCredential);
     const firebaseToken = await userCredential.user.getIdToken();
     console.log('✅ Google Sign-In Success');
     return firebaseToken;

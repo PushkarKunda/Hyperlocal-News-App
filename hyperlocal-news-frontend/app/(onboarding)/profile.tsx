@@ -278,10 +278,12 @@ export default function ProfileCompletionScreen() {
         }
 
         // 2. Call backend updateMe (PATCH /user/user/users/me)
-        await usersApi.updateMe({
+        const updatePayload = {
           name: name.trim(),
           profile_picture: finalAvatarUrl,
-        });
+        };
+        console.log('Sending usersApi.updateMe payload:', updatePayload);
+        await usersApi.updateMe(updatePayload);
 
         // 3. Update locally in store
         updateProfile({
@@ -301,8 +303,10 @@ export default function ProfileCompletionScreen() {
           }
         ]);
       } catch (err: any) {
-        console.error('Failed to save profile:', err);
-        Alert.alert('Error', err.message || 'Failed to save profile changes. Please try again.');
+        const { getApiError } = require('@/services/api');
+        const apiError = getApiError(err);
+        console.error('Failed to save profile:', err, 'Response:', err.response?.data);
+        Alert.alert('Error', apiError.message || 'Failed to save profile changes. Please try again.');
       } finally {
         setIsSaving(false);
       }
