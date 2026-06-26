@@ -107,13 +107,17 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
 
-    // Auto-hide after 3 seconds of inactivity
-    hideTimerRef.current = setTimeout(() => {
-      hideHeader();
-    }, 3000);
+    // Auto-hide after 3 seconds of inactivity, ONLY if news is loaded
+    if (!isLoading) {
+      hideTimerRef.current = setTimeout(() => {
+        hideHeader();
+      }, 3000);
+    }
   };
 
   const hideHeader = () => {
+    if (isLoading) return; // Do not hide header while news is still loading!
+    
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
@@ -157,6 +161,17 @@ export default function HomeScreen() {
   // Initial display and auto-hide when the feed finishes loading
   useEffect(() => {
     if (!isLoading) {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+      isHeaderVisible.current = true;
+      setTabBarVisible(true);
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+
       hideTimerRef.current = setTimeout(() => {
         hideHeader();
       }, 5000);
@@ -201,14 +216,7 @@ export default function HomeScreen() {
     }
   }, [newsId, scrollHeight, news]);
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
-        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
-        <LoadingSpinner fullScreen text="Curating your local news..." color={colors.primary} colorScheme={colorScheme ?? 'light'} />
-      </View>
-    );
-  }
+  // Removed early return layout to support rendering header from the start
 
   return (
     <View 
@@ -306,7 +314,12 @@ export default function HomeScreen() {
         style={styles.feedWrapper}
         onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
       >
-        <FlatList
+        {isLoading ? (
+          <View style={[styles.loaderContainer, { backgroundColor: colors.background, paddingTop: headerHeight }]}>
+            <LoadingSpinner text="Curating your local news..." color={colors.primary} colorScheme={colorScheme ?? 'light'} />
+          </View>
+        ) : (
+          <FlatList
           ref={horizontalFlatListRef}
           data={CATEGORIES}
           keyExtractor={(item) => item.slug}
@@ -409,7 +422,8 @@ export default function HomeScreen() {
             );
           }}
         />
-      </View>
+      )}
+    </View>
 
     </View>
   );

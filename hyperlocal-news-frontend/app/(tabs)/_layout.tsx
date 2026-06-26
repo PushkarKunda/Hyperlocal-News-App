@@ -138,7 +138,6 @@ export default function TabLayout() {
         name="menu-bookmarks"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen

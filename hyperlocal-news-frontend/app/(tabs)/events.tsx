@@ -215,179 +215,39 @@ export default function EventsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={{ width: 40 }} />
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
         <TouchableOpacity
-          style={[styles.createButton, { backgroundColor: colors.primaryLight }]}
+          onPress={() => router.back()}
           activeOpacity={0.7}
-          onPress={() => {
-            if (isPublisher) {
-              setIsCreateModalVisible(true);
-            } else {
-              setShowGatedView(true);
-            }
-          }}
+          style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
         >
-          <Ionicons name="add" size={22} color={colors.primary} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {/* Coming Soon Container */}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)', width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="calendar-outline" size={48} color="#8B5CF6" />
+        </View>
+        <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 12, textAlign: 'center' }}>Coming Soon</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 15, fontFamily: 'Poppins_500Medium', textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+          Our team is busy building the backend service for community events and meetups. Get ready to connect with your local neighbors soon!
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: colors.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold' }}>Go Back</Text>
+          <Ionicons name="arrow-back" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
-
-      {/* Segmented Tab Bar */}
-      <View style={styles.tabContainer}>
-        <View style={[styles.segmentedControl, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'all' && [styles.activeTabButton, { backgroundColor: colors.primary }]]}
-            onPress={() => setActiveTab('all')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabText, { color: activeTab === 'all' ? '#FFFFFF' : colors.textSecondary }]}>
-              All Events
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'today' && [styles.activeTabButton, { backgroundColor: colors.primary }]]}
-            onPress={() => setActiveTab('today')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabText, { color: activeTab === 'today' ? '#FFFFFF' : colors.textSecondary }]}>
-              Today
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'week' && [styles.activeTabButton, { backgroundColor: colors.primary }]]}
-            onPress={() => setActiveTab('week')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabText, { color: activeTab === 'week' ? '#FFFFFF' : colors.textSecondary }]}>
-              This Week
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Events Feed List */}
-      <FlatList
-        data={filteredEvents}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => {
-          const isUserReminded = reminders[item.id] || false;
-          const isUserInterested = interested[item.id] || false;
-
-          return (
-            <View style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {/* Event Image Container with date badge overlay */}
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: item.imageUrl }} style={styles.eventImage} />
-                
-                {/* Date Badge Overlay */}
-                <View style={styles.dateBadge}>
-                  <Text style={styles.dateMonth}>{item.dateMonth}</Text>
-                  <Text style={styles.dateDay}>{item.dateDay}</Text>
-                </View>
-
-                {/* Distance Overlay */}
-                <View style={styles.distanceBadge}>
-                  <Text style={styles.distanceText}>{item.distance}</Text>
-                </View>
-              </View>
-
-              {/* Event Details Content */}
-              <View style={styles.cardContent}>
-                <Text style={[styles.categoryText, { color: colors.primary }]}>
-                  {item.category.toUpperCase()}
-                </Text>
-                <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <Text style={[styles.eventDescription, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {item.description}
-                </Text>
-
-                {/* Location and time row */}
-                <View style={styles.detailRow}>
-                  <MaterialIcons name="schedule" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.detailText, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {item.schedule}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <MaterialIcons name="location-on" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.detailText, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {item.locationName}
-                  </Text>
-                </View>
-
-                {/* Action Buttons Footer */}
-                <View style={[styles.cardFooter, { borderTopColor: colors.divider }]}>
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      { borderColor: isUserInterested ? colors.primary : colors.border, borderWidth: 1 },
-                      isUserInterested && { backgroundColor: colors.primaryLight }
-                    ]}
-                    onPress={() => toggleInterested(item.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={isUserInterested ? "heart" : "heart-outline"}
-                      size={18}
-                      color={isUserInterested ? colors.primary : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.actionButtonText,
-                        { color: isUserInterested ? colors.primary : colors.textSecondary }
-                      ]}
-                    >
-                      {isUserInterested ? 'Interested' : 'Interest'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      { borderColor: isUserReminded ? colors.primary : colors.border, borderWidth: 1 },
-                      isUserReminded && { backgroundColor: colors.primaryLight }
-                    ]}
-                    onPress={() => toggleReminder(item.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={isUserReminded ? "notifications" : "notifications-outline"}
-                      size={18}
-                      color={isUserReminded ? colors.primary : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.actionButtonText,
-                        { color: isUserReminded ? colors.primary : colors.textSecondary }
-                      ]}
-                    >
-                      {isUserReminded ? 'Reminded' : 'Remind'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-              </View>
-            </View>
-          );
-        }}
-      />
-
-      {/* Create Event Modal Form */}
-      <CreateEventModal
-        isVisible={isCreateModalVisible}
-        onClose={() => setIsCreateModalVisible(false)}
-        onSubmit={handleAddEvent}
-      />
-
     </View>
   );
 }

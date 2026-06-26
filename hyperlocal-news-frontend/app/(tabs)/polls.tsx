@@ -246,34 +246,37 @@ export default function PollsScreen() {
 
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <View style={{ width: 40 }} />
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    activeOpacity={0.7}
+                    style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                >
+                    <Ionicons name="arrow-back" size={22} color={colors.text} />
+                </TouchableOpacity>
 
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Polls</Text>
 
-                {/* FAB-style create button */}
-                <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: colors.primaryLight }]}
-                    onPress={handleCreatePoll}
-                    activeOpacity={0.7}
-                >
-                    <Ionicons name="add" size={22} color={colors.primary} />
-                </TouchableOpacity>
+                <View style={{ width: 40 }} />
             </View>
 
-            {/* Polls List */}
-            <FlatList
-                data={polls}
-                keyExtractor={(item) => item.poll_uid}
-                renderItem={renderPollCard}
-                contentContainerStyle={[
-                    styles.listContent,
-                    polls.length === 0 && styles.listContentEmpty,
-                ]}
-                showsVerticalScrollIndicator={false}
-                refreshing={isRefetching}
-                onRefresh={refetch}
-                ListEmptyComponent={renderEmpty}
-            />
+            {/* Coming Soon Container */}
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+                <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)', width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Ionicons name="bar-chart-outline" size={48} color="#F59E0B" />
+                </View>
+                <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 12, textAlign: 'center' }}>Coming Soon</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 15, fontFamily: 'Poppins_500Medium', textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+                    We are currently developing the backend infrastructure for public consensus voting. You will soon be able to participate in local polls!
+                </Text>
+                <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => router.back()}
+                    activeOpacity={0.8}
+                >
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold' }}>Go Back</Text>
+                    <Ionicons name="arrow-back" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }

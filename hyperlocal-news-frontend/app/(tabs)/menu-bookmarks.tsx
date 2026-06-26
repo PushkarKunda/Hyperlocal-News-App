@@ -102,6 +102,13 @@ export default function MenuBookmarksScreen() {
       {/* Header - Top App Bar */}
       <View style={[styles.header, { borderBottomColor: isDark ? '#374151' : '#E2E8F0' }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={{ marginRight: 4 }}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Bookmarks</Text>
         </View>
         

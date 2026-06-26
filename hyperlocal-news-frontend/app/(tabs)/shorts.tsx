@@ -148,14 +148,6 @@ export default function ShortsScreen() {
     itemVisiblePercentThreshold: 50,
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.darkLoaderContainer}>
-        <LoadingSpinner fullScreen text="Loading shorts..." colorScheme="dark" color="#4648D4" />
-      </View>
-    );
-  }
-
   const renderVideoItem = useCallback(({ item, index }: { item: ShortVideo; index: number }) => {
     const shouldLoad = Math.abs(index - activeIndex) <= 1;
     return (
@@ -167,6 +159,14 @@ export default function ShortsScreen() {
       />
     );
   }, [activeIndex, listHeight]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.darkLoaderContainer}>
+        <LoadingSpinner fullScreen text="Loading shorts..." colorScheme="dark" color="#4648D4" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
