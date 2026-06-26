@@ -20,7 +20,7 @@ interface LocalEventCardProps {
   onRemindMe?: () => void;
 }
 
-export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProps) {
+function LocalEventCardComponent({ item, onPress, onRemindMe }: LocalEventCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const scale = useAppTextScale();
@@ -61,6 +61,20 @@ export function LocalEventCard({ item, onPress, onRemindMe }: LocalEventCardProp
     </TouchableOpacity>
   );
 }
+
+export const LocalEventCard = React.memo(
+  LocalEventCardComponent,
+  (prevProps, nextProps) => {
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.category === nextProps.item.category &&
+      prevProps.item.title === nextProps.item.title &&
+      prevProps.item.distance === nextProps.item.distance &&
+      prevProps.item.schedule === nextProps.item.schedule &&
+      prevProps.item.mapImageUrl === nextProps.item.mapImageUrl
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   card: {

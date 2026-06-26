@@ -20,7 +20,7 @@ interface LocalNewsCardProps {
   onPress?: () => void;
 }
 
-export function LocalNewsCard({ item, onPress }: LocalNewsCardProps) {
+function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const scale = useAppTextScale();
@@ -81,6 +81,21 @@ export function LocalNewsCard({ item, onPress }: LocalNewsCardProps) {
     </TouchableOpacity>
   );
 }
+
+export const LocalNewsCard = React.memo(
+  LocalNewsCardComponent,
+  (prevProps, nextProps) => {
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.title === nextProps.item.title &&
+      prevProps.item.distance === nextProps.item.distance &&
+      prevProps.item.timeAgo === nextProps.item.timeAgo &&
+      prevProps.item.views === nextProps.item.views &&
+      prevProps.item.imageUrl === nextProps.item.imageUrl &&
+      prevProps.item.variant === nextProps.item.variant
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   horizontalCard: {

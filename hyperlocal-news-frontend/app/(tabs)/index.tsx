@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -12,6 +12,7 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 import { useTabBarStore } from '@/store/tabBarStore';
+import { NewsArticle } from '@/types';
 
 
 const CATEGORIES = [
@@ -50,6 +51,16 @@ export default function HomeScreen() {
   // Load news dynamically from our simulated backend using React Query
   const { data: news = [], isLoading } = useNewsFeed();
 
+  const [scrollHeight, setScrollHeight] = useState(screenHeight);
+  const [activeCategory, setActiveCategory] = useState('for-you');
+
+  const renderNewsCard = useCallback(({ item }: { item: NewsArticle }) => (
+    <ImmersiveNewsCard
+      item={item}
+      containerHeight={scrollHeight}
+    />
+  ), [scrollHeight]);
+
   // Reset tab bar visibility and header on focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -64,9 +75,6 @@ export default function HomeScreen() {
     if (slug === 'for-you') return news;
     return news.filter(item => item.category?.slug === slug);
   };
-
-  const [scrollHeight, setScrollHeight] = useState(screenHeight);
-  const [activeCategory, setActiveCategory] = useState('for-you');
 
   // Animation values and state for the header auto-hide/pop feature
   const headerAnim = useRef(new Animated.Value(1)).current;
@@ -376,12 +384,7 @@ export default function HomeScreen() {
                   }}
                   data={categoryNews}
                   keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <ImmersiveNewsCard
-                      item={item}
-                      containerHeight={scrollHeight}
-                    />
-                  )}
+                  renderItem={renderNewsCard}
                   pagingEnabled
                   nestedScrollEnabled={true}
                   showsVerticalScrollIndicator={false}

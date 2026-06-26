@@ -11,19 +11,19 @@ import { useShortsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 
-const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isActive: boolean; itemHeight: number }) => {
+const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: ShortVideo; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
   const insets = useSafeAreaInsets();
-  const player = useVideoPlayer({ uri: item.videoUrl }, player => {
+  const player = useVideoPlayer(shouldLoad ? { uri: item.videoUrl } : null, player => {
     player.loop = true;
   });
 
   React.useEffect(() => {
-    if (isActive) {
+    if (isActive && shouldLoad) {
       player.play();
     } else {
       player.pause();
     }
-  }, [isActive, player]);
+  }, [isActive, shouldLoad, player]);
 
   const handlePress = () => {
     if (player.playing) {
@@ -118,7 +118,14 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
       </View>
     </View>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.isActive === nextProps.isActive &&
+    prevProps.shouldLoad === nextProps.shouldLoad &&
+    prevProps.itemHeight === nextProps.itemHeight &&
+    prevProps.item.id === nextProps.item.id
+  );
+});
 
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
@@ -149,18 +156,24 @@ export default function ShortsScreen() {
     );
   }
 
+  const renderVideoItem = useCallback(({ item, index }: { item: ShortVideo; index: number }) => {
+    const shouldLoad = Math.abs(index - activeIndex) <= 1;
+    return (
+      <ShortVideoItem 
+        item={item} 
+        isActive={index === activeIndex} 
+        shouldLoad={shouldLoad}
+        itemHeight={listHeight} 
+      />
+    );
+  }, [activeIndex, listHeight]);
+
   return (
     <View style={styles.container} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
       <FlatList
         data={shorts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <ShortVideoItem 
-            item={item} 
-            isActive={index === activeIndex} 
-            itemHeight={listHeight} 
-          />
-        )}
+        renderItem={renderVideoItem}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={listHeight}

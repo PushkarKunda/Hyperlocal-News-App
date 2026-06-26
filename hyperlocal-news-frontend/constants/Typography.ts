@@ -1,10 +1,10 @@
 export const Typography = {
   fonts: {
-    // Body / Interface (Inter)
-    regular: 'Inter_400Regular',
-    medium: 'Inter_500Medium',
-    semiBold: 'Inter_600SemiBold',
-    bold: 'Inter_700Bold',
+    // Body / Interface (Poppins)
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semiBold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
     
     // Display / Headings (Poppins)
     displayRegular: 'Poppins_400Regular',

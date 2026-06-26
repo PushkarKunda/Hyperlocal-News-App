@@ -205,13 +205,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="bookmarks"
-        options={{
-          href: null,
-          tabBarStyle: { display: 'none' },
-        }}
-      />
-      <Tabs.Screen
         name="polls"
         options={{
           href: null,
