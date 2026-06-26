@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import MenuOptions from '@/components/MenuOptions';
+
 import { useAuthStore } from '@/store/authStore';
 import { StatusBar } from 'expo-status-bar';
 import { usePublisherArticles, useDeleteArticle } from '@/hooks/useNews';
@@ -29,7 +29,6 @@ export default function ArticlesScreen() {
   const { all: articles, isLoading, refetch } = usePublisherArticles();
   const { mutate: deleteArticleMutate } = useDeleteArticle();
 
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>({});
   const [bookmarksState, setBookmarksState] = useState<Record<string, boolean>>({});
 
@@ -103,13 +102,6 @@ export default function ArticlesScreen() {
         {/* Custom Figma Header */}
         <View style={[styles.headerEmpty, { paddingTop: insets.top }]}>
           <View style={styles.headerLeftEmpty}>
-            <TouchableOpacity
-              style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => setIsMenuVisible(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="menu" size={24} color={colors.text} />
-            </TouchableOpacity>
             <Text style={[styles.headerTitleEmpty, { color: colors.text }]}>My Articles</Text>
           </View>
           <View style={styles.headerRightEmpty}>
@@ -262,15 +254,7 @@ export default function ArticlesScreen() {
   }
 
   if (articles.length === 0) {
-    return (
-      <>
-        {renderEmptyState()}
-        <MenuOptions 
-          isVisible={isMenuVisible} 
-          onClose={() => setIsMenuVisible(false)} 
-        />
-      </>
-    );
+    return renderEmptyState();
   }
 
   return (
@@ -278,13 +262,6 @@ export default function ArticlesScreen() {
       {/* Feed Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => setIsMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={colors.text} />
-          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>My Articles</Text>
         </View>
         <View style={styles.headerRight}>
@@ -496,11 +473,6 @@ export default function ArticlesScreen() {
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* Reusable Menu Drawer Overlay Component */}
-      <MenuOptions 
-        isVisible={isMenuVisible} 
-        onClose={() => setIsMenuVisible(false)} 
-      />
     </View>
   );
 }

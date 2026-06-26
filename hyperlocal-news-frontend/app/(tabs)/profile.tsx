@@ -21,7 +21,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import MenuOptions from '@/components/MenuOptions';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -51,10 +50,10 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const { user, logout, updateProfile, checkPublisherEligibility, switchToPublisher } = useAuthStore();
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Profile Active Tab State
-  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'verify'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved'>('posts');
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   // News Filter Pill State
   const [newsFilter, setNewsFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   // Sorting Mode State
@@ -142,10 +141,10 @@ export default function ProfileScreen() {
   };
 
   React.useEffect(() => {
-    if (activeTab === 'verify') {
+    if (showVerifyModal) {
       fetchEligibility();
     }
-  }, [activeTab]);
+  }, [showVerifyModal]);
 
 
   const isPublisher = user?.isPublisher || false;
@@ -330,6 +329,8 @@ export default function ProfileScreen() {
         isPublisher: true,
       } as any);
 
+      setShowVerifyModal(false);
+
       Alert.alert(
         'Congratulations! 🎉',
         'Your profile has been updated and upgraded to Publisher successfully! You can now write articles and polls.',
@@ -435,28 +436,11 @@ export default function ProfileScreen() {
 
       {/* Symmetrical Svelte Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>
 
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => router.push('/(tabs)/notifications')}
-          activeOpacity={0.7}
-        >
-          <View>
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>3</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -581,7 +565,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={() => setActiveTab('verify')}
+                  onPress={() => setShowVerifyModal(true)}
                 >
                   <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
                 </TouchableOpacity>
@@ -732,6 +716,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
+
         {/* Navigation Tabs Header */}
         <View style={[styles.tabsHeader, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
           <TouchableOpacity
@@ -758,28 +743,16 @@ export default function ProfileScreen() {
             <Text style={[styles.tabLabel, { color: activeTab === 'saved' ? colors.primary : colors.textSecondary }]}>Saved</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'verify' && styles.tabButtonActive]}
-            onPress={() => {
-              if (isPublisher) {
-                // Verified user "+" Tab Shortcut opens post creation directly!
-                setShowCreatePostModal(true);
-              } else {
-                setActiveTab('verify');
-              }
-            }}
-          >
-            {isPublisher ? (
+          {isPublisher && (
+            <TouchableOpacity
+              style={styles.tabButton}
+              onPress={() => setShowCreatePostModal(true)}
+            >
               <View style={styles.plusTabCircle}>
                 <Ionicons name="add" size={18} color="#FFFFFF" />
               </View>
-            ) : (
-              <>
-                <Ionicons name="shield-checkmark" size={16} color={activeTab === 'verify' ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.tabLabel, { color: activeTab === 'verify' ? colors.primary : colors.textSecondary }]}>Verify</Text>
-              </>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Tab Contents */}
@@ -839,7 +812,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={[styles.promptButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={() => setActiveTab('verify')}
+                  onPress={() => setShowVerifyModal(true)}
                 >
                   <Text style={styles.promptButtonText}>Get Verified</Text>
                 </TouchableOpacity>
@@ -1114,136 +1087,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {activeTab === 'verify' && (
-          <View style={styles.verifySection}>
-            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Apply for Publisher Verification</Text>
 
-            <View style={[styles.verifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.verifyStepHeader}>
-                <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.verifyStepTitle, { color: colors.text }]}>Join the HyperLocal Publisher Program</Text>
-                <Text style={[styles.verifyStepSubtitle, { color: colors.textSecondary }]}>
-                  Publish local reports directly to your community feed, gain followers, and earn badges.
-                </Text>
-              </View>
-
-              {isLoadingEligibility ? (
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
-              ) : (
-                <View style={styles.formWrapper}>
-                  {/* Real requirements status */}
-                  {eligibility && (
-                    <View style={[styles.checklistCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                      <Text style={[styles.checklistTitle, { color: colors.text }]}>Verification Status Checklist</Text>
-                      {eligibility.requirements.map((req, i) => {
-                        const isDone = req.status === 'verified' || req.status === 'filled' || req.status === 'active';
-                        return (
-                          <View key={i} style={styles.checklistItem}>
-                            <Ionicons
-                              name={isDone ? "checkmark-circle" : "close-circle"}
-                              size={16}
-                              color={isDone ? "#4CAF50" : "#F44336"}
-                            />
-                            <Text style={[styles.checklistText, { color: colors.text }]}>{req.message}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                      placeholder="Enter full name or news brand"
-                      placeholderTextColor={colors.textTertiary}
-                      value={fullName}
-                      onChangeText={setFullName}
-                    />
-                  </View>
-
-                  {/* Gender selection */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Gender</Text>
-                    <View style={styles.genderContainer}>
-                      {['Male', 'Female', 'Other'].map((g) => {
-                        const isActive = genderState.toLowerCase() === g.toLowerCase();
-                        return (
-                          <TouchableOpacity
-                            key={g}
-                            style={[
-                              styles.genderOption,
-                              { borderColor: colors.border, backgroundColor: colors.background },
-                              isActive && styles.genderOptionActive
-                            ]}
-                            onPress={() => setGenderState(g.toLowerCase())}
-                          >
-                            <Text style={[
-                              styles.genderOptionText,
-                              { color: colors.textSecondary },
-                              isActive && [styles.genderOptionTextActive, { color: colors.primary }]
-                            ]}>
-                              {g}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-
-                  {/* Date of Birth */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Date of Birth (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                      placeholder="e.g. 1995-08-24"
-                      placeholderTextColor={colors.textTertiary}
-                      value={dob}
-                      onChangeText={setDob}
-                      keyboardType="numeric"
-                      maxLength={10}
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                      placeholder="e.g. Visakhapatnam, AP"
-                      placeholderTextColor={colors.textTertiary}
-                      value={city}
-                      onChangeText={setCity}
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
-                    <TextInput
-                      style={[styles.textInput, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                      placeholder="Describe your background or brand value proposition..."
-                      placeholderTextColor={colors.textTertiary}
-                      multiline
-                      numberOfLines={3}
-                      value={bio}
-                      onChangeText={setBio}
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.submitVerifyBtn, { backgroundColor: colors.primary }]}
-                    activeOpacity={0.8}
-                    onPress={handleApplyVerification}
-                    disabled={isSubmittingVerify}
-                  >
-                    <Text style={styles.submitVerifyBtnText}>
-                      {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
 
       </ScrollView>
 
@@ -1274,7 +1118,7 @@ export default function ProfileScreen() {
                   setShowCreateArticleModal(true);
                 } else {
                   Alert.alert('Access Denied', 'Write News is only available for verified publishers. Please verify first.', [
-                    { text: 'Apply Now', onPress: () => setActiveTab('verify') },
+                    { text: 'Apply Now', onPress: () => setShowVerifyModal(true) },
                     { text: 'Cancel', style: 'cancel' }
                   ]);
                 }
@@ -1295,8 +1139,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Drawer Overlay Option Menu */}
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
 
       {/* Create Article Modal */}
       <CreateArticleModal
@@ -1304,6 +1146,151 @@ export default function ProfileScreen() {
         onClose={() => setShowCreateArticleModal(false)}
         onSubmit={handleCreateNewsArticle}
       />
+
+      {/* Publisher Verification Modal */}
+      <Modal
+        visible={showVerifyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowVerifyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity onPress={() => setShowVerifyModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Apply for Verification</Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.verifyStepHeader}>
+                <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
+                <Text style={[styles.verifyStepTitle, { color: colors.text }]}>Join the HyperLocal Publisher Program</Text>
+                <Text style={[styles.verifyStepSubtitle, { color: colors.textSecondary }]}>
+                  Publish local reports directly to your community feed, gain followers, and earn badges.
+                </Text>
+              </View>
+
+              {isLoadingEligibility ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+              ) : (
+                <View style={styles.formWrapper}>
+                  {/* Real eligibility requirements status */}
+                  {eligibility && (
+                    <View style={[styles.checklistCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                      <Text style={[styles.checklistTitle, { color: colors.text }]}>Verification Status Checklist</Text>
+                      {eligibility.requirements.map((req, i) => {
+                        const isDone = req.status === 'verified' || req.status === 'filled' || req.status === 'active';
+                        return (
+                          <View key={i} style={styles.checklistItem}>
+                            <Ionicons
+                              name={isDone ? "checkmark-circle" : "close-circle"}
+                              size={16}
+                              color={isDone ? "#4CAF50" : "#F44336"}
+                            />
+                            <Text style={[styles.checklistText, { color: colors.text }]}>{req.message}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                      placeholder="Enter full name or news brand"
+                      placeholderTextColor={colors.textTertiary}
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
+
+                  {/* Gender selection */}
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Gender</Text>
+                    <View style={styles.genderContainer}>
+                      {['Male', 'Female', 'Other'].map((g) => {
+                        const isActive = genderState.toLowerCase() === g.toLowerCase();
+                        return (
+                          <TouchableOpacity
+                            key={g}
+                            style={[
+                              styles.genderOption,
+                              { borderColor: colors.border, backgroundColor: colors.surface },
+                              isActive && styles.genderOptionActive
+                            ]}
+                            onPress={() => setGenderState(g.toLowerCase())}
+                          >
+                            <Text style={[
+                              styles.genderOptionText,
+                              { color: colors.textSecondary },
+                              isActive && [styles.genderOptionTextActive, { color: colors.primary }]
+                            ]}>
+                              {g}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Date of Birth */}
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Date of Birth (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. 1995-08-24"
+                      placeholderTextColor={colors.textTertiary}
+                      value={dob}
+                      onChangeText={setDob}
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. Visakhapatnam, AP"
+                      placeholderTextColor={colors.textTertiary}
+                      value={city}
+                      onChangeText={setCity}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, styles.modalTextArea, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                      placeholder="Describe your background or brand value proposition..."
+                      placeholderTextColor={colors.textTertiary}
+                      multiline
+                      numberOfLines={3}
+                      value={bio}
+                      onChangeText={setBio}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.publishPostBtn, { backgroundColor: colors.primary }]}
+                    activeOpacity={0.8}
+                    onPress={handleApplyVerification}
+                    disabled={isSubmittingVerify}
+                  >
+                    <Text style={styles.publishPostBtnText}>
+                      {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Create Post Modal */}
       <Modal
@@ -2176,6 +2163,7 @@ const styles = StyleSheet.create({
   fabDivider: {
     height: 1,
   },
+
   formGroup: {
     gap: 8,
   },

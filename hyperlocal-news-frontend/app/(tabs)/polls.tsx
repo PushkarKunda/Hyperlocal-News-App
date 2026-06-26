@@ -20,7 +20,6 @@ import { useActivePolls, useVotePoll } from '@/hooks/usePolls';
 import { Poll } from '@/services/api/polls';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { BecomePublisherView } from '@/components/common/BecomePublisherView';
-import MenuOptions from '@/components/MenuOptions';
 
 export default function PollsScreen() {
     const colorScheme = useAppColorScheme();
@@ -36,7 +35,6 @@ export default function PollsScreen() {
     const isAuthenticated = !!user;
 
     const [showGatedView, setShowGatedView] = useState(false);
-    const [isMenuVisible, setIsMenuVisible] = useState(false);
 
     // ─── API Hooks ──────────────────────────────────────────────────────────────
     const {
@@ -248,13 +246,7 @@ export default function PollsScreen() {
 
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity
-                    style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={() => setIsMenuVisible(true)}
-                    activeOpacity={0.7}
-                >
-                    <Ionicons name="menu" size={22} color={colors.text} />
-                </TouchableOpacity>
+                <View style={{ width: 40 }} />
 
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Polls</Text>
 
@@ -281,11 +273,6 @@ export default function PollsScreen() {
                 refreshing={isRefetching}
                 onRefresh={refetch}
                 ListEmptyComponent={renderEmpty}
-            />
-
-            <MenuOptions
-                isVisible={isMenuVisible}
-                onClose={() => setIsMenuVisible(false)}
             />
         </View>
     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -6,8 +6,8 @@ import { MaterialIcons, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
-import MenuOptions from '@/components/MenuOptions';
 import { Image } from 'expo-image';
+
 
 import { useTrendingList, useCategoriesList, useSourcesList, useLocalitiesList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -17,7 +17,8 @@ export default function DiscoverScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
+
+
 
   // Load discover page segments dynamically from simulated Axios client using React Query hooks
   const { data: trending = [], isLoading: isLoadingTrending } = useTrendingList();
@@ -84,14 +85,6 @@ export default function DiscoverScreen() {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header Section */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
-          style={styles.headerLeftButton} 
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
-        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Discover</Text>
       </View>
 
@@ -201,7 +194,6 @@ export default function DiscoverScreen() {
         </View>
 
       </ScrollView>
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

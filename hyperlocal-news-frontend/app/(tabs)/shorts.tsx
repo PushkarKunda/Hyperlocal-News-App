@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,6 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { ShortVideo } from '@/types';
 import { useShortsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import MenuOptions from '@/components/MenuOptions';
 
 
 const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isActive: boolean; itemHeight: number }) => {
@@ -26,6 +25,14 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
     }
   }, [isActive, player]);
 
+  const handlePress = () => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
   return (
     <View style={[styles.itemContainer, { height: itemHeight }]}>
       <VideoView
@@ -34,6 +41,9 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
         contentFit="cover"
         nativeControls={false}
       />
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <View style={StyleSheet.absoluteFillObject} />
+      </TouchableWithoutFeedback>
       
       {/* Right Interaction Stack */}
       <View style={styles.rightStack}>
@@ -116,9 +126,10 @@ export default function ShortsScreen() {
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const { data: shorts = [], isLoading } = useShortsList();
+
+
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
@@ -144,7 +155,11 @@ export default function ShortsScreen() {
         data={shorts}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <ShortVideoItem item={item} isActive={index === activeIndex} itemHeight={listHeight} />
+          <ShortVideoItem 
+            item={item} 
+            isActive={index === activeIndex} 
+            itemHeight={listHeight} 
+          />
         )}
         pagingEnabled
         showsVerticalScrollIndicator={false}
@@ -167,10 +182,6 @@ export default function ShortsScreen() {
         pointerEvents="box-none"
       >
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => setIsMenuVisible(true)} style={styles.menuLeftButton}>
-            <Ionicons name="menu" size={28} color="white" />
-          </TouchableOpacity>
-
           <View style={styles.tabsContainer}>
             <TouchableOpacity onPress={() => setActiveTab('Following')} style={styles.tabItem}>
               <Text style={[styles.tabText, activeTab === 'Following' && styles.activeTabText]}>Following</Text>
@@ -184,8 +195,6 @@ export default function ShortsScreen() {
           </View>
         </View>
       </LinearGradient>
-
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

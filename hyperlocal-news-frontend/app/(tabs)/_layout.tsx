@@ -1,12 +1,13 @@
 import { Tabs, usePathname } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { View, StyleSheet, BackHandler } from 'react-native';
+import { View, StyleSheet, BackHandler, Platform } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Spacing';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
+import { TabBar } from '@/components/TabBar';
 
 export default function TabLayout() {
   const colorScheme = useAppColorScheme();
@@ -36,6 +37,7 @@ export default function TabLayout() {
         cleanPath === '/local' ||
         cleanPath === '/discover' ||
         cleanPath === '/profile' ||
+        cleanPath === '/more' ||
         cleanPath === '/menu-bookmarks'
       ) {
         BackHandler.exitApp();
@@ -50,10 +52,22 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: { display: 'none' },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopWidth: 0,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          paddingTop: 10,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+        },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
@@ -69,7 +83,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={24} color={color} />
           ),
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
@@ -102,9 +115,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person-outline" size={24} color={color} />
+            <MaterialIcons name="more-horiz" size={24} color={color} />
           ),
         }}
       />
@@ -112,72 +131,91 @@ export default function TabLayout() {
         name="create-article"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="menu-bookmarks"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="settings-language"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="settings-location"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="profile-interests"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="profile-reading-history"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="help"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="events"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="articles"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="bookmarks"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="polls"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
     </Tabs>

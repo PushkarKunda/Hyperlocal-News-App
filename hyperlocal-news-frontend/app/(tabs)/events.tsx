@@ -7,7 +7,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { CreateEventModal } from '@/components/CreateEventModal';
-import MenuOptions from '@/components/MenuOptions';
+
 import { useAuthStore } from '@/store/authStore';
 import { StatusBar } from 'expo-status-bar';
 
@@ -36,7 +36,6 @@ export default function EventsScreen() {
   const { data: apiEvents = [], isLoading } = useEventsList();
   const [eventsList, setEventsList] = useState<CustomEventItem[]>([]);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'week'>('all');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [interested, setInterested] = useState<Record<string, boolean>>({});
@@ -218,13 +217,7 @@ export default function EventsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={22} color={colors.text} />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
         <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.primaryLight }]}
@@ -395,11 +388,6 @@ export default function EventsScreen() {
         onSubmit={handleAddEvent}
       />
 
-      {/* Reusable Menu Drawer Overlay Component */}
-      <MenuOptions 
-        isVisible={isMenuVisible} 
-        onClose={() => setIsMenuVisible(false)} 
-      />
     </View>
   );
 }

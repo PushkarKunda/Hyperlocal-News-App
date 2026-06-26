@@ -195,7 +195,7 @@ export default function CreateArticleScreen() {
         author: {
           id: user?.user_uid || '',
           name: user?.name ?? 'Publisher',
-          avatar: user?.avatar,
+          avatar: user?.avatar ?? undefined,
           isVerified: user?.isPublisher || false,
         },
         location: {

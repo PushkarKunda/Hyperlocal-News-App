@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import MenuOptions from '@/components/MenuOptions';
+
 import { useBookmarks, useRemoveBookmark } from '@/hooks/useBookmarks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
@@ -49,7 +49,6 @@ export default function MenuBookmarksScreen() {
   // Screen states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Remove individual bookmark
   const toggleBookmark = (id: string) => {
@@ -103,13 +102,6 @@ export default function MenuBookmarksScreen() {
       {/* Header - Top App Bar */}
       <View style={[styles.header, { borderBottomColor: isDark ? '#374151' : '#E2E8F0' }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => setIsMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={colors.text} />
-          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Bookmarks</Text>
         </View>
         
@@ -302,8 +294,6 @@ export default function MenuBookmarksScreen() {
 
 
 
-      {/* Slide drawer menu overlay options */}
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }
