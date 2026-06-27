@@ -1,49 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { locationApi, newsApi, categoriesApi, eventsApi } from '@/services/api';
-
-const STATIC_INTERESTS = [
-  { id: 'tech', name: 'Tech', slug: 'tech', emoji: '💻', description: 'Tech & innovation' },
-  { id: 'design', name: 'Design', slug: 'design', emoji: '🎨', description: 'Design & creativity' },
-  { id: 'sports', name: 'Sports', slug: 'sports', emoji: '⚽', description: 'Games & athletics' },
-  { id: 'music', name: 'Music', slug: 'music', emoji: '🎵', description: 'Songs & artists' },
-  { id: 'art', name: 'Art', slug: 'art', emoji: '🖌️', description: 'Visual & fine arts' },
-  { id: 'travel', name: 'Travel', slug: 'travel', emoji: '🧭', description: 'Journeys & nature' },
-  { id: 'food', name: 'Food', slug: 'food', emoji: '🥪', description: 'Culinary & cooking' },
-  { id: 'gaming', name: 'Gaming', slug: 'gaming', emoji: '🎮', description: 'E-sports & updates' },
-  { id: 'wellness', name: 'Health & Wellness', slug: 'wellness', emoji: '🏥', description: 'Mindfulness and healthy living' },
-];
-
-// 1. News feed hook
-export function useNewsFeed() {
-  return useQuery({
-    queryKey: ['news-feed', 'api'],
-    queryFn: async () => {
-      return await newsApi.list();
-    },
-  });
-}
-
-// 2. News Article details hook
-export function useArticleDetails(id: string | undefined) {
-  return useQuery({
-    queryKey: ['article-details', id],
-    queryFn: async () => {
-      if (!id) return undefined;
-      return await newsApi.getById(id);
-    },
-    enabled: !!id,
-  });
-}
-
-// 2b. Categories list hook
-export function useCategoriesList() {
-  return useQuery({
-    queryKey: ['categories-list', 'api'],
-    queryFn: async () => {
-      return await categoriesApi.list();
-    },
-  });
-}
+// hooks/useApi.ts
+import { useQuery } from '@tanstack/react-query';
+import { locationApi, newsApi, categoriesApi } from '@/services/api';
 
 const getGlyphForLanguage = (code: string, name: string): string => {
   switch (code.toLowerCase()) {
@@ -52,7 +9,7 @@ const getGlyphForLanguage = (code: string, name: string): string => {
     case 'te': return 'అ';
     case 'ta': return 'அ';
     case 'ml': return 'അ';
-    case 'kn': return 'അ';
+    case 'kn': return 'ಅ';
     case 'bn': return 'অ';
     case 'gu': return 'અ';
     case 'mr': return 'अ';
@@ -63,14 +20,29 @@ const getGlyphForLanguage = (code: string, name: string): string => {
   }
 };
 
-// 2c. Languages list hook
+// ✅ REMOVED useMocks - all real API calls
+
+export function useNewsFeed() {
+  return useQuery({
+    queryKey: ['news-feed'],
+    queryFn: () => newsApi.list(),
+  });
+}
+
+export function useCategoriesList() {
+  return useQuery({
+    queryKey: ['categories-list'],
+    queryFn: () => categoriesApi.list(),
+  });
+}
+
 export function useLanguagesList() {
   return useQuery({
-    queryKey: ['languages-list', 'api'],
+    queryKey: ['languages-list'],
     queryFn: async () => {
       const response = await locationApi.getLanguages();
       return response.map(lang => ({
-        id: lang.code, // Map to code ('en', 'te', 'hi') to preserve matching with local UI selectedLanguage default
+        id: lang.code,
         name: lang.name,
         glyph: getGlyphForLanguage(lang.code, lang.name),
       }));
@@ -78,10 +50,9 @@ export function useLanguagesList() {
   });
 }
 
-// 3. States list hook (for onboarding locations)
 export function useStatesList() {
   return useQuery({
-    queryKey: ['states-list', 'api'],
+    queryKey: ['states-list'],
     queryFn: async () => {
       const response = await locationApi.getStates();
       return response.map(state => ({
@@ -93,14 +64,14 @@ export function useStatesList() {
   });
 }
 
-// 4. Districts list hook (for onboarding locations)
 export function useDistrictsList(stateId: string | undefined) {
   return useQuery({
-    queryKey: ['districts-list', stateId, 'api'],
+    queryKey: ['districts-list', stateId],
     queryFn: async () => {
       if (!stateId) return [];
+
       const response = await locationApi.getDistricts();
-      
+
       let backendStateId: number | null = null;
       if (stateId === 'ap') {
         backendStateId = 1;
@@ -123,75 +94,5 @@ export function useDistrictsList(stateId: string | undefined) {
         }));
     },
     enabled: !!stateId,
-  });
-}
-
-// 5. Onboarding Interests / Topics hook
-export function useInterestsList() {
-  return useQuery({
-    queryKey: ['interests-list'],
-    queryFn: async () => {
-      return STATIC_INTERESTS;
-    },
-  });
-}
-
-// 6. Shorts videos feed hook
-export function useShortsList() {
-  return useQuery({
-    queryKey: ['shorts-list'],
-    queryFn: async () => {
-      return [];
-    },
-  });
-}
-
-// 7. Local Events feed hook
-export function useEventsList() {
-  return useQuery({
-    queryKey: ['events-list'],
-    queryFn: async () => {
-      return await eventsApi.list();
-    },
-  });
-}
-
-// 8. Discover page trending hook
-export function useTrendingList() {
-  return useQuery({
-    queryKey: ['trending-list'],
-    queryFn: async () => {
-      return [];
-    },
-  });
-}
-
-// 9. Discover page sources hook
-export function useSourcesList() {
-  return useQuery({
-    queryKey: ['sources-list'],
-    queryFn: async () => {
-      return [];
-    },
-  });
-}
-
-// 10. Discover page localities hook
-export function useLocalitiesList() {
-  return useQuery({
-    queryKey: ['localities-list'],
-    queryFn: async () => {
-      return [];
-    },
-  });
-}
-
-// 11. Immersive news hook
-export function useImmersiveNewsList() {
-  return useQuery({
-    queryKey: ['immersive-news-list'],
-    queryFn: async () => {
-      return [];
-    },
   });
 }
