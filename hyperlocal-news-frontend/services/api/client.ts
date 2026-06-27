@@ -34,6 +34,14 @@ export const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// ─── Unauthorized Callback Handling ──────────────────────────────────────────
+
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export const setOnUnauthorizedCallback = (callback: () => void) => {
+  onUnauthorizedCallback = callback;
+};
+
 // ─── Request Interceptor ─────────────────────────────────────────────────────
 
 apiClient.interceptors.request.use(
@@ -115,7 +123,9 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         await clearTokens();
-        // You can emit an event here to redirect to login
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -102,7 +102,7 @@ export default function CreateArticleScreen() {
     return (
       <View style={[styles.gatedContainer, { backgroundColor: colors.background }]}>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        
+
         {/* Header */}
         <View style={[styles.gatedHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
           <TouchableOpacity
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   submitButtonText: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  
+
   // Gated UI Styles
   gatedContainer: {
     flex: 1,

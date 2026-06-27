@@ -20,9 +20,7 @@ export default function AuthLayout() {
     }
   }, [isAuthenticated, isOnboarded]);
 
-  if (isAuthenticated) {
-    return null;
-  }
+
 
   return (
     <Stack

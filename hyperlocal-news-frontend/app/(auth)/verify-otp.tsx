@@ -71,7 +71,8 @@ export default function VerifyOTPScreen() {
 
     try {
       const response = await verifyPhoneOTP(otp);
-      if (response.is_new_user) {
+      const isNew = response.user?.is_new_user ?? (response as any).is_new_user ?? false;
+      if (isNew) {
         router.replace('/(onboarding)/language');
       } else {
         router.replace('/(tabs)');
