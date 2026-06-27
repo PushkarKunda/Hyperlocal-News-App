@@ -1,3 +1,4 @@
+// app/(onboarding)/profile.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -26,28 +27,75 @@ import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
+// ✅ FIXED: Import statusCodes
+import { statusCodes } from '@react-native-google-signin/google-signin';
 import { uploadsApi, usersApi } from '@/services/api';
-
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
-  const { user, updateProfile, isOnboarded } = useAuthStore();
   const { width } = useWindowDimensions();
-  const avatarSize = Math.min(Math.max(width * 0.33, 96), 140);
 
-  const [name, setName] = useState(user?.name || '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(user?.avatar || null);
+  const {
+    user,
+    updateProfile,
+    isOnboarded,
+    sendPhoneOTP,
+    linkPhone,
+    pendingVerificationId,
+    isLoading,
+  } = useAuthStore();
+
+  // ─── State ────────────────────────────────────────────────────────────────
+
+  const [name, setName] = useState(user?.name ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(
+    user?.phoneNumber ?? user?.phone ?? ''
+  );
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [gender, setGender] = useState(user?.gender ?? '');
+  const [dob, setDob] = useState(user?.date_of_birth ?? '');
+
+  // ✅ FIXED: null → undefined conversion
+  const [selectedAvatar, setSelectedAvatar] = useState<string | undefined>(
+    user?.profile_picture ?? user?.avatar ?? undefined
+  );
+
   const [isFocused, setIsFocused] = useState(false);
-  const [isVerified, setIsVerified] = useState(user?.isPublisher || false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showOtpField, setShowOtpField] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+
+  // ─── Google Sign-In ───────────────────────────────────────────────────────
+
+  const { signInWithGoogle, isGoogleLoading, isGoogleReady } = useGoogleFirebaseAuth({
+    onSuccess: (response) => {
+      const updatedUser = response.user;
+      updateProfile({
+        email: updatedUser.email ?? undefined,
+        email_verified: updatedUser.email_verified,
+      });
+      setEmail(updatedUser.email ?? '');
+      showCustomAlert('Success', 'Google account linked successfully!', 'success');
+    },
+    onError: (error: any) => {
+      // ✅ FIXED: statusCodes now properly imported
+      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+      showCustomAlert(
+        'Error',
+        error?.message ?? 'Failed to link Google account. Please try again.',
+        'error'
+      );
+    },
+  });
+
+  // ─── Dialog State ─────────────────────────────────────────────────────────
 
   const [dialogConfig, setDialogConfig] = useState<{
     visible: boolean;
@@ -61,81 +109,30 @@ export default function ProfileCompletionScreen() {
     type: 'info',
   });
 
-  const showCustomAlert = (title: string, message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
-    setDialogConfig({
-      visible: true,
-      title,
-      message,
-      type,
-    });
+  const showCustomAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'info' | 'error' | 'warning' = 'info'
+  ) => {
+    setDialogConfig({ visible: true, title, message, type });
   };
 
   const closeCustomAlert = () => {
-    setDialogConfig(prev => ({ ...prev, visible: false }));
+    setDialogConfig((prev) => ({ ...prev, visible: false }));
   };
 
-  const handleEmailChange = (val: string) => {
-    setEmail(val);
-    if (isVerified) {
-      setIsVerified(false);
-    }
-    if (showOtpField) {
-      setShowOtpField(false);
-      setOtpCode('');
-    }
-  };
+  // ─── Animations ───────────────────────────────────────────────────────────
 
-  const handleVerifyEmail = () => {
-    if (!email.trim()) {
-      showCustomAlert('Email Required', 'Please enter your Gmail address first.', 'warning');
-      return;
-    }
-    if (!email.includes('@')) {
-      showCustomAlert('Invalid Email', 'Please enter a valid email address.', 'error');
-      return;
-    }
-    setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-      setShowOtpField(true);
-      showCustomAlert(
-        'OTP Sent! ✉️',
-        'A verification code has been sent to your email. You can enter any code to complete verification.',
-        'success'
-      );
-    }, 1200);
-  };
-
-  const handleConfirmOtp = () => {
-    if (otpCode.trim().length < 4) {
-      showCustomAlert('Invalid Code', 'Please enter a valid OTP code (at least 4 digits).', 'error');
-      return;
-    }
-    setIsVerified(true);
-    setShowOtpField(false);
-    showCustomAlert(
-      'Email Verified! 🎉',
-      'Your Gmail has been successfully verified! You now have Publisher privileges to create articles and events.',
-      'success'
-    );
-  };
-
-  // Animations
   const buttonScale = useRef(new Animated.Value(1)).current;
   const avatarScale = useRef(new Animated.Value(1)).current;
   const inputBorderAnim = useRef(new Animated.Value(0)).current;
-
-  // Staggered screen entry animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     const onBackPress = () => {
-      // Prevent user from going back during the profile setup process only if not onboarded
-      if (!isOnboarded) {
-        return true;
-      }
-      return false; // Allow going back
+      if (!isOnboarded) return true;
+      return false;
     };
 
     BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -155,6 +152,72 @@ export default function ProfileCompletionScreen() {
 
     return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
   }, [isOnboarded]);
+
+  // ─── Phone Verification ───────────────────────────────────────────────────
+
+  const handleSendPhoneVerification = async () => {
+    if (!phoneNumber.trim()) {
+      showCustomAlert('Phone Required', 'Please enter your phone number first.', 'warning');
+      return;
+    }
+
+    let formattedPhone = phoneNumber.trim();
+    if (!formattedPhone.startsWith('+')) {
+      const clean = formattedPhone.replace(/\D/g, '');
+      if (clean.length < 10) {
+        showCustomAlert('Invalid Phone', 'Please enter a valid 10-digit phone number.', 'error');
+        return;
+      }
+      formattedPhone = `+91${clean.slice(-10)}`;
+    }
+
+    try {
+      setIsVerifyingPhone(true);
+      await sendPhoneOTP(formattedPhone);
+      setShowPhoneVerification(true);
+      showCustomAlert(
+        'Code Sent',
+        `A verification code has been sent to ${formattedPhone}.`,
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to send verification code.';
+      showCustomAlert('Error', message, 'error');
+    } finally {
+      setIsVerifyingPhone(false);
+    }
+  };
+
+  const handleConfirmPhoneOtp = async () => {
+    if (otpCode.trim().length !== 6) {
+      showCustomAlert('Invalid Code', 'Please enter the 6-digit code.', 'error');
+      return;
+    }
+
+    try {
+      setIsVerifyingPhone(true);
+      await linkPhone(phoneNumber, otpCode);
+      setOtpCode('');
+      setShowPhoneVerification(false);
+
+      updateProfile({
+        phone: phoneNumber,
+        phoneNumber: phoneNumber,
+        mobile_verified: true,
+      });
+
+      showCustomAlert('Verified', 'Your phone number has been successfully verified!', 'success');
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'OTP verification failed. Please try again.';
+      showCustomAlert('Error', message, 'error');
+    } finally {
+      setIsVerifyingPhone(false);
+    }
+  };
+
+  // ─── Input Handlers ───────────────────────────────────────────────────────
 
   const handleInputFocus = () => {
     setIsFocused(true);
@@ -180,7 +243,7 @@ export default function ProfileCompletionScreen() {
       if (status !== 'granted') {
         showCustomAlert(
           'Permission Denied',
-          'We need access to your photo library to let you upload a custom profile picture.',
+          'Please allow access to your photos to upload a profile picture.',
           'warning'
         );
         return;
@@ -193,10 +256,9 @@ export default function ProfileCompletionScreen() {
         quality: 1,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const customPhotoUri = result.assets[0].uri;
-        
-        // Pop animation
+      if (!result.canceled && result.assets?.length > 0) {
+        const uri = result.assets[0].uri;
+
         Animated.sequence([
           Animated.timing(avatarScale, {
             toValue: 0.88,
@@ -211,11 +273,11 @@ export default function ProfileCompletionScreen() {
           }),
         ]).start();
 
-        setSelectedAvatar(customPhotoUri);
+        setSelectedAvatar(uri);
       }
     } catch (error) {
-      console.error('Image picking error:', error);
-      showCustomAlert('Upload Error', 'Could not select your photo. Please try again.', 'error');
+      console.error('Image picker error:', error);
+      showCustomAlert('Error', 'Could not select photo. Please try again.', 'error');
     }
   };
 
@@ -255,87 +317,130 @@ export default function ProfileCompletionScreen() {
     }).start();
   };
 
+  // ─── Save Profile ─────────────────────────────────────────────────────────
+
   const handleFinishSetup = async () => {
-    if (name.trim().length < 2) return;
+    if (name.trim().length < 2) {
+      showCustomAlert('Name Required', 'Please enter your full name.', 'warning');
+      return;
+    }
 
     if (isOnboarded) {
       setIsSaving(true);
       try {
-        let finalAvatarUrl = selectedAvatar || undefined;
+        // ✅ FIXED: Always string | undefined (never null)
+        let uploadedAvatarUrl: string | undefined = selectedAvatar;
 
-        // 1. If avatar is local, upload it
-        if (selectedAvatar && (selectedAvatar.startsWith('file://') || selectedAvatar.startsWith('content://') || (!selectedAvatar.startsWith('http://') && !selectedAvatar.startsWith('https://')))) {
+        // Upload if local file
+        if (
+          selectedAvatar &&
+          (selectedAvatar.startsWith('file://') ||
+            selectedAvatar.startsWith('content://') ||
+            (!selectedAvatar.startsWith('http://') &&
+              !selectedAvatar.startsWith('https://')))
+        ) {
           try {
             const { compressImage, uriToFormData } = require('@/services/image');
             const compressed = await compressImage(selectedAvatar);
             const formData = await uriToFormData(compressed.uri);
             const uploadRes = await uploadsApi.uploadAvatar(formData);
-            finalAvatarUrl = uploadRes.url;
+            uploadedAvatarUrl = uploadRes.url;
           } catch (uploadErr) {
-            console.error('Failed to upload avatar:', uploadErr);
-            Alert.alert('Upload Error', 'Failed to upload profile picture, but saving other details.');
+            console.error('Avatar upload failed:', uploadErr);
+            Alert.alert('Upload Failed', 'Could not upload photo, but saving other details.');
           }
         }
 
-        // 2. Call backend updateMe (PATCH /user/user/users/me)
-        const updatePayload = {
+        await usersApi.updateMe({
           name: name.trim(),
-          profile_picture: finalAvatarUrl,
-        };
-        console.log('Sending usersApi.updateMe payload:', updatePayload);
-        await usersApi.updateMe(updatePayload);
-
-        // 3. Update locally in store
-        updateProfile({
-          name: name.trim(),
-          avatar: finalAvatarUrl,
-          profile_picture: finalAvatarUrl,
-          email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
+          profile_picture: uploadedAvatarUrl,
+          gender: gender || undefined,
+          date_of_birth: dob || undefined,
         });
 
-        Alert.alert('Profile Saved!', 'Your changes have been saved successfully.', [
+        updateProfile({
+          name: name.trim(),
+          avatar: uploadedAvatarUrl,
+          profile_picture: uploadedAvatarUrl,
+          email: email || undefined,
+          phoneNumber: phoneNumber || undefined,
+          gender: gender || undefined,
+          date_of_birth: dob || undefined,
+        });
+
+        Alert.alert('Saved', 'Your profile has been updated successfully!', [
           {
             text: 'OK',
-            onPress: () => {
-              router.replace('/(tabs)/profile');
-            }
-          }
+            onPress: () => router.replace('/(tabs)/profile'),
+          },
         ]);
-      } catch (err: any) {
-        const { getApiError } = require('@/services/api');
-        const apiError = getApiError(err);
-        console.error('Failed to save profile:', err, 'Response:', err.response?.data);
-        Alert.alert('Error', apiError.message || 'Failed to save profile changes. Please try again.');
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
+        console.error('Save profile error:', err);
+        Alert.alert('Error', message);
       } finally {
         setIsSaving(false);
       }
     } else {
-      // Onboarding flow: only update store local state and go to next step
-      const finalAvatar = selectedAvatar || undefined;
-      updateProfile(name.trim(), finalAvatar, email.trim(), phoneNumber.trim(), isVerified, isVerified);
+      // Onboarding flow - update store and navigate
+      updateProfile({
+        name: name.trim(),
+        avatar: selectedAvatar,
+        profile_picture: selectedAvatar,
+        email: email || undefined,
+        phoneNumber: phoneNumber || undefined,
+        gender: gender || undefined,
+        date_of_birth: dob || undefined,
+      });
+
       router.push('/(onboarding)/setup-feed' as any);
     }
   };
 
-  const isButtonDisabled = name.trim().length < 2;
+  // ─── Derived State ────────────────────────────────────────────────────────
 
-  // Intercepting border colors dynamically based on active theme
+  const isNameValid = name.trim().length >= 2 && name.trim().length <= 50;
+  const isButtonDisabled = !isNameValid || isSaving || isLoading;
+
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [colors.border, colors.primary],
   });
 
+  const phoneVerified = user?.mobile_verified ?? false;
+  const emailVerified = !!(user?.email_verified || email);
+  const avatarSize = Math.min(Math.max(width * 0.28, 88), 130);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* Radial Gradient Backdrops (Simulated) */}
-      <View style={[styles.topRadial, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(225, 224, 255, 0.65)' }]} />
-      <View style={[styles.bottomRadial, { backgroundColor: isDark ? 'rgba(0, 106, 97, 0.1)' : 'rgba(229, 238, 255, 0.7)' }]} />
+      <View
+        style={[
+          styles.topRadial,
+          {
+            backgroundColor: isDark
+              ? 'rgba(70, 72, 212, 0.1)'
+              : 'rgba(225, 224, 255, 0.65)',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.bottomRadial,
+          {
+            backgroundColor: isDark
+              ? 'rgba(0, 106, 97, 0.1)'
+              : 'rgba(229, 238, 255, 0.7)',
+          },
+        ]}
+      />
 
-      {/* Header - Top Navigation Anchor */}
-      <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         {isOnboarded ? (
           <TouchableOpacity
             style={styles.backButton}
@@ -347,11 +452,27 @@ export default function ProfileCompletionScreen() {
         ) : (
           <View style={styles.headerPlaceholder} />
         )}
-        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
-          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
-          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+          <Text
+            style={{
+              fontFamily: 'Poppins_500Medium',
+              color: isDark ? '#818CF8' : colors.primary,
+            }}
+          >
+            Local
+          </Text>
+          <Text
+            style={{
+              color: isDark ? '#818CF8' : colors.primary,
+              fontFamily: 'Poppins_700Bold',
+            }}
+          >
+            .
+          </Text>
         </Text>
+
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -364,26 +485,48 @@ export default function ProfileCompletionScreen() {
             style={[styles.scrollView, { backgroundColor: colors.background }]}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            {/* Staggered Content Animation Wrapper */}
-            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-              
+            <Animated.View
+              style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+            >
               {/* Progress Indicator */}
-              <View style={styles.progressContainer}>
-                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
-                <View style={[styles.activeStepIndicatorShort, { backgroundColor: colors.primaryLight }]} />
-                <View style={[styles.activeStepIndicatorLong, { backgroundColor: colors.primary }]} />
-              </View>
+              {!isOnboarded && (
+                <View style={styles.progressContainer}>
+                  <View
+                    style={[
+                      styles.stepIndicatorShort,
+                      { backgroundColor: colors.primaryLight },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.stepIndicatorShort,
+                      { backgroundColor: colors.primaryLight },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.stepIndicatorLong,
+                      { backgroundColor: colors.primary },
+                    ]}
+                  />
+                </View>
+              )}
 
-              {/* Headline & Subtext */}
+              {/* Headline */}
               <View style={styles.headlineSection}>
-                <Text style={[styles.mainTitle, { color: colors.text }]}>Complete your profile</Text>
+                <Text style={[styles.mainTitle, { color: colors.text }]}>
+                  {isOnboarded ? 'Edit Your Profile' : 'Complete your profile'}
+                </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  Add a photo and your name so we{'\n'}can personalize your experience.
+                  {isOnboarded
+                    ? 'Update your information anytime'
+                    : 'Add a photo and your name so we\ncan personalize your experience.'}
                 </Text>
               </View>
 
-              {/* Profile Picture Uploader */}
+              {/* Avatar Uploader */}
               <View style={styles.uploaderSection}>
                 <Pressable
                   onPress={handlePickFromGallery}
@@ -394,175 +537,413 @@ export default function ProfileCompletionScreen() {
                   <Animated.View
                     style={[
                       styles.avatarCircle,
-                      { 
-                        backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF', 
+                      {
+                        backgroundColor: isDark ? '#2A2A3C' : '#E1E0FF',
                         borderColor: colors.border,
                         width: avatarSize,
                         height: avatarSize,
                         borderRadius: avatarSize / 2,
                       },
-                      { transform: [{ scale: avatarScale }] }
+                      { transform: [{ scale: avatarScale }] },
                     ]}
                   >
                     {selectedAvatar ? (
-                       <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
+                      <Image
+                        source={{ uri: selectedAvatar }}
+                        style={[
+                          styles.avatarImage,
+                          { borderRadius: avatarSize / 2 - 4 },
+                        ]}
+                      />
                     ) : (
                       <View style={styles.cameraIconContainer}>
                         <Feather name="camera" size={32} color={colors.primary} />
                       </View>
                     )}
-
-                    <View style={[styles.plusBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
+                    <View
+                      style={[
+                        styles.plusBadge,
+                        {
+                          backgroundColor: colors.primary,
+                          borderColor: colors.background,
+                        },
+                      ]}
+                    >
                       <Ionicons name="add" size={20} color="#FFFFFF" />
                     </View>
                   </Animated.View>
                 </Pressable>
-                <Text style={[styles.uploadPrompt, { color: colors.primary }]}>TAP TO UPLOAD</Text>
+                <Text style={[styles.uploadPrompt, { color: colors.primary }]}>
+                  TAP TO UPLOAD
+                </Text>
               </View>
 
-              {/* Input Field Container */}
+              {/* Name Input */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FULL NAME</Text>
-                
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  FULL NAME
+                </Text>
                 <Animated.View
                   style={[
                     styles.inputWrapper,
                     { backgroundColor: colors.card, borderColor: borderInterpolation },
-                    isFocused && styles.inputWrapperFocused
+                    isFocused && styles.inputWrapperFocused,
                   ]}
                 >
                   <TextInput
                     style={[styles.textInput, { color: colors.text }]}
                     placeholder="Enter your name"
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    placeholderTextColor={
+                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                    }
                     value={name}
                     onChangeText={setName}
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
                     autoCapitalize="words"
-                    maxLength={30}
-                    returnKeyType="done"
+                    maxLength={50}
                   />
-                  <Feather name="user" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                  {name.length > 30 && (
+                    <Text style={[styles.charCountText, { color: colors.textSecondary }]}>
+                      {name.length}/50
+                    </Text>
+                  )}
+                  <Feather
+                    name="user"
+                    size={20}
+                    color={
+                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                    }
+                    style={styles.inputIcon}
+                  />
                 </Animated.View>
               </View>
 
-              {/* Phone Number Field */}
+              {/* Phone Number */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PHONE NUMBER</Text>
-                
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  PHONE NUMBER
+                </Text>
                 <View
                   style={[
                     styles.inputWrapper,
-                    { backgroundColor: colors.card, borderColor: colors.border }
+                    {
+                      backgroundColor: phoneVerified
+                        ? isDark
+                          ? '#1C1C2E'
+                          : '#F1F3F9'
+                        : colors.card,
+                      borderColor: colors.border,
+                    },
                   ]}
                 >
                   <TextInput
-                    style={[styles.textInput, { color: colors.text }]}
+                    style={[
+                      styles.textInput,
+                      {
+                        color: phoneVerified
+                          ? isDark
+                            ? 'rgba(255,255,255,0.4)'
+                            : 'rgba(0,0,0,0.4)'
+                          : colors.text,
+                      },
+                    ]}
                     placeholder="Enter phone number"
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                    placeholderTextColor={
+                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                    }
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
                     maxLength={15}
+                    editable={!phoneVerified && !isVerifyingPhone}
                   />
-                  <Feather name="phone" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                  <Feather
+                    name="phone"
+                    size={20}
+                    color={
+                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                    }
+                    style={styles.inputIcon}
+                  />
                 </View>
-              </View>
 
-              {/* Email Address Field */}
-              <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>EMAIL ADDRESS</Text>
-                
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    { backgroundColor: colors.card, borderColor: colors.border }
-                  ]}
-                >
-                  <TextInput
-                    style={[styles.textInput, { color: colors.text }]}
-                    placeholder="Enter email address"
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    maxLength={50}
-                  />
-                  <Feather name="mail" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
-                </View>
-                 {!isVerified && !showOtpField && (
+                {phoneVerified ? (
+                  <View
+                    style={[
+                      styles.verifiedBadge,
+                      { backgroundColor: '#10B981', marginTop: 10 },
+                    ]}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={[styles.verifiedBadgeText, { color: '#FFFFFF' }]}>
+                      Phone Verified
+                    </Text>
+                  </View>
+                ) : !showPhoneVerification ? (
                   <TouchableOpacity
-                    style={[styles.verifyButton, { backgroundColor: colors.primaryLight }]}
-                    onPress={handleVerifyEmail}
-                    disabled={isVerifying}
+                    style={[
+                      styles.verifyButton,
+                      { backgroundColor: colors.primaryLight, marginTop: 10 },
+                    ]}
+                    onPress={handleSendPhoneVerification}
+                    disabled={isVerifyingPhone}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
-                    <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
-                      {isVerifying ? 'Verifying...' : 'Get Verified to Publish'}
-                    </Text>
+                    {isVerifyingPhone ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={16} color={colors.primary} />
+                        <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
+                          Send Verification Code
+                        </Text>
+                      </>
+                    )}
                   </TouchableOpacity>
-                )}
-
-                {showOtpField && !isVerified && (
+                ) : (
                   <View style={styles.otpSection}>
-                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>ENTER OTP CODE</Text>
-                    <View style={[styles.otpInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>
+                      ENTER OTP CODE
+                    </Text>
+                    <View
+                      style={[
+                        styles.otpInputWrapper,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
+                    >
                       <TextInput
                         style={[styles.otpInput, { color: colors.text }]}
-                        placeholder="Enter 4-digit code"
-                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'}
+                        placeholder="Enter 6-digit code"
+                        placeholderTextColor={
+                          isDark
+                            ? 'rgba(255, 255, 255, 0.3)'
+                            : 'rgba(118, 117, 134, 0.5)'
+                        }
                         value={otpCode}
                         onChangeText={setOtpCode}
                         keyboardType="number-pad"
                         maxLength={6}
                       />
-                      <Feather name="lock" size={20} color={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'} style={styles.inputIcon} />
+                      <Feather
+                        name="lock"
+                        size={20}
+                        color={
+                          isDark
+                            ? 'rgba(255, 255, 255, 0.4)'
+                            : 'rgba(118, 117, 134, 0.5)'
+                        }
+                        style={styles.inputIcon}
+                      />
                     </View>
-
                     <TouchableOpacity
-                      style={[styles.otpConfirmButton, { backgroundColor: colors.primary }]}
-                      onPress={handleConfirmOtp}
+                      style={[
+                        styles.otpConfirmButton,
+                        { backgroundColor: colors.primary },
+                        (isVerifyingPhone || otpCode.length !== 6) && { opacity: 0.6 },
+                      ]}
+                      onPress={handleConfirmPhoneOtp}
+                      disabled={isVerifyingPhone || otpCode.length !== 6}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.otpConfirmButtonText}>Confirm Code & Activate</Text>
+                      {isVerifyingPhone ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.otpConfirmButtonText}>
+                          Confirm Code & Verify Phone
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}
+              </View>
 
-                {email.trim().length > 0 && isVerified && (
-                  <View style={[styles.verifiedSuccessBadge, { backgroundColor: '#006A61', borderColor: '#006A61' }]}>
-                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
-                    <Text style={[styles.verifiedSuccessText, { color: '#FFFFFF' }]}>Verified Publisher Status Active</Text>
+              {/* Email Verification */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  EMAIL VERIFICATION
+                </Text>
+                {emailVerified ? (
+                  <View
+                    style={[
+                      styles.inputWrapper,
+                      {
+                        backgroundColor: isDark ? '#1C1C2E' : '#F1F3F9',
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        {
+                          color: isDark
+                            ? 'rgba(255,255,255,0.4)'
+                            : 'rgba(0,0,0,0.4)',
+                        },
+                      ]}
+                      value={email || user?.email || ''}
+                      editable={false}
+                    />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#10B981"
+                      style={styles.inputIcon}
+                    />
                   </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.googleLinkBtn, { backgroundColor: colors.primary }]}
+                    onPress={signInWithGoogle}
+                    disabled={!isGoogleReady || isGoogleLoading}
+                    activeOpacity={0.8}
+                  >
+                    {isGoogleLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                        <Text style={styles.googleLinkBtnText}>
+                          Link Google Account
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
 
-              {/* Asymmetric Info Card */}
-              <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.infoIconContainer, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
-                </View>
-                <View style={styles.infoTextContainer}>
-                  <Text style={[styles.infoTitle, { color: colors.text }]}>Your data is safe</Text>
-                  <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-                    We only use your name to personalize your daily news briefings and community interactions.
-                  </Text>
+              {/* Gender */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  GENDER
+                </Text>
+                <View style={styles.genderRow}>
+                  {(['Male', 'Female', 'Other'] as const).map((g) => {
+                    const isActive = gender.toLowerCase() === g.toLowerCase();
+                    return (
+                      <TouchableOpacity
+                        key={g}
+                        style={[
+                          styles.genderButton,
+                          {
+                            borderColor: colors.border,
+                            backgroundColor: colors.card,
+                          },
+                          isActive && {
+                            borderColor: colors.primary,
+                            backgroundColor: colors.primaryLight,
+                          },
+                        ]}
+                        onPress={() => setGender(g.toLowerCase())}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.genderButtonText,
+                            { color: colors.textSecondary },
+                            isActive && { color: colors.primary, fontWeight: '600' },
+                          ]}
+                        >
+                          {g}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
+              {/* Date of Birth */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  DATE OF BIRTH
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.textInput, { color: colors.text }]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={
+                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                    }
+                    value={dob}
+                    onChangeText={(text) => {
+                      let cleaned = text.replace(/\D/g, '');
+                      if (cleaned.length > 8) cleaned = cleaned.substring(0, 8);
+                      let formatted = cleaned;
+                      if (cleaned.length > 4) {
+                        formatted = `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
+                      }
+                      if (cleaned.length > 6) {
+                        formatted = `${formatted.substring(0, 7)}-${formatted.substring(7)}`;
+                      }
+                      setDob(formatted);
+                    }}
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                  <Feather
+                    name="calendar"
+                    size={20}
+                    color={
+                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                    }
+                    style={styles.inputIcon}
+                  />
+                </View>
+              </View>
+
+              {/* Info Card */}
+              <View
+                style={[
+                  styles.infoCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.infoIconContainer,
+                    { backgroundColor: colors.primaryLight },
+                  ]}
+                >
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={28}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoTitle, { color: colors.text }]}>
+                    Your data is safe
+                  </Text>
+                  <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
+                    We only use your information to personalize your news and improve
+                    your experience.
+                  </Text>
+                </View>
+              </View>
             </Animated.View>
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Footer - Fixed Bottom Action Area */}
-      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      {/* Footer */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
         <Pressable
           style={styles.buttonWrapper}
-          disabled={isButtonDisabled || isSaving}
+          disabled={isButtonDisabled}
           onPress={handleFinishSetup}
           onPressIn={handleButtonPressIn}
           onPressOut={handleButtonPressOut}
@@ -570,56 +951,115 @@ export default function ProfileCompletionScreen() {
           <Animated.View
             style={[
               styles.finishButton,
-              (isButtonDisabled || isSaving)
-                ? [styles.finishButtonDisabled, { backgroundColor: isDark ? '#2A2A3C' : 'rgba(199, 196, 215, 0.4)' }] 
+              isButtonDisabled
+                ? [
+                  styles.finishButtonDisabled,
+                  {
+                    backgroundColor: isDark
+                      ? '#2A2A3C'
+                      : 'rgba(199, 196, 215, 0.4)',
+                  },
+                ]
                 : [styles.finishButtonActive, { backgroundColor: colors.primary }],
-              { transform: [{ scale: buttonScale }] }
+              { transform: [{ scale: buttonScale }] },
             ]}
           >
-            <Text style={[
-              styles.finishButtonText,
-              (isButtonDisabled || isSaving) && { color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(118, 117, 134, 0.6)' }
-            ]}>{isSaving ? 'Saving...' : 'Finish Setup'}</Text>
             {isSaving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Ionicons name="checkmark-circle" size={20} color={isButtonDisabled ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(118, 117, 134, 0.4)") : "#FFFFFF"} />
+              <>
+                <Text
+                  style={[
+                    styles.finishButtonText,
+                    isButtonDisabled && {
+                      color: isDark
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : 'rgba(118, 117, 134, 0.6)',
+                    },
+                  ]}
+                >
+                  {isOnboarded ? 'Save Changes' : 'Finish Setup'}
+                </Text>
+                <Ionicons
+                  name={isOnboarded ? 'save' : 'checkmark-circle'}
+                  size={20}
+                  color={
+                    isButtonDisabled
+                      ? isDark
+                        ? 'rgba(255,255,255,0.2)'
+                        : 'rgba(118, 117, 134, 0.4)'
+                      : '#FFFFFF'
+                  }
+                />
+              </>
             )}
           </Animated.View>
         </Pressable>
 
-        <View style={styles.stepTextContainer}>
-          <Text style={[styles.stepText, { color: colors.textSecondary }]}>STEP 3 OF 3</Text>
-        </View>
+        {!isOnboarded && (
+          <View style={styles.stepTextContainer}>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>
+              STEP 3 OF 3
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Premium Custom Alert Modal */}
+      {/* Custom Alert Modal */}
       {dialogConfig.visible && (
         <View style={styles.modalBackdrop}>
           <TouchableWithoutFeedback onPress={closeCustomAlert}>
             <View style={styles.modalOverlay} />
           </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border, width: width - 48 }]}>
-            {/* Top Decorative Icon */}
-            <View 
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View
               style={[
-                styles.modalIconContainer, 
-                dialogConfig.type === 'success' && { backgroundColor: 'rgba(16, 185, 129, 0.12)' },
-                dialogConfig.type === 'error' && { backgroundColor: 'rgba(239, 68, 68, 0.12)' },
-                dialogConfig.type === 'warning' && { backgroundColor: 'rgba(245, 158, 11, 0.12)' },
-                dialogConfig.type === 'info' && { backgroundColor: colors.primaryLight },
+                styles.modalIconContainer,
+                dialogConfig.type === 'success' && {
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                },
+                dialogConfig.type === 'error' && {
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                },
+                dialogConfig.type === 'warning' && {
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                },
+                dialogConfig.type === 'info' && {
+                  backgroundColor: colors.primaryLight,
+                },
               ]}
             >
-              {dialogConfig.type === 'success' && <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />}
-              {dialogConfig.type === 'error' && <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />}
-              {dialogConfig.type === 'warning' && <Ionicons name="warning-outline" size={32} color="#F59E0B" />}
-              {dialogConfig.type === 'info' && <Ionicons name="information-circle-outline" size={32} color={colors.primary} />}
+              {dialogConfig.type === 'success' && (
+                <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />
+              )}
+              {dialogConfig.type === 'error' && (
+                <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+              )}
+              {dialogConfig.type === 'warning' && (
+                <Ionicons name="warning-outline" size={32} color="#F59E0B" />
+              )}
+              {dialogConfig.type === 'info' && (
+                <Ionicons
+                  name="information-circle-outline"
+                  size={32}
+                  color={colors.primary}
+                />
+              )}
             </View>
 
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{dialogConfig.title}</Text>
-            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{dialogConfig.message}</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {dialogConfig.title}
+            </Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+              {dialogConfig.message}
+            </Text>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.modalButton, { backgroundColor: colors.primary }]}
               onPress={closeCustomAlert}
               activeOpacity={0.85}
@@ -633,11 +1073,10 @@ export default function ProfileCompletionScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FF',
-  },
+  container: { flex: 1 },
   topRadial: {
     position: 'absolute',
     top: -120,
@@ -645,7 +1084,6 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: 'rgba(225, 224, 255, 0.65)',
     zIndex: -1,
   },
   bottomRadial: {
@@ -655,7 +1093,6 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: 'rgba(229, 238, 255, 0.7)',
     zIndex: -1,
   },
   header: {
@@ -664,6 +1101,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     height: 64,
+    borderBottomWidth: 1,
   },
   backButton: {
     width: 40,
@@ -676,15 +1114,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#4648D4',
     fontFamily: 'Poppins_700Bold',
   },
-  headerPlaceholder: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  headerPlaceholder: { width: 40 },
+  scrollView: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -697,22 +1130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 32,
   },
-  activeStepIndicatorShort: {
-    backgroundColor: '#6063ee',
-    width: 32,
-    height: 6,
-    borderRadius: 3,
-  },
-  activeStepIndicatorLong: {
-    backgroundColor: '#4648d4',
-    width: 64,
-    height: 6,
-    borderRadius: 3,
-  },
-  headlineSection: {
-    alignItems: 'center',
-    marginBottom: 36,
-  },
+  stepIndicatorShort: { width: 32, height: 6, borderRadius: 3 },
+  stepIndicatorLong: { width: 64, height: 6, borderRadius: 3 },
+  headlineSection: { alignItems: 'center', marginBottom: 36 },
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
@@ -725,25 +1145,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     fontWeight: '400',
-    color: '#464554',
     lineHeight: 24,
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
   },
-  uploaderSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  uploaderTouch: {
-    marginBottom: 12,
-  },
+  uploaderSection: { alignItems: 'center', marginBottom: 32 },
+  uploaderTouch: { marginBottom: 12 },
   avatarCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#E1E0FF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -754,20 +1163,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 24,
       },
-      android: {
-        elevation: 8,
-      },
+      android: { elevation: 8 },
     }),
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
-  },
-  cameraIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  avatarImage: { width: '100%', height: '100%' },
+  cameraIconContainer: { alignItems: 'center', justifyContent: 'center' },
   plusBadge: {
     position: 'absolute',
     bottom: 0,
@@ -775,11 +1175,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4648D4',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#FFFFFF',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -787,25 +1185,19 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 6,
       },
-      android: {
-        elevation: 4,
-      },
+      android: { elevation: 4 },
     }),
   },
   uploadPrompt: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4648D4',
     letterSpacing: 0.3,
     fontFamily: 'Poppins_600SemiBold',
   },
-  inputContainer: {
-    marginBottom: 24,
-  },
+  inputContainer: { marginBottom: 24 },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#464554',
     letterSpacing: 0.6,
     fontFamily: 'Poppins_600SemiBold',
     marginBottom: 8,
@@ -815,13 +1207,11 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(199, 196, 215, 0.3)',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   inputWrapperFocused: {
-    borderColor: '#4648D4',
     ...Platform.select({
       ios: {
         shadowColor: '#4648D4',
@@ -829,9 +1219,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 10,
       },
-      android: {
-        elevation: 3,
-      },
+      android: { elevation: 3 },
     }),
   },
   textInput: {
@@ -840,117 +1228,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_400Regular',
   },
-  inputIcon: {
-    marginLeft: 12,
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 24,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgb(63, 63, 70)',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  infoIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(70, 72, 212, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  infoTextContainer: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 4,
-  },
-  infoDesc: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#464554',
-    lineHeight: 20,
+  inputIcon: { marginLeft: 12 },
+  charCountText: {
+    fontSize: 12,
     fontFamily: 'Poppins_400Regular',
-  },
-  footer: {
-    backgroundColor: '#F8F9FF',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(199, 196, 215, 0.3)',
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
-    alignItems: 'center',
-    gap: 12,
-  },
-  buttonWrapper: {
-    width: '100%',
-  },
-  finishButton: {
-    height: 56,
-    borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-  },
-  finishButtonDisabled: {
-    backgroundColor: 'rgba(199, 196, 215, 0.4)',
-  },
-  finishButtonActive: {
-    backgroundColor: '#4648D4',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4648D4',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  finishButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  stepTextContainer: {
-    marginTop: 4,
-  },
-  stepText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#C7C4D7',
-    letterSpacing: 1.1,
-    fontFamily: 'Poppins_600SemiBold',
+    marginRight: 8,
   },
   verifyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -962,18 +1250,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  verifiedSuccessBadge: {
+  verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#10B981',
   },
-  verifiedSuccessText: {
+  verifiedBadgeText: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
@@ -1021,6 +1309,119 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
+  googleLinkBtn: {
+    height: 48,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+    gap: 8,
+    shadowColor: '#4648D4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  googleLinkBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  genderRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  genderButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderButtonText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  infoCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgb(63, 63, 70)',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: { elevation: 3 },
+    }),
+  },
+  infoIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  infoTextContainer: { flex: 1 },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 4,
+  },
+  infoDesc: {
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 20,
+    fontFamily: 'Poppins_400Regular',
+  },
+  footer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  buttonWrapper: { width: '100%' },
+  finishButton: {
+    height: 56,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  finishButtonDisabled: {},
+  finishButtonActive: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#4648D4',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  finishButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  stepTextContainer: { marginTop: 4 },
+  stepText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.1,
+    fontFamily: 'Poppins_600SemiBold',
+  },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',
@@ -1028,11 +1429,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 9999,
   },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  modalOverlay: { ...StyleSheet.absoluteFillObject },
   modalCard: {
     maxWidth: 340,
+    width: '90%',
     borderRadius: 24,
     borderWidth: 1.5,
     padding: 24,
