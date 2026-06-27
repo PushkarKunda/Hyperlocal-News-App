@@ -1,99 +1,168 @@
-import { getApp } from '@react-native-firebase/app';
-import {
-  getAuth,
-  signOut,
-  GoogleAuthProvider,
-  FirebaseAuthTypes,
-  signInWithPhoneNumber,
-  signInWithCredential
-} from '@react-native-firebase/auth';
+// services/firebase.ts
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
-// Lazy load to prevent "No Firebase App" crashes on startup
-export const getFirebaseAuth = (): FirebaseAuthTypes.Module => {
+export const firebaseAuth = auth();
+
+// ─── Check Firebase Connection ────────────────────────────────────────────────
+export const checkFirebaseConnection = async (): Promise<void> => {
   try {
-    const app = getApp();
-    return getAuth(app);
+    console.log('✅ Firebase Connected:', firebaseAuth.app.name);
+    console.log('🔑 Project:', firebaseAuth.app.options.projectId);
+    console.log('👤 Current User:', firebaseAuth.currentUser?.uid ?? 'None');
   } catch (error: any) {
-    console.warn(
-      '⚠️ Native Firebase Auth is not available. Using fallback instance. ' +
-      'Please ensure you run a native build (npm run android) instead of standard Expo Go.',
-      error.message
-    );
-    return {
-      currentUser: null,
-      app: {
-        name: '[DEFAULT]',
-        options: { projectId: 'hypernews-bd322' },
-      },
-      onAuthStateChanged: () => () => { },
-      signInWithPhoneNumber: async () => {
-        throw new Error(
-          'Firebase Auth not initialized. Ensure you built the project natively ' +
-          '(npm run android) instead of running in Expo Go.'
-        );
-      },
-      signInWithCredential: async () => {
-        throw new Error(
-          'Firebase Auth not initialized. Ensure you built the project natively ' +
-          '(npm run android) instead of running in Expo Go.'
-        );
-      },
-      signOut: async () => { },
-    } as any;
+    console.error('❌ Firebase Connection Error:', error.message);
   }
 };
 
-// ─── Phone Auth - Send OTP ────────────────────────────────────────────────────
+// ─── Phone Auth - Send OTP ──────────────────────────────────────────────────
+
 export const sendPhoneOTP = async (
   phoneNumber: string
 ): Promise<FirebaseAuthTypes.ConfirmationResult> => {
   try {
-    const authInstance = getFirebaseAuth();
-    const confirmation = await signInWithPhoneNumber(authInstance, phoneNumber);
-    console.log('✅ OTP Sent to:', phoneNumber);
+    console.log('📱 Sending OTP to:', phoneNumber);
+    const confirmation = await firebaseAuth.signInWithPhoneNumber(phoneNumber);
+    console.log('✅ OTP Sent');
     return confirmation;
   } catch (error: any) {
-    console.error('❌ OTP Send Failed:', error.message);
+    console.error('❌ OTP Send Failed:', error.message, error.code);
     throw error;
   }
 };
 
-// ─── Phone Auth - Verify OTP ──────────────────────────────────────────────────
+// ─── Phone Auth - Verify OTP ────────────────────────────────────────────────
+
 export const verifyPhoneOTP = async (
-  confirmation: FirebaseAuthTypes.ConfirmationResult,
+  confirmationOrVerificationId: FirebaseAuthTypes.ConfirmationResult | string,
   otp: string
 ): Promise<string> => {
   try {
-    const userCredential = await confirmation.confirm(otp);
+    const currentUser = firebaseAuth.currentUser;
+    let userCredential;
+
+    if (currentUser) {
+      console.log('🔗 Linking phone to existing user...');
+      const credential =
+        typeof confirmationOrVerificationId === 'string'
+          ? auth.PhoneAuthProvider.credential(confirmationOrVerificationId, otp)
+          : auth.PhoneAuthProvider.credential(
+            confirmationOrVerificationId.verificationId,
+            otp
+          );
+
+      try {
+        userCredential = await currentUser.linkWithCredential(credential);
+        console.log('✅ Phone linked successfully');
+      } catch (linkError: any) {
+        if (
+          linkError.code === 'auth/provider-already-linked' ||
+          linkError.code === 'auth/credential-already-in-use'
+        ) {
+          console.log('ℹ️ Phone already linked');
+          return await currentUser.getIdToken(true);
+        }
+        throw linkError;
+      }
+    } else {
+      console.log('📱 Verifying OTP...');
+      if (typeof confirmationOrVerificationId === 'string') {
+        const credential = auth.PhoneAuthProvider.credential(
+          confirmationOrVerificationId,
+          otp
+        );
+        userCredential = await firebaseAuth.signInWithCredential(credential);
+      } else {
+        userCredential = await confirmationOrVerificationId.confirm(otp);
+      }
+      console.log('✅ OTP Verified');
+    }
+
     if (!userCredential?.user) throw new Error('Verification failed');
     const firebaseToken = await userCredential.user.getIdToken();
-    console.log('✅ OTP Verified');
     return firebaseToken;
   } catch (error: any) {
-    console.error('❌ OTP Verify Failed:', error.message);
+    console.error('❌ OTP Verify Failed:', error.message, error.code);
     throw error;
   }
 };
 
-// ─── Google Sign-In ───────────────────────────────────────────────────────────
+// ─── Google Sign-In ─────────────────────────────────────────────────────────
+
 export const signInWithGoogle = async (idToken: string): Promise<string> => {
   try {
-    const googleCredential = GoogleAuthProvider.credential(idToken);
-    const authInstance = getFirebaseAuth();
-    const userCredential = await signInWithCredential(authInstance, googleCredential);
+    console.log('🔐 Signing in with Google...');
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    const userCredential = await firebaseAuth.signInWithCredential(googleCredential);
     const firebaseToken = await userCredential.user.getIdToken();
     console.log('✅ Google Sign-In Success');
     return firebaseToken;
   } catch (error: any) {
-    console.error('❌ Google Sign-In Failed:', error.message);
+    console.error('❌ Google Sign-In Failed:', error.message, error.code);
     throw error;
   }
 };
 
-// ─── Get Current Firebase Token ───────────────────────────────────────────────
+// ─── Link Google Account ────────────────────────────────────────────────────
+
+export const linkGoogleAccount = async (idToken: string): Promise<string> => {
+  try {
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) {
+      throw new Error('No user signed in to link Google account');
+    }
+
+    console.log('🔗 Linking Google account...');
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    const userCredential = await currentUser.linkWithCredential(googleCredential);
+    const firebaseToken = await userCredential.user.getIdToken(true);
+    console.log('✅ Google Account Linked');
+    return firebaseToken;
+  } catch (error: any) {
+    console.error('❌ Google Link Failed:', error.message, error.code);
+    throw error;
+  }
+};
+
+// ─── Link Phone Number ──────────────────────────────────────────────────────
+
+export const linkPhoneNumber = async (
+  verificationId: string,
+  otp: string
+): Promise<string> => {
+  try {
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) {
+      throw new Error('No user signed in to link phone number');
+    }
+
+    console.log('🔗 Linking phone number...');
+    const credential = auth.PhoneAuthProvider.credential(verificationId, otp);
+    const userCredential = await currentUser.linkWithCredential(credential);
+    const firebaseToken = await userCredential.user.getIdToken(true);
+    console.log('✅ Phone Number Linked');
+    return firebaseToken;
+  } catch (error: any) {
+    console.error('❌ Phone Link Failed:', error.message, error.code);
+    throw error;
+  }
+};
+
+// ─── Sign Out ───────────────────────────────────────────────────────────────
+
+export const firebaseSignOut = async (): Promise<void> => {
+  try {
+    await firebaseAuth.signOut();
+    console.log('✅ Firebase Sign Out');
+  } catch (error: any) {
+    console.error('❌ Sign Out Failed:', error.message);
+  }
+};
+
+// ─── Get Current Token ──────────────────────────────────────────────────────
+
 export const getCurrentFirebaseToken = async (): Promise<string | null> => {
   try {
-    const currentUser = getFirebaseAuth().currentUser;
+    const currentUser = firebaseAuth.currentUser;
     if (!currentUser) return null;
     return await currentUser.getIdToken(true);
   } catch {
@@ -101,27 +170,4 @@ export const getCurrentFirebaseToken = async (): Promise<string | null> => {
   }
 };
 
-// ─── Sign Out ─────────────────────────────────────────────────────────────────
-export const firebaseSignOut = async (): Promise<void> => {
-  try {
-    const authInstance = getFirebaseAuth();
-    await signOut(authInstance);
-  } catch (error: any) {
-    console.error('❌ Firebase Sign Out Failed:', error.message);
-  }
-};
-
-// ─── Check Firebase Connection ────────────────────────────────────────────────
-export const checkFirebaseConnection = async (): Promise<void> => {
-  try {
-    const app = getApp();
-    const authInstance = getFirebaseAuth();
-    console.log('✅ Firebase Connected:', app.name);
-    console.log('🔑 Project:', app.options.projectId);
-    console.log('👤 User:', authInstance.currentUser?.uid ?? 'None');
-  } catch (error: any) {
-    console.error('❌ Firebase Error:', error.message);
-  }
-};
-
-export default getFirebaseAuth;
+export default firebaseAuth;
