@@ -398,10 +398,10 @@ export default function LoginScreen() {
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                   },
-                  (!isGoogleReady || isGoogleLoading) && { opacity: 0.7 },
+                  isGoogleLoading && { opacity: 0.7 },
                 ]}
                 onPress={signInWithGoogle}
-                disabled={!isGoogleReady || isGoogleLoading}
+                disabled={isGoogleLoading}
                 activeOpacity={0.8}
               >
                 {isGoogleLoading ? (

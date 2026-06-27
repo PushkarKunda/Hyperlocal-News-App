@@ -36,7 +36,7 @@ export const BecomePublisherView = ({
         isGoogleLoading,
     } = useGoogleFirebaseAuth({
         onSuccess: () => {
-            router.push('/(onboarding)/profile');
+            router.push('/(onboarding)/edit-profile');
         },
         onError: (error) => {
             Alert.alert('Google Sign-In Failed', error.message || 'Please try again.');

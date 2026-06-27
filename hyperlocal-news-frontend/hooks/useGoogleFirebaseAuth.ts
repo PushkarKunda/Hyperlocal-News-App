@@ -46,8 +46,14 @@ export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}
 
   const signInWithGoogle = useCallback(async () => {
     if (!isConfigured) {
-      console.warn('⚠️ Google Sign-In not configured yet');
-      return;
+      try {
+        await GoogleSignin.configure({ webClientId, offlineAccess: false });
+        setIsConfigured(true);
+      } catch (error: any) {
+        console.error('❌ Google Sign-In config error:', error.message);
+        options.onError?.(new Error('Google Sign-In not ready. Please try again.'));
+        return;
+      }
     }
 
     setIsGoogleLoading(true);
@@ -92,6 +98,6 @@ export function useGoogleFirebaseAuth(options: UseGoogleFirebaseAuthOptions = {}
   return {
     signInWithGoogle,
     isGoogleReady: isConfigured,
-    isGoogleLoading: isGoogleLoading || isLoading,
+    isGoogleLoading: isGoogleLoading,
   };
 }

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,22 +9,29 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { ShortVideo } from '@/types';
 import { useShortsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import MenuOptions from '@/components/MenuOptions';
 
 
-const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isActive: boolean; itemHeight: number }) => {
+const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: ShortVideo; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
   const insets = useSafeAreaInsets();
-  const player = useVideoPlayer({ uri: item.videoUrl }, player => {
+  const player = useVideoPlayer(shouldLoad ? { uri: item.videoUrl } : null, player => {
     player.loop = true;
   });
 
   React.useEffect(() => {
-    if (isActive) {
+    if (isActive && shouldLoad) {
       player.play();
     } else {
       player.pause();
     }
-  }, [isActive, player]);
+  }, [isActive, shouldLoad, player]);
+
+  const handlePress = () => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
 
   return (
     <View style={[styles.itemContainer, { height: itemHeight }]}>
@@ -34,6 +41,9 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
         contentFit="cover"
         nativeControls={false}
       />
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <View style={StyleSheet.absoluteFillObject} />
+      </TouchableWithoutFeedback>
       
       {/* Right Interaction Stack */}
       <View style={styles.rightStack}>
@@ -108,7 +118,14 @@ const ShortVideoItem = ({ item, isActive, itemHeight }: { item: ShortVideo; isAc
       </View>
     </View>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.isActive === nextProps.isActive &&
+    prevProps.shouldLoad === nextProps.shouldLoad &&
+    prevProps.itemHeight === nextProps.itemHeight &&
+    prevProps.item.id === nextProps.item.id
+  );
+});
 
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
@@ -116,9 +133,10 @@ export default function ShortsScreen() {
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const { data: shorts = [], isLoading } = useShortsList();
+
+
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
@@ -129,6 +147,18 @@ export default function ShortsScreen() {
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,
   };
+
+  const renderVideoItem = useCallback(({ item, index }: { item: ShortVideo; index: number }) => {
+    const shouldLoad = Math.abs(index - activeIndex) <= 1;
+    return (
+      <ShortVideoItem 
+        item={item} 
+        isActive={index === activeIndex} 
+        shouldLoad={shouldLoad}
+        itemHeight={listHeight} 
+      />
+    );
+  }, [activeIndex, listHeight]);
 
   if (isLoading) {
     return (
@@ -143,9 +173,7 @@ export default function ShortsScreen() {
       <FlatList
         data={shorts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <ShortVideoItem item={item} isActive={index === activeIndex} itemHeight={listHeight} />
-        )}
+        renderItem={renderVideoItem}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={listHeight}
@@ -167,10 +195,6 @@ export default function ShortsScreen() {
         pointerEvents="box-none"
       >
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => setIsMenuVisible(true)} style={styles.menuLeftButton}>
-            <Ionicons name="menu" size={28} color="white" />
-          </TouchableOpacity>
-
           <View style={styles.tabsContainer}>
             <TouchableOpacity onPress={() => setActiveTab('Following')} style={styles.tabItem}>
               <Text style={[styles.tabText, activeTab === 'Following' && styles.activeTabText]}>Following</Text>
@@ -184,8 +208,6 @@ export default function ShortsScreen() {
           </View>
         </View>
       </LinearGradient>
-
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

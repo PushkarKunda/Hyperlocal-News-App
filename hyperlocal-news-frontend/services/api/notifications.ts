@@ -10,4 +10,28 @@ export const notificationsApi = {
     });
     return response;
   },
+
+  markRead: async (id: string | number) => {
+    const response = await request<any>({
+      url: API_ROUTES.engagement.markRead(Number(id)),
+      method: 'PATCH',
+    });
+    return response;
+  },
+
+  markAllRead: async () => {
+    const response = await request<any>({
+      url: API_ROUTES.engagement.markAllRead,
+      method: 'PATCH',
+    });
+    return response;
+  },
+
+  clearAll: async () => {
+    const response = await request<any>({
+      url: API_ROUTES.engagement.clearAll,
+      method: 'DELETE',
+    });
+    return response;
+  },
 };

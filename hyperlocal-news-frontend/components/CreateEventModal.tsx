@@ -20,7 +20,7 @@ import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useRouter } from 'expo-router';
 
-// Mock Event Cover Presets
+// Event Cover Presets
 const COVER_PRESETS = [
   { id: 'music', label: 'Music', url: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=600' },
   { id: 'sports', label: 'Sports', url: 'https://images.unsplash.com/photo-1502224562085-639556652f33?w=600' },

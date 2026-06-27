@@ -151,7 +151,7 @@ export default function CreateArticleScreen() {
 
             <TouchableOpacity
               style={[styles.gatedButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(onboarding)/profile')}
+              onPress={() => router.push('/(onboarding)/edit-profile')}
               activeOpacity={0.8}
             >
               <Text style={styles.gatedButtonText}>Verify Gmail Now</Text>
@@ -376,11 +376,19 @@ export default function CreateArticleScreen() {
                       ]}
                     >
                       {cat.icon && (
-                        <MaterialIcons
-                          name={cat.icon as any}
-                          size={16}
-                          color={isSelected ? cat.color ?? colors.primary : colors.textSecondary}
-                        />
+                        cat.icon.startsWith('http') || cat.icon.includes('/') ? (
+                          <Image
+                            source={{ uri: cat.icon }}
+                            style={{ width: 16, height: 16, tintColor: isSelected ? cat.color ?? colors.primary : colors.textSecondary }}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <MaterialIcons
+                            name={cat.icon as any}
+                            size={16}
+                            color={isSelected ? cat.color ?? colors.primary : colors.textSecondary}
+                          />
+                        )
                       )}
                       <Text
                         style={[

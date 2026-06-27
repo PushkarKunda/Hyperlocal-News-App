@@ -39,7 +39,7 @@ const extractText = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const mapNewsArticle = (article: Partial<GeneratedNewsOut> & Record<string, unknown>): NewsArticle => {
+export const mapNewsArticle = (article: Partial<GeneratedNewsOut> & Record<string, unknown>): NewsArticle => {
   const id = String(article.news_uid ?? article.id ?? article.user_uid ?? `news-${Date.now()}`);
   const summary = typeof article.summary === 'string' ? article.summary : '';
   const imageUrl = typeof article.image_url === 'string' && article.image_url ? article.image_url : 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=1200';
@@ -129,6 +129,52 @@ export const newsApi = {
     const raw = Array.isArray(response) ? response[0] : (response as GeneratedNewsOut | undefined);
     if (!raw) return undefined;
     return mapNewsArticle(raw as Partial<GeneratedNewsOut> & Record<string, unknown>);
+  },
+
+  create: async (payload: {
+    headline: string;
+    summary: string;
+    content: string;
+    category: string;
+    sourceName?: string;
+    imageUrl?: string;
+    language?: string;
+    location?: string;
+    tags?: string[];
+  }) => {
+    const response = await request<unknown>({
+      url: API_ROUTES.news.create,
+      method: 'POST',
+      data: {
+        title: payload.headline,
+        summary: payload.summary,
+        content: payload.content,
+        category: payload.category,
+        source_name: payload.sourceName,
+        image_url: payload.imageUrl,
+        language: payload.language,
+        location: payload.location,
+        tags: payload.tags,
+      },
+    });
+    return response;
+  },
+
+  listByLocation: async (params?: { state?: string; district?: string; city?: string }) => {
+    const response = await request<unknown>({
+      url: API_ROUTES.news.byLocation,
+      method: 'GET',
+      params,
+    });
+    return pickList(response).map(mapNewsArticle);
+  },
+
+  delete: async (uid: string) => {
+    const response = await request<any>({
+      url: API_ROUTES.news.deleteNews(uid),
+      method: 'DELETE',
+    });
+    return response;
   },
 };
 

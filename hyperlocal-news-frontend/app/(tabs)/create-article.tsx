@@ -19,7 +19,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import { useArticleStore } from '@/store/articleStore';
+import { useCreateArticle } from '@/hooks/useNews';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 
@@ -67,8 +67,8 @@ export default function CreateArticleScreen() {
   const router = useRouter();
   const { height: screenHeight } = useWindowDimensions();
 
-  // Zustand Store
-  const { addArticle } = useArticleStore();
+  // API Mutation
+  const { mutate: createArticle } = useCreateArticle();
   const { user } = useAuthStore();
   const isPublisher = user?.isPublisher || false;
 
@@ -136,7 +136,7 @@ export default function CreateArticleScreen() {
 
             <TouchableOpacity
               style={[styles.gatedButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(onboarding)/profile')}
+              onPress={() => router.push('/(onboarding)/edit-profile')}
               activeOpacity={0.8}
             >
               <Text style={styles.gatedButtonText}>Verify Gmail Now</Text>
@@ -236,25 +236,28 @@ export default function CreateArticleScreen() {
 
     setValidationError('');
 
-    // Save article to store
-    addArticle({
+    createArticle({
       category: category.toUpperCase(),
       headline: headline.trim(),
       summary: summary.trim(),
       sourceName: 'Aura Reporter',
-      readingTime: `${Math.max(1, Math.ceil(wordCount / 150))} min read`,
       imageUrl: coverImage,
       content: content.trim(),
       language: language || 'English',
       location: location || 'Kukatpally',
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+    }, {
+      onSuccess: () => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/articles');
+        }
+      },
+      onError: (err: any) => {
+        setValidationError(err?.message || 'Failed to submit article for review.');
+      }
     });
-
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)/articles');
-    }
   };
 
   const activeOptions = 

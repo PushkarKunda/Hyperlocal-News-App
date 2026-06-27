@@ -78,7 +78,11 @@ export default function VerifyOTPScreen() {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.message || 'Invalid OTP. Please try again.');
+      let errorMsg = error.message || 'Invalid OTP. Please try again.';
+      if (error.config?.url) {
+        errorMsg += `\n\nURL: ${error.config.url}`;
+      }
+      Alert.alert('Verification Failed', errorMsg);
       setOtp('');
     }
   };
@@ -299,8 +303,10 @@ const styles = StyleSheet.create({
     height: 64,
     borderWidth: 1.5,
     borderRadius: 16,
-    fontSize: 30,
+    fontSize: 22,
     letterSpacing: 14,
+    textAlign: 'center',
+    paddingLeft: 14, // Offset letterSpacing to ensure true centering
     marginBottom: 28,
     fontFamily: 'Poppins_600SemiBold',
   },

@@ -27,11 +27,11 @@ export default function SplashScreen() {
   const pulseAnim = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    // 1. Trigger intro branding animations
+    // 1. Trigger intro branding animations in a faster, snappier sequence
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -40,14 +40,15 @@ export default function SplashScreen() {
         tension: 40,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      // Reveal tagline/subtitle slightly after logo pops in
-      Animated.timing(textRevealAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }).start();
-    });
+      Animated.sequence([
+        Animated.delay(200),
+        Animated.timing(textRevealAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
 
     // 2. Infinite circular rotation for spinner
     Animated.loop(
@@ -77,7 +78,7 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    // 4. Authentication state check and routing after delay
+    // 4. Authentication state check and routing after snappier delay of 1.0s (was 2.8s)
     const timer = setTimeout(() => {
       const { isAuthenticated, isOnboarded, pendingPhone, pendingVerificationId } = useAuthStore.getState();
       if (isAuthenticated && isOnboarded) {
@@ -92,7 +93,7 @@ export default function SplashScreen() {
       } else {
         router.replace('/(auth)/login');
       }
-    }, 2800);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, []);

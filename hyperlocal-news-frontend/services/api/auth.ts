@@ -45,6 +45,18 @@ export interface RegisterDevicePayload {
   app_version?: string;
 }
 
+export interface PublisherEligibilityRequirement {
+  field: string;
+  status: string;
+  message: string;
+}
+
+export interface PublisherEligibilityResponse {
+  can_become_reporter: boolean;
+  requirements: PublisherEligibilityRequirement[];
+  switch_endpoint: string;
+}
+
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -99,14 +111,8 @@ export const authApi = {
   /**
    * Check if user can become publisher
    */
-  checkPublisherEligibility: async (): Promise<{
-    eligible: boolean;
-    email_verified: boolean;
-    mobile_verified: boolean;
-    name_filled: boolean;
-    missing_requirements: string[];
-  }> => {
-    return await request({
+  checkPublisherEligibility: async (): Promise<PublisherEligibilityResponse> => {
+    return await request<PublisherEligibilityResponse>({
       url: API_ROUTES.user.publisherEligibility,
       method: 'GET',
     });

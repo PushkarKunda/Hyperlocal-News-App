@@ -7,6 +7,7 @@ import axios, {
 } from 'axios';
 import { API_CONFIG } from './config';
 import { getAuthToken, getRefreshToken, saveTokens, clearTokens } from './token';
+import { API_ROUTES } from './routes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ apiClient.interceptors.response.use(
 
         // Call refresh endpoint
         const response = await axios.post(
-          `${API_CONFIG.baseUrl}/user/auth/refresh?refresh_token=${refreshToken}`
+          `${API_CONFIG.baseUrl}${API_ROUTES.auth.refreshToken}?refresh_token=${refreshToken}`
         );
 
         const { access_token, refresh_token } = response.data;

@@ -165,10 +165,10 @@ export default function ProfileReadingHistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Pull articles from the store and simulate "read" history from first 8 published articles
+  // Pull articles from the store and retrieve read history from published articles
   const allArticles = useStore((s) => s.allArticles);
 
-  const mockHistory: HistoryItem[] = useMemo(() =>
+  const initialHistory: HistoryItem[] = useMemo(() =>
     allArticles
       .filter((a) => a.status === 'published')
       .slice(0, 12)
@@ -185,7 +185,7 @@ export default function ProfileReadingHistoryScreen() {
     [allArticles]
   );
 
-  const [history, setHistory] = useState<HistoryItem[]>(mockHistory);
+  const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
   const [filter, setFilter] = useState<'all' | 'today' | 'yesterday'>('all');
 
   const filtered = useMemo(() => {

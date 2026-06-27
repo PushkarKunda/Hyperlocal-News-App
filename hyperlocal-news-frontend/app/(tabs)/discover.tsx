@@ -1,39 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { MaterialIcons, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome5, Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
-import MenuOptions from '@/components/MenuOptions';
+import { Image } from 'expo-image';
 
-import { useTrendingList, useCategoriesList, useSourcesList, useLocalitiesList } from '@/hooks/useApi';
+
+import { useTrendingList, useSourcesList, useLocalitiesList, useInterestsList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+
+const TOPIC_STYLES: Record<string, {
+  iconName: any;
+  iconType: 'feather' | 'ionicons';
+  iconColor: string;
+  iconBg: string;
+  selectedBg: string;
+  span?: boolean;
+}> = {
+  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
+  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
+  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7' },
+  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE' },
+  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7' },
+  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
+  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
+  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE' },
+};
 
 export default function DiscoverScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Load discover page segments dynamically from simulated Axios client using React Query hooks
   const { data: trending = [], isLoading: isLoadingTrending } = useTrendingList();
-  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesList();
+  const { data: interests = [], isLoading: isLoadingInterests } = useInterestsList();
   const { data: sources = [], isLoading: isLoadingSources } = useSourcesList();
   const { data: localities = [], isLoading: isLoadingLocalities } = useLocalitiesList();
 
-  const renderIcon = (library: string, name: string, color: string, size: number) => {
-    switch (library) {
-      case 'FontAwesome5': return <FontAwesome5 name={name as any} size={size} color={color} />;
-      case 'Ionicons': return <Ionicons name={name as any} size={size} color={color} />;
-      case 'MaterialCommunityIcons': return <MaterialCommunityIcons name={name as any} size={size} color={color} />;
-      default: return <MaterialIcons name={name as any} size={size} color={color} />;
-    }
-  };
-
-  const isLoading = isLoadingTrending || isLoadingCategories || isLoadingSources || isLoadingLocalities;
+  const isLoading = isLoadingTrending || isLoadingInterests || isLoadingSources || isLoadingLocalities;
 
   if (isLoading) {
     return (
@@ -43,43 +53,26 @@ export default function DiscoverScreen() {
     );
   }
 
-  // Map backend categories/interests nicely to the 6 bento grid items with custom gorgeous icons
-  const mappedTopics = categories.map((cat) => {
-    let library = 'MaterialIcons';
-    let icon = cat.icon || 'star';
-    if (cat.slug === 'business') {
-      library = 'FontAwesome5';
-      icon = 'briefcase';
-    } else if (cat.slug === 'politics') {
-      library = 'FontAwesome5';
-      icon = 'gavel';
-    } else if (cat.slug === 'technology') {
-      library = 'MaterialIcons';
-      icon = 'laptop';
-    } else if (cat.slug === 'crime') {
-      library = 'Ionicons';
-      icon = 'shield';
-    }
-    return {
-      id: cat.id,
-      title: cat.name,
-      icon,
-      library
+  // Map onboarding interests to grid items with custom styles
+  const mappedTopics = interests.map((interest) => {
+    const style = TOPIC_STYLES[interest.id] || {
+      iconName: 'star-outline',
+      iconType: 'ionicons',
+      iconColor: '#4648d4',
+      iconBg: 'rgba(70, 72, 212, 0.08)',
+      selectedBg: '#D8D9F7',
     };
-  }).slice(0, 6);
+    return {
+      id: interest.id,
+      title: interest.name,
+      ...style,
+    };
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header Section */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
-          style={styles.headerLeftButton} 
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
-        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Discover</Text>
       </View>
 
@@ -131,8 +124,12 @@ export default function DiscoverScreen() {
           <View style={styles.gridContainer}>
             {mappedTopics.map((topic) => (
               <TouchableOpacity key={topic.id} style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
-                  {renderIcon(topic.library, topic.icon, colors.primary, 20)}
+                <View style={[styles.iconContainer, { backgroundColor: topic.iconBg }]}>
+                  {topic.iconType === 'feather' ? (
+                    <Feather name={topic.iconName} size={20} color={topic.iconColor} />
+                  ) : (
+                    <Ionicons name={topic.iconName} size={20} color={topic.iconColor} />
+                  )}
                 </View>
                 <Text style={[styles.gridItemText, { color: colors.text }]}>{topic.title}</Text>
               </TouchableOpacity>
@@ -181,7 +178,6 @@ export default function DiscoverScreen() {
         </View>
 
       </ScrollView>
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }
