@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNewsFeed } from '@/hooks/useApi';
 import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
-import MenuOptions from '@/components/MenuOptions';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
+import { useTabBarStore } from '@/store/tabBarStore';
+import { NewsArticle } from '@/types';
 
 
 const CATEGORIES = [
@@ -34,10 +35,13 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuthStore();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { newsId } = useLocalSearchParams<{ newsId?: string }>();
+
+  const setTabBarVisible = useTabBarStore((state) => state.setVisible);
 
   const categoryFlatListRef = useRef<FlatList>(null);
   const horizontalFlatListRef = useRef<FlatList>(null);
@@ -47,15 +51,30 @@ export default function HomeScreen() {
   // Load news dynamically from our simulated backend using React Query
   const { data: news = [], isLoading } = useNewsFeed();
 
+  const [scrollHeight, setScrollHeight] = useState(screenHeight);
+  const [activeCategory, setActiveCategory] = useState('for-you');
+
+  const renderNewsCard = useCallback(({ item }: { item: NewsArticle }) => (
+    <ImmersiveNewsCard
+      item={item}
+      containerHeight={scrollHeight}
+    />
+  ), [scrollHeight]);
+
+  // Reset tab bar visibility and header on focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setTabBarVisible(true);
+      showHeader();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   // Filter news dynamically based on the selected category slug
   const getFilteredNews = (slug: string) => {
     if (slug === 'for-you') return news;
     return news.filter(item => item.category?.slug === slug);
   };
-
-  const [scrollHeight, setScrollHeight] = useState(screenHeight);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('for-you');
 
   // Animation values and state for the header auto-hide/pop feature
   const headerAnim = useRef(new Animated.Value(1)).current;
@@ -81,24 +100,30 @@ export default function HomeScreen() {
       hideTimerRef.current = null;
     }
     isHeaderVisible.current = true;
+    setTabBarVisible(true);
     Animated.timing(headerAnim, {
       toValue: 1,
       duration: 250,
       useNativeDriver: true,
     }).start();
 
-    // Auto-hide after 3 seconds of inactivity
-    hideTimerRef.current = setTimeout(() => {
-      hideHeader();
-    }, 3000);
+    // Auto-hide after 3 seconds of inactivity, ONLY if news is loaded
+    if (!isLoading) {
+      hideTimerRef.current = setTimeout(() => {
+        hideHeader();
+      }, 3000);
+    }
   };
 
   const hideHeader = () => {
+    if (isLoading) return; // Do not hide header while news is still loading!
+    
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
     isHeaderVisible.current = false;
+    setTabBarVisible(false);
     Animated.timing(headerAnim, {
       toValue: 0,
       duration: 300,
@@ -136,6 +161,17 @@ export default function HomeScreen() {
   // Initial display and auto-hide when the feed finishes loading
   useEffect(() => {
     if (!isLoading) {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+      isHeaderVisible.current = true;
+      setTabBarVisible(true);
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+
       hideTimerRef.current = setTimeout(() => {
         hideHeader();
       }, 5000);
@@ -180,14 +216,7 @@ export default function HomeScreen() {
     }
   }, [newsId, scrollHeight, news]);
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
-        <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
-        <LoadingSpinner fullScreen text="Curating your local news..." color={colors.primary} colorScheme={colorScheme ?? 'light'} />
-      </View>
-    );
-  }
+  // Removed early return layout to support rendering header from the start
 
   return (
     <View 
@@ -209,13 +238,7 @@ export default function HomeScreen() {
       ]}>
         {/* Styled Symmetrical Theme-Aware Header Section */}
         <Animated.View style={[styles.header, { borderBottomColor: colors.border, opacity: headerOpacity }]}>
-          <TouchableOpacity
-            style={[styles.headerLeftButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
-            onPress={() => setIsMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
 
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -291,7 +314,12 @@ export default function HomeScreen() {
         style={styles.feedWrapper}
         onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
       >
-        <FlatList
+        {isLoading ? (
+          <View style={[styles.loaderContainer, { backgroundColor: colors.background, paddingTop: headerHeight }]}>
+            <LoadingSpinner text="Curating your local news..." color={colors.primary} colorScheme={colorScheme ?? 'light'} />
+          </View>
+        ) : (
+          <FlatList
           ref={horizontalFlatListRef}
           data={CATEGORIES}
           keyExtractor={(item) => item.slug}
@@ -369,12 +397,7 @@ export default function HomeScreen() {
                   }}
                   data={categoryNews}
                   keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <ImmersiveNewsCard
-                      item={item}
-                      containerHeight={scrollHeight}
-                    />
-                  )}
+                  renderItem={renderNewsCard}
                   pagingEnabled
                   nestedScrollEnabled={true}
                   showsVerticalScrollIndicator={false}
@@ -399,13 +422,9 @@ export default function HomeScreen() {
             );
           }}
         />
-      </View>
+      )}
+    </View>
 
-      {/* Reusable Menu Drawer Overlay Component */}
-      <MenuOptions
-        isVisible={isMenuVisible}
-        onClose={() => setIsMenuVisible(false)}
-      />
     </View>
   );
 }

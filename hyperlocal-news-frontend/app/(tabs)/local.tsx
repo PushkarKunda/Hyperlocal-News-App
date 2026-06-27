@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LocalNewsCard, LocalNewsItem } from '@/components/LocalNewsCard';
 import { LocalEventCard, LocalEventItem } from '@/components/LocalEventCard';
-import MenuOptions from '@/components/MenuOptions';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationNews } from '@/hooks/useNews';
 import { useEvents } from '@/hooks/useEvents';
@@ -23,12 +22,13 @@ export default function LocalScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All Time');
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
   
   const scale = useAppTextScale();
   const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
   const user = useAuthStore(state => state.user);
+
+
 
   // Fetch live local news and events
   const { data: rawNews = [], isLoading: isLoadingNews } = useLocationNews({
@@ -173,14 +173,6 @@ export default function LocalScreen() {
       
       {/* Header Section */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
-          style={styles.headerLeftButton} 
-          onPress={() => setIsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
-        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Local News</Text>
       </View>
 
@@ -299,7 +291,6 @@ export default function LocalScreen() {
           )}
         </View>
       </ScrollView>
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
     </View>
   );
 }

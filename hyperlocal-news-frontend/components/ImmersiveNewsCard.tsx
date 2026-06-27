@@ -12,7 +12,7 @@ interface ImmersiveNewsCardProps {
   containerHeight: number;
 }
 
-export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardProps) {
+export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: ImmersiveNewsCardProps) => {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -119,7 +119,14 @@ export function ImmersiveNewsCard({ item, containerHeight }: ImmersiveNewsCardPr
       </View>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.containerHeight === nextProps.containerHeight &&
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.headline === nextProps.item.headline &&
+    prevProps.item.imageUrl === nextProps.item.imageUrl
+  );
+});
 
 const styles = StyleSheet.create({
   cardContainer: {

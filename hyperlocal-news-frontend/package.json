@@ -12,8 +12,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo-google-fonts/inter": "^0.2.3",
-    "@expo-google-fonts/newsreader": "^0.2.3",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/vector-icons": "~14.0.4",
     "@hookform/resolvers": "^3.9.1",
