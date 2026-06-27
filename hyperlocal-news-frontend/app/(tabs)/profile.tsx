@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   TextInput,
   Platform,
   Modal,
-  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -21,11 +20,13 @@ import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import MenuOptions from '@/components/MenuOptions';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { usersApi, uploadsApi } from '@/services/api';
+import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -39,8 +40,68 @@ const POST_PRESETS = [
   { id: '6', label: 'Forest Road', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500' },
 ];
 
-const INITIAL_POSTS: any[] = [];
-const INITIAL_NEWS: any[] = [];
+// Mock Data Constants
+const INITIAL_POSTS = [
+  { id: 'p1', imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500', status: 'Approved', likes: 45, comments: 12, caption: 'Beautiful sunny day at the beach!' },
+  { id: 'p2', imageUrl: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=500', status: 'Pending', likes: 32, comments: 8, caption: 'Boats at the local harbor.' },
+  { id: 'p3', imageUrl: 'https://images.unsplash.com/photo-1542397284385-6010176424b2?w=500', status: 'Approved', likes: 28, comments: 5, caption: 'Peaceful temple visit in the morning.' },
+  { id: 'p4', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Pending', likes: 14, comments: 2, caption: 'Sunset view from the hills.' },
+  { id: 'p5', imageUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500', status: 'Approved', likes: 56, comments: 18, caption: 'Stunning city line at night.' },
+  { id: 'p6', imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500', status: 'Rejected', likes: 3, comments: 1, caption: 'A walk down the forest road.' },
+];
+
+const INITIAL_NEWS = [
+  {
+    id: 'n1',
+    title: 'Breaking: New Local Policy Initiative Launched',
+    date: 'May 24, 2025',
+    views: '1,234 Views',
+    likes: 89,
+    comments: 23,
+    shares: 45,
+    status: 'Approved',
+    imageUrl: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=500',
+  },
+  {
+    id: 'n2',
+    title: 'Beach Road Development Project Update',
+    date: 'May 21, 2025',
+    views: '856 Views',
+    likes: 45,
+    comments: 12,
+    shares: 23,
+    status: 'Approved',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500',
+  },
+  {
+    id: 'n3',
+    title: 'New Smart Classrooms Inaugurated in 10 Schools',
+    date: 'May 18, 2025',
+    views: '745 Views',
+    likes: 38,
+    comments: 9,
+    shares: 17,
+    status: 'Approved',
+    imageUrl: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=500',
+  },
+  {
+    id: 'n4',
+    title: 'Local Festival 2025 - Grand Celebrations Soon',
+    date: 'Submitted on May 23, 2025',
+    status: 'Pending',
+    estimatedTime: '24–48 hours',
+    imageUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=500',
+  },
+  {
+    id: 'n5',
+    title: 'Unverified Air Quality Report',
+    date: 'May 20, 2025',
+    views: '210 Views',
+    status: 'Rejected',
+    reason: 'Inaccurate information / No source provided',
+    imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500',
+  },
+];
 
 export default function ProfileScreen() {
   const colorScheme = useAppColorScheme();
@@ -49,11 +110,22 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { user, logout, updateProfile, checkPublisherEligibility, switchToPublisher } = useAuthStore();
+  const { user, logout, updateProfile, updateProfileLocal, checkPublisherEligibility, switchToPublisher } = useAuthStore();
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const { signInWithGoogle, isGoogleLoading } = useGoogleFirebaseAuth({
+    onSuccess: (res) => {
+      Alert.alert('Success 🎉', 'Google account linked and email verified successfully!');
+      // fetchEligibility(); // Uncomment if you have this function
+    },
+    onError: (err) => {
+      Alert.alert('Link Failed', err.message || 'Failed to link Google account.');
+    },
+  });
 
   // Profile Active Tab State
-  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved'>('posts');
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'verify'>('posts');
   // News Filter Pill State
   const [newsFilter, setNewsFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   // Sorting Mode State
@@ -69,127 +141,45 @@ export default function ProfileScreen() {
   const [postCaption, setPostCaption] = useState('');
   const [postCoverImage, setPostCoverImage] = useState('');
 
-  // API hooks
-  const { all: myArticles = [], isLoading: isLoadingArticles, dashboard } = usePublisherArticles();
-  const { mutate: deleteArticleMutate } = useDeleteArticle();
-  const { mutate: createArticleMutate } = useCreateArticle();
-  const { data: rawBookmarks = [], isLoading: isLoadingBookmarks } = useBookmarks();
-
-  // Local posts state (fallback empty)
-  const [posts, setPosts] = useState<any[]>([]);
-
-  // Map backend articles to profile news list format
-  const newsList = useMemo(() => {
-    return myArticles.map((article) => {
-      const dateFormatted = new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const viewsCount = article.stats?.views || 0;
-      return {
-        id: article.id,
-        title: article.headline,
-        date: dateFormatted,
-        views: `${viewsCount} Views`,
-        likes: article.stats?.likes || 0,
-        comments: article.stats?.comments || 0,
-        status: article.status === 'published' ? 'Approved' : (article.status === 'rejected' ? 'Rejected' : 'Pending'),
-        imageUrl: article.imageUrl,
-        reason: 'Under review by moderators',
-      };
-    });
-  }, [myArticles]);
-
-  // Map rawBookmarks to savedPosts
-  const savedPosts = useMemo(() => {
-    return rawBookmarks.map((b) => ({
-      id: b.id,
-      imageUrl: b.imageUrl,
-      likes: String(b.stats?.likes || 0),
-      comments: String(b.stats?.comments || 0),
-      title: b.headline,
-    }));
-  }, [rawBookmarks]);
+  // Mock Data States
+  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [newsList, setNewsList] = useState(INITIAL_NEWS);
+  const [savedPosts, setSavedPosts] = useState([
+    { id: 's1', imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', status: 'Approved', likes: 120, comments: 40 },
+    { id: 's2', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Approved', likes: 88, comments: 19 },
+  ]);
 
   // Verification Form State
   const [fullName, setFullName] = useState('');
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  // Real eligibility states
-  const [eligibility, setEligibility] = useState<{
-    eligible: boolean;
-    requirements: any[];
-    missing_requirements: string[];
-  } | null>(null);
-  const [isLoadingEligibility, setIsLoadingEligibility] = useState(false);
-  const [dob, setDob] = useState('');
-  const [genderState, setGenderState] = useState('');
-
-  const fetchEligibility = async () => {
-    setIsLoadingEligibility(true);
-    try {
-      const res = await checkPublisherEligibility();
-      setEligibility(res);
-      if (user?.name) setFullName(user.name);
-      if (user?.gender) setGenderState(user.gender);
-      if (user?.date_of_birth) setDob(user.date_of_birth);
-    } catch (err) {
-      console.error('Failed to fetch eligibility', err);
-    } finally {
-      setIsLoadingEligibility(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (showVerifyModal) {
-      fetchEligibility();
-    }
-  }, [showVerifyModal]);
-
 
   const isPublisher = user?.isPublisher || false;
-  const isGuest = user?.isGuest;
 
-  // Custom variables mapped to live dashboard user profile info
-  const displayName = dashboard?.user?.name || user?.name || (isGuest ? 'Guest User' : 'User');
+  // Custom simulation variables based on verification status
+  const displayName = user?.name || (isGuest ? 'Guest User' : 'John Doe');
 
-  // Auto-generate username handle dynamically based on user name or fallback
-  const userHandle = dashboard?.user?.user_name
-    ? '@' + dashboard.user.user_name
-    : '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = dashboard?.user?.location || (user?.district ? `${user.district}, ${user.state || ''}`.trim() : 'Location not set');
+  // Auto-generate username handle dynamically based on user name
+  const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
+  const userLocation = user?.district ? `${user.district}, ${user.state || 'AP'}` : 'Visakhapatnam, AP';
 
-  const totalLikes = newsList.reduce((acc, curr) => acc + (curr.likes || 0), 0);
-  const totalComments = newsList.reduce((acc, curr) => acc + (curr.comments || 0), 0);
-
-  // Dynamic Stats fetched from backend
-  const stats = {
-    posts: String(dashboard?.stats?.total_posts ?? newsList.length),
-    likes: String(dashboard?.stats?.total_likes ?? totalLikes),
-    comments: String(dashboard?.stats?.total_comments ?? totalComments),
-    level: dashboard?.stats?.level_name || `Level ${dashboard?.stats?.level || 1}`,
-    coins: String(dashboard?.stats?.coins ?? 0),
-    points: String(dashboard?.stats?.points ?? 0),
+  // Dynamic Stats
+  const stats = isPublisher ? {
+    posts: '25',
+    likes: '1.2K',
+    comments: '323',
+    level: 'Level 3',
+    coins: '890',
+    points: '2,450',
+  } : {
+    posts: '12',
+    likes: '287',
+    comments: '64',
+    level: 'Level 1',
+    coins: '120',
+    points: '560',
   };
-
-  // Sourced from dynamic dashboard data
-  const joinedDateFormatted = useMemo(() => {
-    const rawDate = dashboard?.user?.joined_date;
-    if (!rawDate) return 'Joined Jan 2024';
-    try {
-      return `Joined ${new Date(rawDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
-    } catch {
-      return 'Joined Jan 2024';
-    }
-  }, [dashboard?.user?.joined_date]);
-
-  if (isLoadingArticles || isLoadingBookmarks) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
-        <LoadingSpinner fullScreen text="Loading profile..." colorScheme={colorScheme ?? 'light'} />
-      </View>
-    );
-  }
 
   const requestImagePermissions = async () => {
     if (Platform.OS !== 'web') {
@@ -207,17 +197,16 @@ export default function ProfileScreen() {
   const uploadAndSaveAvatar = async (localUri: string) => {
     setIsUploadingAvatar(true);
     try {
-      const { compressImage, uriToFormData } = require('@/services/image');
+      const { compressImage } = require('@/services/image');
       const compressed = await compressImage(localUri);
-      const formData = await uriToFormData(compressed.uri);
-      const uploadRes = await uploadsApi.uploadAvatar(formData);
-      const serverUrl = uploadRes.url;
+      const { uploadImageToSupabase } = require('@/services/supabase');
+      const serverUrl = await uploadImageToSupabase(compressed.uri);
 
       await usersApi.updateMe({
         profile_picture: serverUrl,
       });
 
-      updateProfile({
+      updateProfileLocal({
         avatar: serverUrl,
         profile_picture: serverUrl,
       });
@@ -282,73 +271,27 @@ export default function ProfileScreen() {
   };
 
   const handleVerifyEmail = () => {
-    updateProfile(
-      user?.name || 'User',
-      user?.avatar || '',
-      user?.email || undefined,
-      user?.phoneNumber,
-      isPublisher,
-      true
-    );
+    updateProfileLocal({
+      email_verified: true,
+    });
     Alert.alert('Email Verified', 'Your email address has been successfully verified.');
   };
 
-
-  const handleApplyVerification = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Validation Error', 'Please enter your Full Name / Brand Name.');
-      return;
-    }
-    if (!dob.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-      Alert.alert('Validation Error', 'Please enter your Date of Birth in YYYY-MM-DD format.');
-      return;
-    }
-    if (!genderState) {
-      Alert.alert('Validation Error', 'Please select your Gender.');
-      return;
-    }
-
+  const handleApplyVerification = () => {
     setIsSubmittingVerify(true);
-    try {
-      // Step 1: Update profile on the backend
-      await usersApi.updateMe({
-        name: fullName.trim(),
-        gender: genderState.toLowerCase(),
-        date_of_birth: dob.trim(),
-      });
-
-      // Step 2: Switch to publisher role
-      await switchToPublisher();
-
-      // Update locally in store
-      updateProfile({
-        name: fullName.trim(),
-        gender: genderState.toLowerCase(),
-        date_of_birth: dob.trim(),
-        role: 2,
-        isPublisher: true,
-      } as any);
-
-      setShowVerifyModal(false);
-
-      Alert.alert(
-        'Congratulations! 🎉',
-        'Your profile has been updated and upgraded to Publisher successfully! You can now write articles and polls.',
-        [
-          {
-            text: 'Go to Dashboard',
-            onPress: () => {
-              setActiveTab('posts');
-            },
-          },
-        ]
+    setTimeout(() => {
+      updateProfile(
+        user?.name,
+        user?.avatar,
+        user?.email,
+        user?.phoneNumber,
+        true,
+        true
       );
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert('Verification Failed', error.message || 'Could not switch to publisher role. Please check all requirements.');
-    } finally {
       setIsSubmittingVerify(false);
-    }
+      setActiveTab('posts');
+      Alert.alert('Congratulations!', 'Your verification request has been approved instantly for demo purposes. You are now a Verified Publisher!');
+    }, 1200);
   };
 
   const handleCreateNewsArticle = (data: {
@@ -359,15 +302,19 @@ export default function ProfileScreen() {
     readingTime: string;
     imageUrl: string;
   }) => {
-    createArticleMutate({
-      headline: data.headline,
-      summary: data.summary,
-      content: data.summary,
-      category: data.category,
-      sourceName: data.sourceName,
+    const newArticle = {
+      id: 'n_' + Date.now(),
+      title: data.headline,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      views: '0 Views',
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      status: 'Approved',
       imageUrl: data.imageUrl,
-    });
-    Alert.alert('Published!', 'Your news article has been submitted to the database and will appear shortly.');
+    };
+    setNewsList([newArticle, ...newsList]);
+    Alert.alert('Published!', 'Your news article has been published and is now live under Approved news.');
   };
 
   const handleCreatePost = () => {
@@ -403,7 +350,7 @@ export default function ProfileScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          deleteArticleMutate(id);
+          setNewsList(newsList.filter(item => item.id !== id));
         },
       },
     ]);
@@ -425,7 +372,6 @@ export default function ProfileScreen() {
     } else if (newsSort === 'likes') {
       list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     } else if (newsSort === 'date') {
-      // standard sort by ID / custom date logic
       list.sort((a, b) => b.id.localeCompare(a.id));
     }
     return list;
@@ -436,11 +382,28 @@ export default function ProfileScreen() {
 
       {/* Symmetrical Svelte Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={() => setIsMenuVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>
 
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={() => router.push('/(tabs)/notifications')}
+          activeOpacity={0.7}
+        >
+          <View>
+            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>3</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -461,12 +424,7 @@ export default function ProfileScreen() {
                   source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200' }}
                   style={styles.avatarImage}
                 />
-                {isUploadingAvatar && (
-                  <View style={styles.avatarLoader}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  </View>
-                )}
-                <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress} disabled={isUploadingAvatar}>
+                <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress}>
                   <Ionicons name="camera" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -501,25 +459,25 @@ export default function ProfileScreen() {
                   </View>
                   <View style={[styles.metaItem, { marginLeft: 12 }]}>
                     <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{joinedDateFormatted}</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined Jan 2024</Text>
                   </View>
                 </View>
 
                 {/* Followers */}
                 <Text style={[styles.followersText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: '700', color: colors.text }}>{dashboard?.user?.followers_count ?? (isPublisher ? '1,234' : '234')}</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>{dashboard?.user?.following_count ?? (isPublisher ? '567' : '178')}</Text> Following
+                  <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '1,234' : '234'}</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '567' : '178'}</Text> Following
                 </Text>
               </View>
             </View>
 
             {/* Profile Action Buttons */}
             <View style={styles.profileActionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/edit-profile')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/edit-profile')}>
                 <Ionicons name="pencil" size={14} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit Profile</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/settings')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/settings')}>
                 <Ionicons name="settings-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Settings</Text>
               </TouchableOpacity>
@@ -531,27 +489,28 @@ export default function ProfileScreen() {
         {!isPublisher && (
           <View style={styles.verifyBannerWrapper}>
             {!user?.email_verified ? (
-              // Email Verification Banner
               <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#2D1F1F' : '#FFF0F0', borderColor: '#FFCDD2' }]}>
-                <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(244, 67, 54, 0.1)' }]}>
-                  <Ionicons name="mail-unread" size={24} color="#F44336" />
+                <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Ionicons name="logo-google" size={24} color="#4648D4" />
                 </View>
                 <View style={styles.verifyBannerContent}>
                   <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Verify Your Email Address</Text>
                   <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
-                    Please verify your email address to unlock publisher options and secure your account.
+                    Link your Google account to automatically verify your email and unlock publisher options.
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={[styles.verifyBannerButton, { backgroundColor: '#F44336' }]}
+                  style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={handleVerifyEmail}
+                  onPress={signInWithGoogle}
+                  disabled={isGoogleLoading}
                 >
-                  <Text style={styles.verifyBannerButtonText}>Verify Email</Text>
+                  <Text style={styles.verifyBannerButtonText}>
+                    {isGoogleLoading ? 'Linking...' : 'Link Google'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              // Publisher Verification Banner
               <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#1C1C35' : '#F0F5FF', borderColor: colors.border }]}>
                 <View style={styles.verifyBannerIconContainer}>
                   <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
@@ -565,7 +524,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={() => setShowVerifyModal(true)}
+                  onPress={() => setActiveTab('verify')}
                 >
                   <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
                 </TouchableOpacity>
@@ -670,7 +629,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#4CAF50' }]}>
                     <Ionicons name="checkmark-sharp" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.approved ?? 0}</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>18</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approved</Text>
                 </View>
 
@@ -679,7 +638,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#FF9800' }]}>
                     <Ionicons name="time-outline" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.pending ?? 0}</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>5</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Pending</Text>
                 </View>
 
@@ -688,7 +647,7 @@ export default function ProfileScreen() {
                   <View style={[styles.newsStatIndicator, { backgroundColor: '#F44336' }]}>
                     <Ionicons name="close-sharp" size={14} color="#FFFFFF" />
                   </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.rejected ?? 0}</Text>
+                  <Text style={[styles.newsStatVal, { color: colors.text }]}>2</Text>
                   <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Rejected</Text>
                 </View>
               </View>
@@ -697,7 +656,7 @@ export default function ProfileScreen() {
                 <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
                   <Ionicons name="document-text-outline" size={20} color={colors.primary} style={{ marginRight: 10 }} />
                   <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>{dashboard?.news_stats?.total ?? 0}</Text>
+                    <Text style={[styles.newsStatVal, { color: colors.text }]}>25</Text>
                     <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Total News</Text>
                   </View>
                 </View>
@@ -705,9 +664,7 @@ export default function ProfileScreen() {
                 <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
                   <Ionicons name="trending-up-outline" size={20} color="#8B5CF6" style={{ marginRight: 10 }} />
                   <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>
-                      {dashboard?.news_stats?.approval_rate != null ? `${dashboard.news_stats.approval_rate}%` : '0%'}
-                    </Text>
+                    <Text style={[styles.newsStatVal, { color: colors.text }]}>72%</Text>
                     <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approval Rate</Text>
                   </View>
                 </View>
@@ -716,9 +673,8 @@ export default function ProfileScreen() {
           </View>
         )}
 
-
         {/* Navigation Tabs Header */}
-        <View style={[styles.tabsHeader, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+        <View style={[styles.tabsHeader, { borderBottomColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]}
             onPress={() => setActiveTab('posts')}
@@ -743,16 +699,27 @@ export default function ProfileScreen() {
             <Text style={[styles.tabLabel, { color: activeTab === 'saved' ? colors.primary : colors.textSecondary }]}>Saved</Text>
           </TouchableOpacity>
 
-          {isPublisher && (
-            <TouchableOpacity
-              style={styles.tabButton}
-              onPress={() => setShowCreatePostModal(true)}
-            >
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'verify' && styles.tabButtonActive]}
+            onPress={() => {
+              if (isPublisher) {
+                setShowCreatePostModal(true);
+              } else {
+                setActiveTab('verify');
+              }
+            }}
+          >
+            {isPublisher ? (
               <View style={styles.plusTabCircle}>
                 <Ionicons name="add" size={18} color="#FFFFFF" />
               </View>
-            </TouchableOpacity>
-          )}
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark" size={16} color={activeTab === 'verify' ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.tabLabel, { color: activeTab === 'verify' ? colors.primary : colors.textSecondary }]}>Verify</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Tab Contents */}
@@ -764,7 +731,6 @@ export default function ProfileScreen() {
                 <View key={post.id} style={styles.postCard}>
                   <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
 
-                  {/* Status Badge */}
                   <View style={[
                     styles.postBadge,
                     {
@@ -776,7 +742,6 @@ export default function ProfileScreen() {
                     <Text style={styles.postBadgeText}>{post.status}</Text>
                   </View>
 
-                  {/* Likes / Comments overlay */}
                   <View style={styles.postOverlay}>
                     <View style={styles.overlayStat}>
                       <Ionicons name="heart" size={12} color="#FFFFFF" />
@@ -790,7 +755,7 @@ export default function ProfileScreen() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7}>
+            <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
               <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More</Text>
             </TouchableOpacity>
@@ -801,7 +766,6 @@ export default function ProfileScreen() {
           <View style={styles.newsSection}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>News Overview</Text>
 
-            {/* News Overview Mini Stats Section for Unverified */}
             {!isPublisher && (
               <View style={[styles.unverifiedNewsPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Ionicons name="shield-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
@@ -812,7 +776,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={[styles.promptButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={() => setShowVerifyModal(true)}
+                  onPress={() => setActiveTab('verify')}
                 >
                   <Text style={styles.promptButtonText}>Get Verified</Text>
                 </TouchableOpacity>
@@ -821,45 +785,44 @@ export default function ProfileScreen() {
 
             {isPublisher && (
               <>
-                {/* Horizontal filter pills */}
                 <View style={{ height: 50 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                     <TouchableOpacity
-                      style={[styles.filterPill, { backgroundColor: newsFilter === 'all' ? colors.primary : colors.surface, borderColor: newsFilter === 'all' ? colors.primary : colors.border }]}
+                      style={[styles.filterPill, newsFilter === 'all' && [styles.filterPillActive, { backgroundColor: colors.primary }]]}
                       onPress={() => setNewsFilter('all')}
                     >
-                      <Text style={[styles.filterLabel, { color: newsFilter === 'all' ? '#FFFFFF' : colors.textSecondary }]}>All ({newsList.length})</Text>
+                      <Text style={[styles.filterLabel, newsFilter === 'all' && styles.filterLabelActive]}>All ({newsList.length})</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, { backgroundColor: newsFilter === 'approved' ? '#4CAF50' : colors.surface, borderColor: newsFilter === 'approved' ? '#4CAF50' : colors.border }]}
+                      style={[styles.filterPill, newsFilter === 'approved' && [styles.filterPillActive, { backgroundColor: '#4CAF50' }]]}
                       onPress={() => setNewsFilter('approved')}
                     >
-                      <Text style={[styles.filterLabel, { color: newsFilter === 'approved' ? '#FFFFFF' : colors.textSecondary }]}>
+                      <Text style={[styles.filterLabel, newsFilter === 'approved' && styles.filterLabelActive]}>
                         Approved ({newsList.filter((item) => item.status === 'Approved').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, { backgroundColor: newsFilter === 'pending' ? '#FF9800' : colors.surface, borderColor: newsFilter === 'pending' ? '#FF9800' : colors.border }]}
+                      style={[styles.filterPill, newsFilter === 'pending' && [styles.filterPillActive, { backgroundColor: '#FF9800' }]]}
                       onPress={() => setNewsFilter('pending')}
                     >
-                      <Text style={[styles.filterLabel, { color: newsFilter === 'pending' ? '#FFFFFF' : colors.textSecondary }]}>
+                      <Text style={[styles.filterLabel, newsFilter === 'pending' && styles.filterLabelActive]}>
                         Pending ({newsList.filter((item) => item.status === 'Pending').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, { backgroundColor: newsFilter === 'rejected' ? '#F44336' : colors.surface, borderColor: newsFilter === 'rejected' ? '#F44336' : colors.border }]}
+                      style={[styles.filterPill, newsFilter === 'rejected' && [styles.filterPillActive, { backgroundColor: '#F44336' }]]}
                       onPress={() => setNewsFilter('rejected')}
                     >
-                      <Text style={[styles.filterLabel, { color: newsFilter === 'rejected' ? '#FFFFFF' : colors.textSecondary }]}>
+                      <Text style={[styles.filterLabel, newsFilter === 'rejected' && styles.filterLabelActive]}>
                         Rejected ({newsList.filter((item) => item.status === 'Rejected').length})
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.filterPill, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      style={[styles.filterPill, { borderColor: colors.border }]}
                       activeOpacity={0.7}
                       onPress={() => setShowSortModal(true)}
                     >
@@ -871,7 +834,6 @@ export default function ProfileScreen() {
                   </ScrollView>
                 </View>
 
-                {/* News Article List */}
                 <View style={styles.articleList}>
                   {(() => {
                     const sortedNews = getFilteredAndSortedNews();
@@ -882,7 +844,6 @@ export default function ProfileScreen() {
 
                         <View style={styles.articleDetails}>
                           <View style={styles.articleHeaderRow}>
-                            {/* Status badge */}
                             <View style={[
                               styles.statusIndicatorBadge,
                               {
@@ -911,7 +872,6 @@ export default function ProfileScreen() {
 
                           <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
 
-                          {/* Metadata row */}
                           {item.status === 'Approved' && (
                             <>
                               <View style={styles.articleMetaRow}>
@@ -936,7 +896,6 @@ export default function ProfileScreen() {
                                 </View>
                               </View>
 
-                              {/* Approved Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={[styles.outlineActionBtn, { borderColor: colors.primary }]} activeOpacity={0.7}>
                                   <Ionicons name="open-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -960,7 +919,6 @@ export default function ProfileScreen() {
                                 Estimated review time: {item.estimatedTime || '24–48 hours'}
                               </Text>
 
-                              {/* Pending Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7}>
                                   <Ionicons name="pencil-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -988,7 +946,6 @@ export default function ProfileScreen() {
                                 Reason: {item.reason}
                               </Text>
 
-                              {/* Rejected Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7} onPress={() => setShowCreateArticleModal(true)}>
                                   <Ionicons name="refresh-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -1043,7 +1000,7 @@ export default function ProfileScreen() {
                   })()}
                 </View>
 
-                <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border, backgroundColor: colors.surface }]} activeOpacity={0.7}>
+                <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
                   <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
                   <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More News</Text>
                 </TouchableOpacity>
@@ -1063,12 +1020,7 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.postsWrapper}>
                 {savedPosts.map((post) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.postCard}
-                    activeOpacity={0.9}
-                    onPress={() => router.push(`/news/${post.id}` as any)}
-                  >
+                  <View key={post.id} style={styles.postCard}>
                     <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
                     <View style={styles.postOverlay}>
                       <View style={styles.overlayStat}>
@@ -1080,14 +1032,76 @@ export default function ProfileScreen() {
                         <Text style={styles.overlayStatText}>{post.comments}</Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             )}
           </View>
         )}
 
+        {activeTab === 'verify' && (
+          <View style={styles.verifySection}>
+            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Apply for Publisher Verification</Text>
 
+            <View style={[styles.verifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.verifyStepHeader}>
+                <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
+                <Text style={[styles.verifyStepTitle, { color: colors.text }]}>Join the HyperLocal Publisher Program</Text>
+                <Text style={[styles.verifyStepSubtitle, { color: colors.textSecondary }]}>
+                  Publish local reports directly to your community feed, gain followers, and earn badges.
+                </Text>
+              </View>
+
+              <View style={styles.formWrapper}>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="Enter full name or news brand"
+                    placeholderTextColor={colors.textTertiary}
+                    value={fullName}
+                    onChangeText={setFullName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. Visakhapatnam, AP"
+                    placeholderTextColor={colors.textTertiary}
+                    value={city}
+                    onChangeText={setCity}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="Describe your background or brand value proposition..."
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                    value={bio}
+                    onChangeText={setBio}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.submitVerifyBtn, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.8}
+                  onPress={handleApplyVerification}
+                  disabled={isSubmittingVerify}
+                >
+                  <Text style={styles.submitVerifyBtnText}>
+                    {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
 
       </ScrollView>
 
@@ -1118,7 +1132,7 @@ export default function ProfileScreen() {
                   setShowCreateArticleModal(true);
                 } else {
                   Alert.alert('Access Denied', 'Write News is only available for verified publishers. Please verify first.', [
-                    { text: 'Apply Now', onPress: () => setShowVerifyModal(true) },
+                    { text: 'Apply Now', onPress: () => setActiveTab('verify') },
                     { text: 'Cancel', style: 'cancel' }
                   ]);
                 }
@@ -1139,158 +1153,13 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
 
-      {/* Create Article Modal */}
       <CreateArticleModal
         isVisible={showCreateArticleModal}
         onClose={() => setShowCreateArticleModal(false)}
         onSubmit={handleCreateNewsArticle}
       />
-
-      {/* Publisher Verification Modal */}
-      <Modal
-        visible={showVerifyModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowVerifyModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity onPress={() => setShowVerifyModal(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Apply for Verification</Text>
-              <View style={{ width: 24 }} />
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.verifyStepHeader}>
-                <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.verifyStepTitle, { color: colors.text }]}>Join the HyperLocal Publisher Program</Text>
-                <Text style={[styles.verifyStepSubtitle, { color: colors.textSecondary }]}>
-                  Publish local reports directly to your community feed, gain followers, and earn badges.
-                </Text>
-              </View>
-
-              {isLoadingEligibility ? (
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
-              ) : (
-                <View style={styles.formWrapper}>
-                  {/* Real eligibility requirements status */}
-                  {eligibility && (
-                    <View style={[styles.checklistCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                      <Text style={[styles.checklistTitle, { color: colors.text }]}>Verification Status Checklist</Text>
-                      {eligibility.requirements.map((req, i) => {
-                        const isDone = req.status === 'verified' || req.status === 'filled' || req.status === 'active';
-                        return (
-                          <View key={i} style={styles.checklistItem}>
-                            <Ionicons
-                              name={isDone ? "checkmark-circle" : "close-circle"}
-                              size={16}
-                              color={isDone ? "#4CAF50" : "#F44336"}
-                            />
-                            <Text style={[styles.checklistText, { color: colors.text }]}>{req.message}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
-                    <TextInput
-                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                      placeholder="Enter full name or news brand"
-                      placeholderTextColor={colors.textTertiary}
-                      value={fullName}
-                      onChangeText={setFullName}
-                    />
-                  </View>
-
-                  {/* Gender selection */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Gender</Text>
-                    <View style={styles.genderContainer}>
-                      {['Male', 'Female', 'Other'].map((g) => {
-                        const isActive = genderState.toLowerCase() === g.toLowerCase();
-                        return (
-                          <TouchableOpacity
-                            key={g}
-                            style={[
-                              styles.genderOption,
-                              { borderColor: colors.border, backgroundColor: colors.surface },
-                              isActive && styles.genderOptionActive
-                            ]}
-                            onPress={() => setGenderState(g.toLowerCase())}
-                          >
-                            <Text style={[
-                              styles.genderOptionText,
-                              { color: colors.textSecondary },
-                              isActive && [styles.genderOptionTextActive, { color: colors.primary }]
-                            ]}>
-                              {g}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-
-                  {/* Date of Birth */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Date of Birth (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                      placeholder="e.g. 1995-08-24"
-                      placeholderTextColor={colors.textTertiary}
-                      value={dob}
-                      onChangeText={setDob}
-                      keyboardType="numeric"
-                      maxLength={10}
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
-                    <TextInput
-                      style={[styles.modalTextInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                      placeholder="e.g. Visakhapatnam, AP"
-                      placeholderTextColor={colors.textTertiary}
-                      value={city}
-                      onChangeText={setCity}
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
-                    <TextInput
-                      style={[styles.modalTextInput, styles.modalTextArea, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                      placeholder="Describe your background or brand value proposition..."
-                      placeholderTextColor={colors.textTertiary}
-                      multiline
-                      numberOfLines={3}
-                      value={bio}
-                      onChangeText={setBio}
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.publishPostBtn, { backgroundColor: colors.primary }]}
-                    activeOpacity={0.8}
-                    onPress={handleApplyVerification}
-                    disabled={isSubmittingVerify}
-                  >
-                    <Text style={styles.publishPostBtnText}>
-                      {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Create Post Modal */}
       <Modal
@@ -1311,7 +1180,6 @@ export default function ProfileScreen() {
 
             <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
 
-              {/* Caption */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Caption</Text>
                 <TextInput
@@ -1325,7 +1193,6 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              {/* Photo Selector */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Select Image Cover Theme</Text>
                 {postCoverImage ? (
@@ -1501,17 +1368,6 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 3,
     borderColor: '#FFFFFF',
-  },
-  avatarLoader: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   avatarEditBadge: {
     position: 'absolute',
@@ -2163,11 +2019,9 @@ const styles = StyleSheet.create({
   fabDivider: {
     height: 1,
   },
-
   formGroup: {
     gap: 8,
   },
-  // Modal layout
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -2325,52 +2179,5 @@ const styles = StyleSheet.create({
   },
   pickerOptionLabel: {
     fontSize: 15,
-  },
-  checklistCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  checklistTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 10,
-    fontFamily: 'Poppins_700Bold',
-  },
-  checklistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginVertical: 4,
-  },
-  checklistText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-  },
-  genderContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  genderOption: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  genderOptionActive: {
-    borderColor: '#4648D4',
-    backgroundColor: 'rgba(70, 72, 212, 0.08)',
-  },
-  genderOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  genderOptionTextActive: {
-    color: '#4648D4',
-    fontWeight: '700',
   },
 });
