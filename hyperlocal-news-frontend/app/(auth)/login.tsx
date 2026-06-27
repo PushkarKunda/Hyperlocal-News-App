@@ -13,6 +13,7 @@ import {
   Alert,
   Image,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -43,9 +44,11 @@ export default function LoginScreen() {
     isGoogleLoading,
   } = useGoogleFirebaseAuth({
     onSuccess: (response) => {
-      router.replace(response.is_new_user ? '/(onboarding)/language' : '/(tabs)');
+      const isNew = response.user?.is_new_user ?? (response as any).is_new_user ?? false;
+      router.replace(isNew ? '/(onboarding)/language' : '/(tabs)');
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      if (error.code === 'SIGN_IN_CANCELLED') return; // silent cancel
       Alert.alert('Google Sign-In Failed', error.message || 'Please try again.');
     },
   });
@@ -382,6 +385,12 @@ export default function LoginScreen() {
                 </Pressable>
               </Animated.View>
 
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
+
               <TouchableOpacity
                 style={[
                   styles.googleButton,
@@ -395,10 +404,16 @@ export default function LoginScreen() {
                 disabled={!isGoogleReady || isGoogleLoading}
                 activeOpacity={0.8}
               >
-                <Ionicons name="logo-google" size={18} color={colors.text} />
-                <Text style={[styles.googleButtonText, { color: colors.text }]}>
-                  {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
-                </Text>
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={colors.text} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={18} color={colors.text} />
+                    <Text style={[styles.googleButtonText, { color: colors.text }]}>
+                      Sign in with Google
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -662,6 +677,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins_600SemiBold',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.5,
   },
   footer: { width: '100%', alignItems: 'center', paddingVertical: 12 },
   footerText: {

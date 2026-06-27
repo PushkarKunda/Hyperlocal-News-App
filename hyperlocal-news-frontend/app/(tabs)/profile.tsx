@@ -22,6 +22,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import MenuOptions from '@/components/MenuOptions';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
+import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
+import { useBookmarks } from '@/hooks/useBookmarks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { usersApi, uploadsApi } from '@/services/api';
+import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -105,8 +110,19 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { user, logout, updateProfile } = useAuthStore();
+  const { user, logout, updateProfile, updateProfileLocal, checkPublisherEligibility, switchToPublisher } = useAuthStore();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const { signInWithGoogle, isGoogleLoading } = useGoogleFirebaseAuth({
+    onSuccess: (res) => {
+      Alert.alert('Success 🎉', 'Google account linked and email verified successfully!');
+      // fetchEligibility(); // Uncomment if you have this function
+    },
+    onError: (err) => {
+      Alert.alert('Link Failed', err.message || 'Failed to link Google account.');
+    },
+  });
 
   // Profile Active Tab State
   const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'verify'>('posts');
@@ -140,15 +156,14 @@ export default function ProfileScreen() {
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
 
   const isPublisher = user?.isPublisher || false;
-  const isGuest = user?.isGuest;
 
   // Custom simulation variables based on verification status
   const displayName = user?.name || (isGuest ? 'Guest User' : 'John Doe');
-  
+
   // Auto-generate username handle dynamically based on user name
   const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
   const userLocation = user?.district ? `${user.district}, ${user.state || 'AP'}` : 'Visakhapatnam, AP';
-  
+
   // Dynamic Stats
   const stats = isPublisher ? {
     posts: '25',
@@ -179,6 +194,32 @@ export default function ProfileScreen() {
     return true;
   };
 
+  const uploadAndSaveAvatar = async (localUri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const { compressImage } = require('@/services/image');
+      const compressed = await compressImage(localUri);
+      const { uploadImageToSupabase } = require('@/services/supabase');
+      const serverUrl = await uploadImageToSupabase(compressed.uri);
+
+      await usersApi.updateMe({
+        profile_picture: serverUrl,
+      });
+
+      updateProfileLocal({
+        avatar: serverUrl,
+        profile_picture: serverUrl,
+      });
+
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error: any) {
+      console.error('Failed to update profile picture:', error);
+      Alert.alert('Error', error.message || 'Failed to upload profile picture. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleTakePhoto = async () => {
     const hasPermission = await requestImagePermissions();
     if (!hasPermission) return;
@@ -191,8 +232,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email, user?.phoneNumber, isPublisher);
-        Alert.alert('Success', 'Profile picture updated successfully!');
+        await uploadAndSaveAvatar(result.assets[0].uri);
       }
     } catch (e) {
       Alert.alert('Error', 'Could not open camera.');
@@ -211,8 +251,7 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateProfile(displayName, result.assets[0].uri, user?.email, user?.phoneNumber, isPublisher);
-        Alert.alert('Success', 'Profile picture updated successfully!');
+        await uploadAndSaveAvatar(result.assets[0].uri);
       }
     } catch (e) {
       Alert.alert('Error', 'Could not open gallery.');
@@ -232,26 +271,20 @@ export default function ProfileScreen() {
   };
 
   const handleVerifyEmail = () => {
-    updateProfile(
-      user?.name || 'John Doe',
-      user?.avatar,
-      user?.email || 'john.doe@example.com',
-      user?.phoneNumber,
-      isPublisher,
-      true
-    );
+    updateProfileLocal({
+      email_verified: true,
+    });
     Alert.alert('Email Verified', 'Your email address has been successfully verified.');
   };
 
   const handleApplyVerification = () => {
-    // Sets isPublisher directly in the state to demonstrate verification approval
     setIsSubmittingVerify(true);
     setTimeout(() => {
       updateProfile(
-        user?.name || 'John Doe',
-        user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        user?.email || 'john.doe@example.com',
-        user?.phoneNumber || '9876543210',
+        user?.name,
+        user?.avatar,
+        user?.email,
+        user?.phoneNumber,
         true,
         true
       );
@@ -339,7 +372,6 @@ export default function ProfileScreen() {
     } else if (newsSort === 'likes') {
       list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     } else if (newsSort === 'date') {
-      // standard sort by ID / custom date logic
       list.sort((a, b) => b.id.localeCompare(a.id));
     }
     return list;
@@ -347,7 +379,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      
+
       {/* Symmetrical Svelte Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -357,9 +389,9 @@ export default function ProfileScreen() {
         >
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>
-        
+
         <TouchableOpacity
           style={styles.headerIconButton}
           onPress={() => router.push('/(tabs)/notifications')}
@@ -374,11 +406,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} 
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Profile Card Block with City background gradient */}
         <View style={styles.profileSection}>
           <LinearGradient
@@ -404,7 +436,7 @@ export default function ProfileScreen() {
                     <Ionicons name="checkmark-circle" size={18} color="#1E88E5" style={{ marginLeft: 6 }} />
                   )}
                 </View>
-                
+
                 <View style={styles.handleRow}>
                   <Text style={[styles.profileHandle, { color: colors.textSecondary }]}>{userHandle}</Text>
                   {isPublisher ? (
@@ -440,7 +472,7 @@ export default function ProfileScreen() {
 
             {/* Profile Action Buttons */}
             <View style={styles.profileActionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/profile')}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/edit-profile')}>
                 <Ionicons name="pencil" size={14} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit Profile</Text>
               </TouchableOpacity>
@@ -456,28 +488,29 @@ export default function ProfileScreen() {
         {/* Want to Publish news banner? (Only if not verified publisher) */}
         {!isPublisher && (
           <View style={styles.verifyBannerWrapper}>
-            {!user?.emailVerified ? (
-              // Email Verification Banner
+            {!user?.email_verified ? (
               <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#2D1F1F' : '#FFF0F0', borderColor: '#FFCDD2' }]}>
-                <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(244, 67, 54, 0.1)' }]}>
-                  <Ionicons name="mail-unread" size={24} color="#F44336" />
+                <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
+                  <Ionicons name="logo-google" size={24} color="#4648D4" />
                 </View>
                 <View style={styles.verifyBannerContent}>
                   <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Verify Your Email Address</Text>
                   <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
-                    Please verify your email address to unlock publisher options and secure your account.
+                    Link your Google account to automatically verify your email and unlock publisher options.
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={[styles.verifyBannerButton, { backgroundColor: '#F44336' }]}
+                  style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={handleVerifyEmail}
+                  onPress={signInWithGoogle}
+                  disabled={isGoogleLoading}
                 >
-                  <Text style={styles.verifyBannerButtonText}>Verify Email</Text>
+                  <Text style={styles.verifyBannerButtonText}>
+                    {isGoogleLoading ? 'Linking...' : 'Link Google'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              // Publisher Verification Banner
               <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#1C1C35' : '#F0F5FF', borderColor: colors.border }]}>
                 <View style={styles.verifyBannerIconContainer}>
                   <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
@@ -496,13 +529,13 @@ export default function ProfileScreen() {
                   <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            )}
 
             <View style={styles.infoRow}>
               <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
               <Text style={[styles.infoRowText, { color: colors.textSecondary }]}>
-                {!user?.emailVerified 
-                  ? 'Email verification is required before applying for publisher verification.' 
+                {!user?.email_verified
+                  ? 'Email verification is required before applying for publisher verification.'
                   : 'News Publishing is available only for verified publishers. Learn More'
                 }
               </Text>
@@ -670,7 +703,6 @@ export default function ProfileScreen() {
             style={[styles.tabButton, activeTab === 'verify' && styles.tabButtonActive]}
             onPress={() => {
               if (isPublisher) {
-                // Verified user "+" Tab Shortcut opens post creation directly!
                 setShowCreatePostModal(true);
               } else {
                 setActiveTab('verify');
@@ -698,20 +730,18 @@ export default function ProfileScreen() {
               {posts.map((post) => (
                 <View key={post.id} style={styles.postCard}>
                   <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
-                  
-                  {/* Status Badge */}
+
                   <View style={[
                     styles.postBadge,
                     {
                       backgroundColor:
                         post.status === 'Approved' ? 'rgba(76, 175, 80, 0.9)' :
-                        post.status === 'Pending' ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)'
+                          post.status === 'Pending' ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)'
                     }
                   ]}>
                     <Text style={styles.postBadgeText}>{post.status}</Text>
                   </View>
 
-                  {/* Likes / Comments overlay */}
                   <View style={styles.postOverlay}>
                     <View style={styles.overlayStat}>
                       <Ionicons name="heart" size={12} color="#FFFFFF" />
@@ -736,7 +766,6 @@ export default function ProfileScreen() {
           <View style={styles.newsSection}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>News Overview</Text>
 
-            {/* News Overview Mini Stats Section for Unverified */}
             {!isPublisher && (
               <View style={[styles.unverifiedNewsPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Ionicons name="shield-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
@@ -756,7 +785,6 @@ export default function ProfileScreen() {
 
             {isPublisher && (
               <>
-                {/* Horizontal filter pills */}
                 <View style={{ height: 50 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                     <TouchableOpacity
@@ -793,8 +821,8 @@ export default function ProfileScreen() {
                       </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                      style={[styles.filterPill, { borderColor: colors.border }]} 
+                    <TouchableOpacity
+                      style={[styles.filterPill, { borderColor: colors.border }]}
                       activeOpacity={0.7}
                       onPress={() => setShowSortModal(true)}
                     >
@@ -806,27 +834,25 @@ export default function ProfileScreen() {
                   </ScrollView>
                 </View>
 
-                {/* News Article List */}
                 <View style={styles.articleList}>
                   {(() => {
                     const sortedNews = getFilteredAndSortedNews();
-                    
+
                     const renderArticleCard = (item: any) => (
                       <View key={item.id} style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Image source={{ uri: item.imageUrl }} style={styles.articleImage} />
-                        
+
                         <View style={styles.articleDetails}>
                           <View style={styles.articleHeaderRow}>
-                            {/* Status badge */}
                             <View style={[
                               styles.statusIndicatorBadge,
                               {
                                 backgroundColor:
                                   item.status === 'Approved' ? 'rgba(76, 175, 80, 0.1)' :
-                                  item.status === 'Pending' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+                                    item.status === 'Pending' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
                                 borderColor:
                                   item.status === 'Approved' ? '#4CAF50' :
-                                  item.status === 'Pending' ? '#FF9800' : '#F44336'
+                                    item.status === 'Pending' ? '#FF9800' : '#F44336'
                               }
                             ]}>
                               <Text style={[
@@ -834,7 +860,7 @@ export default function ProfileScreen() {
                                 {
                                   color:
                                     item.status === 'Approved' ? '#4CAF50' :
-                                    item.status === 'Pending' ? '#FF9800' : '#F44336'
+                                      item.status === 'Pending' ? '#FF9800' : '#F44336'
                                 }
                               ]}>{item.status}</Text>
                             </View>
@@ -845,8 +871,7 @@ export default function ProfileScreen() {
                           </View>
 
                           <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-                          
-                          {/* Metadata row */}
+
                           {item.status === 'Approved' && (
                             <>
                               <View style={styles.articleMetaRow}>
@@ -871,7 +896,6 @@ export default function ProfileScreen() {
                                 </View>
                               </View>
 
-                              {/* Approved Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={[styles.outlineActionBtn, { borderColor: colors.primary }]} activeOpacity={0.7}>
                                   <Ionicons name="open-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -895,7 +919,6 @@ export default function ProfileScreen() {
                                 Estimated review time: {item.estimatedTime || '24–48 hours'}
                               </Text>
 
-                              {/* Pending Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7}>
                                   <Ionicons name="pencil-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -923,7 +946,6 @@ export default function ProfileScreen() {
                                 Reason: {item.reason}
                               </Text>
 
-                              {/* Rejected Actions */}
                               <View style={styles.articleActionsRow}>
                                 <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7} onPress={() => setShowCreateArticleModal(true)}>
                                   <Ionicons name="refresh-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
@@ -973,7 +995,7 @@ export default function ProfileScreen() {
                     } else if (newsFilter === 'rejected') {
                       return renderSection('Rejected', rejected.length, rejected, '#F44336');
                     }
-                    
+
                     return null;
                   })()}
                 </View>
@@ -1020,7 +1042,7 @@ export default function ProfileScreen() {
         {activeTab === 'verify' && (
           <View style={styles.verifySection}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>Apply for Publisher Verification</Text>
-            
+
             <View style={[styles.verifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.verifyStepHeader}>
                 <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
@@ -1087,9 +1109,9 @@ export default function ProfileScreen() {
       <View style={styles.fabContainer}>
         {showFabMenu && (
           <View style={[styles.fabMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <TouchableOpacity 
-              style={styles.fabMenuItem} 
-              activeOpacity={0.7} 
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              activeOpacity={0.7}
               onPress={() => {
                 setShowFabMenu(false);
                 setShowCreatePostModal(true);
@@ -1098,9 +1120,9 @@ export default function ProfileScreen() {
               <Ionicons name="create-outline" size={16} color={colors.text} style={{ marginRight: 10 }} />
               <Text style={[styles.fabMenuText, { color: colors.text }]}>Create Post</Text>
             </TouchableOpacity>
-            
+
             <View style={[styles.fabDivider, { backgroundColor: colors.border }]} />
-            
+
             <TouchableOpacity
               style={styles.fabMenuItem}
               activeOpacity={0.7}
@@ -1131,10 +1153,8 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Drawer Overlay Option Menu */}
       <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
 
-      {/* Create Article Modal */}
       <CreateArticleModal
         isVisible={showCreateArticleModal}
         onClose={() => setShowCreateArticleModal(false)}
@@ -1159,8 +1179,7 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-              
-              {/* Caption */}
+
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Caption</Text>
                 <TextInput
@@ -1174,7 +1193,6 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              {/* Photo Selector */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Select Image Cover Theme</Text>
                 {postCoverImage ? (
@@ -1223,9 +1241,9 @@ export default function ProfileScreen() {
         animationType="fade"
         onRequestClose={() => setShowSortModal(false)}
       >
-        <TouchableOpacity 
-          style={styles.pickerOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
           onPress={() => setShowSortModal(false)}
         >
           <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
@@ -2004,7 +2022,6 @@ const styles = StyleSheet.create({
   formGroup: {
     gap: 8,
   },
-  // Modal layout
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',

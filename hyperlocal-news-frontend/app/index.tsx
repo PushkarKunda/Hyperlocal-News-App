@@ -79,11 +79,16 @@ export default function SplashScreen() {
 
     // 4. Authentication state check and routing after delay
     const timer = setTimeout(() => {
-      const { isAuthenticated, isOnboarded, user } = useAuthStore.getState();
+      const { isAuthenticated, isOnboarded, pendingPhone, pendingVerificationId } = useAuthStore.getState();
       if (isAuthenticated && isOnboarded) {
         router.replace('/(tabs)');
       } else if (isAuthenticated) {
         router.replace('/(onboarding)/language');
+      } else if (pendingPhone && pendingVerificationId) {
+        router.replace({
+          pathname: '/(auth)/verify-otp',
+          params: { phone: pendingPhone },
+        });
       } else {
         router.replace('/(auth)/login');
       }

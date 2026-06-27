@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   Animated,
   BackHandler,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -27,6 +28,9 @@ export default function CompleteScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { completeOnboarding, user } = useAuthStore();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -94,12 +98,20 @@ export default function CompleteScreen() {
     }).start();
   };
 
-  const handleStartReading = () => {
-    completeOnboarding();
-    (navigation as any).reset({
-      index: 0,
-      routes: [{ name: '(tabs)' }],
-    });
+  const handleStartReading = async () => {
+    try {
+      setIsLoading(true);
+      setHasError(false);
+      await completeOnboarding();
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: '(tabs)' }],
+      });
+    } catch (error) {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -190,20 +202,34 @@ export default function CompleteScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
+        {hasError && (
+          <Text style={[styles.errorText, { color: '#EF4444' }]}>
+            Failed to save onboarding preferences. Please try again.
+          </Text>
+        )}
+
         <Pressable
           style={{ width: '100%' }}
           onPress={handleStartReading}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
+          disabled={isLoading}
         >
           <Animated.View
             style={[
               styles.startButton,
               { backgroundColor: colors.primary, transform: [{ scale: buttonScale }] },
               Shadows.primaryGlow,
+              isLoading && { opacity: 0.7 },
             ]}
           >
-            <Text style={styles.startButtonText}>Start Reading</Text>
+            {isLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.startButtonText}>
+                {hasError ? 'Retry Onboarding' : 'Start Reading'}
+              </Text>
+            )}
           </Animated.View>
         </Pressable>
 
@@ -400,5 +426,11 @@ const styles = StyleSheet.create({
     width: 128,
     height: 6,
     borderRadius: 100,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });

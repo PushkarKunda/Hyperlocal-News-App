@@ -2,13 +2,17 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import {
-  sendPhoneOTP,
-  verifyPhoneOTP,
-  signInWithGoogle,
+  sendPhoneOTP as firebaseSendOTP,
+  verifyPhoneOTP as firebaseVerifyOTP,
+  signInWithGoogle as firebaseGoogleSignIn,
   firebaseSignOut,
+  linkGoogleAccount,
+  linkPhoneNumber,
 } from '@/services/firebase';
-import { authApi, BackendLoginResponse, usersApi, API_CONFIG } from '@/services/api';
+import { authApi, BackendLoginResponse, usersApi } from '@/services/api';
+import type { UpdateMePayload } from '@/services/api/users';
 import { clearTokens } from '@/services/api/token';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
@@ -20,26 +24,28 @@ export interface User {
   name: string | null;
   email: string | null;
   phone: string | null;
-  role: number; // 1=USER, 2=PUBLISHER, 3=MODERATOR, 4=EMPLOYEE, 5=ADMIN
+  role: number;
   email_verified: boolean;
   mobile_verified: boolean;
   is_suspended: boolean;
   created_at: string;
-  // UI extras
   language?: string;
   theme?: 'light' | 'dark' | 'system';
   avatar?: string;
+  profile_picture?: string;
   phoneNumber?: string;
   interests?: string[];
   state?: string;
   district?: string;
   isPublisher?: boolean;
+  gender?: string;
+  date_of_birth?: string;
 }
 
-type RawUser = Omit<User, 'is_suspended' | 'created_at'> & {
+// ✅ RawUser - profile_picture can be null from server
+type RawUser = Omit<User, 'is_suspended' | 'created_at' | 'profile_picture'> & {
   is_suspended?: boolean;
   created_at?: string;
-  // Extra fields that may come from the server response
   role_name?: string;
   is_new_user?: boolean;
   profile_picture?: string | null;
@@ -57,25 +63,22 @@ const sanitizeUser = (user: RawUser): User => {
   let updatedPhoneNumber = user.phoneNumber;
   let updatedMobileVerified = user.mobile_verified;
 
-  // 1. If name is actually a phone number, clear name and set phone fields
   if (isPhone(user.name)) {
     updatedName = null;
-    if (!updatedPhone) {
-      updatedPhone = user.name;
-    }
+    if (!updatedPhone) updatedPhone = user.name;
   }
 
-  // 2. Sync phone and phoneNumber fields
   if (updatedPhone && !updatedPhoneNumber) {
     updatedPhoneNumber = updatedPhone;
   } else if (updatedPhoneNumber && !updatedPhone) {
     updatedPhone = updatedPhoneNumber;
   }
 
-  // 3. If phone number is present and we logged in via OTP, set mobile_verified to true
   if (updatedPhone) {
     updatedMobileVerified = true;
   }
+
+  const profilePicture = user.profile_picture ?? undefined;
 
   return {
     ...user,
@@ -85,143 +88,276 @@ const sanitizeUser = (user: RawUser): User => {
     phone: updatedPhone,
     phoneNumber: updatedPhoneNumber,
     mobile_verified: updatedMobileVerified,
+    isPublisher: user.role >= 2,
+    avatar: user.avatar || profilePicture || undefined,
+    profile_picture: profilePicture,
   };
 };
 
+// ─── Auth State Interface ─────────────────────────────────────────────────────
+
 interface AuthState {
-  // State
   user: User | null;
   isAuthenticated: boolean;
   isOnboarded: boolean;
   isLoading: boolean;
   error: string | null;
 
-  // Phone Auth (Firebase)
   phoneConfirmation: FirebaseAuthTypes.ConfirmationResult | null;
+  pendingPhone: string | null;
+  pendingVerificationId: string | null;
+  lastOtpSentTime: number | null;
 
-  // Actions
   sendPhoneOTP: (phoneNumber: string) => Promise<void>;
   verifyPhoneOTP: (otp: string) => Promise<BackendLoginResponse>;
   loginWithGoogle: (idToken: string) => Promise<BackendLoginResponse>;
+  linkGoogle: (idToken: string) => Promise<BackendLoginResponse>;
+  linkPhone: (phoneNumber: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
 
-  // Profile
-  updateProfile: (
-    nameOrUpdates: string | Partial<User>,
-    avatar?: string,
-    email?: string,
-    phone?: string,
-    emailVerified?: boolean,
-    mobileVerified?: boolean
-  ) => void;
+  updateProfile: (updates: Partial<User>) => void;
+  updateProfileLocal: (updates: Partial<User>) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
 
-  // Publisher
   switchToPublisher: () => Promise<void>;
   checkPublisherEligibility: () => Promise<{
     eligible: boolean;
     missing_requirements: string[];
   }>;
 
-  // Onboarding
   completeOnboarding: () => Promise<void>;
-
-  // Helpers
   clearError: () => void;
   isPublisher: () => boolean;
 }
 
-// ─── Store ───────────────────────────────────────────────────────────────────
+// ─── Error Handler ────────────────────────────────────────────────────────────
+
+class AuthError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+const handleAuthError = (error: any): AuthError => {
+  if (
+    error.message?.toLowerCase().includes('network') ||
+    error.code === 'auth/network-request-failed'
+  ) {
+    return new AuthError(
+      'Network connection failed. Please check your internet.',
+      'NETWORK_ERROR'
+    );
+  }
+  if (error.code === 'auth/too-many-requests') {
+    return new AuthError(
+      'Too many attempts. Please try again in a few minutes.',
+      'TOO_MANY_REQUESTS'
+    );
+  }
+  if (error.code === 'auth/invalid-verification-code') {
+    return new AuthError('Invalid verification code. Please try again.', 'INVALID_CODE');
+  }
+  if (error.code === 'auth/code-expired') {
+    return new AuthError(
+      'Verification code expired. Please request a new one.',
+      'CODE_EXPIRED'
+    );
+  }
+  if (error.code === 'auth/credential-already-in-use') {
+    return new AuthError(
+      'This phone number is already linked to another account.',
+      'CREDENTIAL_IN_USE'
+    );
+  }
+  if (error.code === 'auth/provider-already-linked') {
+    return new AuthError('This account is already linked.', 'ALREADY_LINKED');
+  }
+  return new AuthError(
+    error.message || 'Authentication failed',
+    error.code || 'UNKNOWN_ERROR'
+  );
+};
+
+const checkNetwork = async (): Promise<void> => {
+  const state = await NetInfo.fetch();
+  if (!state.isConnected) {
+    throw new AuthError(
+      'No internet connection. Please check your network.',
+      'NO_NETWORK'
+    );
+  }
+};
+
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // ─── Initial State ──────────────────────────────────────────────────
       user: null,
       isAuthenticated: false,
       isOnboarded: false,
       isLoading: false,
       error: null,
       phoneConfirmation: null,
+      pendingPhone: null,
+      pendingVerificationId: null,
+      lastOtpSentTime: null,
 
-      // ─── Phone Auth ─────────────────────────────────────────────────────
+      // ─── Send Phone OTP ────────────────────────────────────────────────────
 
       sendPhoneOTP: async (phoneNumber: string) => {
-        set({ isLoading: true, error: null });
+        set({ error: null });
+
+        const { lastOtpSentTime } = get();
+        const now = Date.now();
+        const RATE_LIMIT_MS = 30000;
+
+        if (lastOtpSentTime && now - lastOtpSentTime < RATE_LIMIT_MS) {
+          const remainingSeconds = Math.ceil(
+            (RATE_LIMIT_MS - (now - lastOtpSentTime)) / 1000
+          );
+          throw new AuthError(
+            `Please wait ${remainingSeconds} seconds before requesting a new code.`,
+            'RATE_LIMITED'
+          );
+        }
+
+        set({ isLoading: true });
+
         try {
-          const confirmation = await sendPhoneOTP(phoneNumber);
-          set({ phoneConfirmation: confirmation, isLoading: false });
-        } catch (error: any) {
+          await checkNetwork();
+          const confirmation = await firebaseSendOTP(phoneNumber);
           set({
+            phoneConfirmation: confirmation,
+            pendingPhone: phoneNumber,
+            pendingVerificationId: confirmation.verificationId,
+            lastOtpSentTime: now,
             isLoading: false,
-            error: error.message || 'Failed to send OTP',
           });
-          throw error;
+        } catch (error: any) {
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
         }
       },
+
+      // ─── Verify Phone OTP ──────────────────────────────────────────────────
 
       verifyPhoneOTP: async (otp: string) => {
         set({ isLoading: true, error: null });
         try {
-          const { phoneConfirmation } = get();
-          if (!phoneConfirmation) throw new Error('No OTP session found');
+          await checkNetwork();
 
-          // Step 1: Verify OTP with Firebase → get Firebase token
-          const firebaseToken = await verifyPhoneOTP(phoneConfirmation, otp);
+          const { phoneConfirmation, pendingVerificationId } = get();
+          const session = phoneConfirmation || pendingVerificationId;
 
-          // Step 2: Exchange Firebase token with backend → get JWT
+          if (!session) {
+            throw new AuthError(
+              'No OTP session found. Please request a new code.',
+              'NO_SESSION'
+            );
+          }
+
+          const firebaseToken = await firebaseVerifyOTP(session, otp);
           const response = await authApi.loginWithFirebase(firebaseToken);
 
           set({
             user: sanitizeUser(response.user),
             isAuthenticated: true,
-            // Server returns is_new_user inside user object; fall back to root level
-            isOnboarded: !((response as any).user?.is_new_user ?? (response as any).is_new_user),
+            isOnboarded: !(response.user?.is_new_user ?? response.is_new_user),
             isLoading: false,
             phoneConfirmation: null,
+            pendingPhone: null,
+            pendingVerificationId: null,
+            lastOtpSentTime: null,
           });
 
           return response;
         } catch (error: any) {
-          set({
-            isLoading: false,
-            error: error.message || 'OTP verification failed',
-          });
-          throw error;
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
         }
       },
 
-      // ─── Google Auth ────────────────────────────────────────────────────
+      // ─── Google Sign-In ────────────────────────────────────────────────────
 
       loginWithGoogle: async (idToken: string) => {
         set({ isLoading: true, error: null });
         try {
-          // Step 1: Google OAuth via Firebase → get Firebase token
-          const firebaseToken = await signInWithGoogle(idToken);
-
-          // Step 2: Exchange Firebase token with backend → get JWT
+          await checkNetwork();
+          const firebaseToken = await firebaseGoogleSignIn(idToken);
           const response = await authApi.loginWithFirebase(firebaseToken);
 
           set({
             user: sanitizeUser(response.user),
             isAuthenticated: true,
-            // Server returns is_new_user inside user object; fall back to root level
-            isOnboarded: !((response as any).user?.is_new_user ?? (response as any).is_new_user),
+            isOnboarded: !(response.user?.is_new_user ?? response.is_new_user),
             isLoading: false,
           });
 
           return response;
         } catch (error: any) {
-          set({
-            isLoading: false,
-            error: error.message || 'Google sign-in failed',
-          });
-          throw error;
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
         }
       },
 
-      // ─── Logout ─────────────────────────────────────────────────────────
+      // ─── Link Google Account ───────────────────────────────────────────────
+
+      linkGoogle: async (idToken: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await checkNetwork();
+          const firebaseToken = await linkGoogleAccount(idToken);
+          const response = await authApi.loginWithFirebase(firebaseToken);
+
+          set({
+            user: sanitizeUser(response.user),
+            isLoading: false,
+          });
+
+          return response;
+        } catch (error: any) {
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
+        }
+      },
+
+      // ─── Link Phone Number ─────────────────────────────────────────────────
+
+      linkPhone: async (_phoneNumber: string, otp: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await checkNetwork();
+
+          const { pendingVerificationId } = get();
+          if (!pendingVerificationId) {
+            throw new AuthError('No verification session found', 'NO_SESSION');
+          }
+
+          const firebaseToken = await linkPhoneNumber(pendingVerificationId, otp);
+          const response = await authApi.loginWithFirebase(firebaseToken);
+
+          set({
+            user: sanitizeUser(response.user),
+            isLoading: false,
+            pendingPhone: null,
+            pendingVerificationId: null,
+            lastOtpSentTime: null,
+          });
+        } catch (error: any) {
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
+        }
+      },
+
+      // ─── Logout ────────────────────────────────────────────────────────────
 
       logout: async () => {
         set({ isLoading: true });
@@ -239,27 +375,29 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
             phoneConfirmation: null,
+            pendingPhone: null,
+            pendingVerificationId: null,
+            lastOtpSentTime: null,
           });
         }
       },
 
-      // ─── Publisher ──────────────────────────────────────────────────────
+      // ─── Switch to Publisher ───────────────────────────────────────────────
 
       switchToPublisher: async () => {
         set({ isLoading: true, error: null });
         try {
           await authApi.switchToPublisher();
-          // Update role in store
           set((state) => ({
-            user: state.user ? { ...state.user, role: 2 } : null,
+            user: state.user
+              ? { ...state.user, role: 2, isPublisher: true }
+              : null,
             isLoading: false,
           }));
         } catch (error: any) {
-          set({
-            isLoading: false,
-            error: error.message || 'Failed to switch to publisher',
-          });
-          throw error;
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
         }
       },
 
@@ -267,98 +405,102 @@ export const useAuthStore = create<AuthState>()(
         return await authApi.checkPublisherEligibility();
       },
 
-      // ─── Profile ────────────────────────────────────────────────────────
+      // ─── Profile Updates ───────────────────────────────────────────────────
 
-      updateProfile: (
-        nameOrUpdates: string | Partial<User>,
-        avatar?: string,
-        email?: string,
-        phone?: string,
-        emailVerified?: boolean,
-        mobileVerified?: boolean
-      ) => {
-        if (typeof nameOrUpdates === 'object') {
-          set((state) => ({
-            user: state.user ? sanitizeUser({ ...state.user, ...nameOrUpdates }) : null,
-          }));
-        } else {
-          set((state) => ({
-            user: state.user
-              ? sanitizeUser({
-                  ...state.user,
-                  name: nameOrUpdates,
-                  avatar: avatar ?? state.user.avatar,
-                  email: email ?? state.user.email,
-                  phone: phone ?? state.user.phone,
-                  email_verified: emailVerified ?? state.user.email_verified,
-                  mobile_verified: mobileVerified ?? state.user.mobile_verified,
-                })
-              : null,
-          }));
-        }
+      updateProfile: (updates: Partial<User>) => {
+        set((state) => ({
+          user: state.user
+            ? sanitizeUser({ ...state.user, ...updates })
+            : null,
+        }));
+      },
+
+      updateProfileLocal: (updates: Partial<User>) => {
+        set((state) => ({
+          user: state.user
+            ? sanitizeUser({ ...state.user, ...updates })
+            : null,
+        }));
       },
 
       updateLanguage: (language: string) => {
-        set((state) => ({
-          user: state.user ? { ...state.user, language } : null,
-        }));
+        get().updateProfileLocal({ language });
       },
 
       updateTheme: (theme: 'light' | 'dark' | 'system') => {
-        set((state) => ({
-          user: state.user ? { ...state.user, theme } : null,
-        }));
+        get().updateProfileLocal({ theme });
       },
 
-      // ─── Helpers ────────────────────────────────────────────────────────
+      // ─── Complete Onboarding ───────────────────────────────────────────────
 
       completeOnboarding: async () => {
         set({ isLoading: true, error: null });
         try {
-          if (!API_CONFIG.useMocks) {
-            const { user } = get();
-            if (user) {
-              // 1. Update main user profile info (PUT /user/users/me)
-              await usersApi.updateMe({
-                name: user.name ?? undefined,
-                email: user.email ?? undefined,
-                phone: user.phone ?? undefined,
-                emailVerified: user.email_verified,
-                mobileVerified: user.mobile_verified,
-              });
+          const { user } = get();
+          if (!user) throw new AuthError('No user found', 'NO_USER');
 
-              // 2. Update preferences (PATCH /user/preferences/me)
-              await usersApi.updatePreferences({
-                language: user.language,
-                state: user.state,
-                district: user.district,
-                interests: user.interests,
-              } as any);
+          let uploadedAvatarUrl: string | undefined = user.avatar;
+
+          // ✅ Upload avatar to Supabase if local file
+          if (
+            user.avatar &&
+            (user.avatar.startsWith('file://') ||
+              user.avatar.startsWith('content://') ||
+              (!user.avatar.startsWith('http://') &&
+                !user.avatar.startsWith('https://')))
+          ) {
+            try {
+              const { uploadImageToSupabase } = require('@/services/supabase');
+              const { compressImage } = require('@/services/image');
+              const compressed = await compressImage(user.avatar);
+              uploadedAvatarUrl = await uploadImageToSupabase(compressed.uri);
+            } catch (uploadErr) {
+              console.error('Avatar upload failed:', uploadErr);
             }
           }
+
+          // ✅ FIXED: Use UpdateMePayload type (not Partial<User>)
+          const updatePayload: UpdateMePayload = {
+            name: user.name ?? undefined,
+            profile_picture: uploadedAvatarUrl ?? null,
+            gender: user.gender ?? null,
+            date_of_birth: user.date_of_birth ?? null,
+          };
+
+          await usersApi.updateMe(updatePayload);
+
+          await usersApi.updatePreferences({
+            language: user.language ?? null,
+            state: user.state ?? null,
+            district: user.district ?? null,
+            interests: user.interests ?? null,
+          });
+
+          get().updateProfileLocal({
+            avatar: uploadedAvatarUrl,
+            profile_picture: uploadedAvatarUrl,
+          });
+
           set({ isOnboarded: true, isLoading: false });
         } catch (error: any) {
-          set({
-            isLoading: false,
-            error: error.message || 'Failed to complete onboarding on server',
-          });
-          // Still set onboarded locally so the user is not stuck
-          set({ isOnboarded: true });
+          const authError = handleAuthError(error);
+          set({ isLoading: false, error: authError.message });
+          throw authError;
         }
       },
 
       clearError: () => set({ error: null }),
-
       isPublisher: () => (get().user?.role ?? 0) >= 2,
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // Don't persist phoneConfirmation (not serializable)
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         isOnboarded: state.isOnboarded,
+        pendingPhone: state.pendingPhone,
+        pendingVerificationId: state.pendingVerificationId,
       }),
     }
   )

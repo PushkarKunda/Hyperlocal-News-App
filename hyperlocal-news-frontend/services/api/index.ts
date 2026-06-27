@@ -3,7 +3,6 @@ export * from './client';
 export * from './config';
 export * from './routes';
 export * from './token';
-export * from './uploads';
 export * from './location';
 
 export * from './categories';
