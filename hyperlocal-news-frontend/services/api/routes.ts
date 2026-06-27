@@ -1,105 +1,256 @@
 // services/api/routes.ts
 export const API_ROUTES = {
-  // ─── Auth ───────────────────────────────────────
+  // ─── Auth ───────────────────────────────────────────────────────────────────
   auth: {
-    firebaseLogin: '/user/user/auth/firebase/login',      // POST - Phone & Google
-    refreshToken: '/user/user/auth/refresh',              // POST - Refresh token
-    logout: '/user/user/auth/logout',                     // POST - Logout
-    switchToPublisher: '/user/user/auth/switch-to-publisher', // POST
-    registerDevice: '/user/user/device/token/register',  // POST - FCM token
-    unregisterDevice: '/user/user/device/token/unregister', // DELETE
+    firebaseLogin: '/user/user/auth/firebase/login',           // POST - Firebase Login
+    refreshToken: '/user/user/auth/refresh',                   // POST - Refresh token (query param)
+    logout: '/user/user/auth/logout',                          // POST - Logout
+    switchToPublisher: '/user/user/auth/switch-to-publisher',  // POST - Switch to publisher
+    registerDevice: '/user/user/device/token/register',        // POST - Register FCM token
+    unregisterDevice: '/user/user/device/token/unregister',    // DELETE - Unregister device
   },
 
-  // ─── User ────────────────────────────────────────
+  // ─── User ───────────────────────────────────────────────────────────────────
   user: {
-    me: '/user/user/users/me',                           // GET, PATCH
+    me: '/user/user/users/me',                                      // GET, PATCH - My profile (includes avatar)
     publisherEligibility: '/user/user/users/me/publisher-eligibility', // GET
-    suspensionStatus: '/user/user/users/me/suspension-status', // GET
-    preferences: '/user/user/preferences/me',            // GET, POST, PUT, PATCH, DELETE
-    dashboard: '/user/user/dashboardnew',                // GET
-    uploadAvatar: '/user/user/users/me/avatar',          // POST
+    suspensionStatus: '/user/user/users/me/suspension-status',      // GET
+    preferences: '/user/user/preferences/me',                       // GET, POST, PUT, PATCH, DELETE
+    dashboard: '/user/user/dashboardnew',                           // GET - User dashboard
+    dashboardEngagement: '/user/user/dashboard/engagement',         // GET - Dashboard engagement
   },
 
-  // ─── News ────────────────────────────────────────
+  // ─── News ───────────────────────────────────────────────────────────────────
   news: {
-    feed: '/news/v1/feed',                          // GET
-    create: '/news/v1/news',                        // POST
-    byId: (uid: string) => `/news/v1/news/${uid}`,  // GET, PUT
-    breaking: '/news/v1/news/breaking',             // GET
-    search: '/news/v1/search',                      // GET
-    byCategory: (id: number) => `/news/v1/news/category/${id}`, // GET
-    byLocation: '/news/v1/news/location',           // GET
-    popular: '/news/v1/news/popular',               // GET
-    related: (uid: string) => `/news/v1/news/${uid}/related`, // GET
+    feed: '/news/v1/feed',                                       // GET - News feed
+    create: '/news/v1/news',                                     // POST - Create news
+    byId: (uid: string) => `/news/v1/news/${uid}`,              // GET, PUT - Get/Update news
+    deleteNews: (uid: string) => `/news/v1/user/news/${uid}`,   // DELETE - Delete news
+
+    // Discovery
+    breaking: '/news/v1/news/breaking',                          // GET - Breaking news
+    popular: '/news/v1/news/popular',                            // GET - Popular news
+    trending: '/news/v1/news/analytics/trending',                // GET - Trending news
+    byLocation: '/news/v1/news/location',                        // GET - News by location
+    byCategory: (id: number) => `/news/v1/news/category/${id}`, // GET - News by category
+    related: (uid: string) => `/news/v1/news/${uid}/related`,   // GET - Related news
+    search: '/news/v1/search',                                   // GET - Search news
+
+    // News Shorts
+    shorts: '/news/v1/news-shorts',                              // GET - News shorts
+
     // Engagement
-    like: (uid: string) => `/news/v1/user/news/${uid}/like`,     // POST, DELETE
-    view: (uid: string) => `/news/v1/user/news/${uid}/view`,     // POST
-    share: (uid: string) => `/news/v1/user/news/${uid}/share`,   // POST
-    comment: (uid: string) => `/news/v1/user/news/${uid}/comment`, // POST
+    engagement: (uid: string) => `/news/v1/news/${uid}/engagement`, // GET - News engagement stats
+    like: (uid: string) => `/news/v1/user/news/${uid}/like`,       // POST, DELETE - Like/Unlike
+    view: (uid: string) => `/news/v1/user/news/${uid}/view`,       // POST - Record view
+    share: (uid: string) => `/news/v1/user/news/${uid}/share`,     // POST - Share news
+
+    // Comments
+    comments: (uid: string) => `/news/v1/news/${uid}/comments`,         // GET - Get comments
+    comment: (uid: string) => `/news/v1/user/news/${uid}/comment`,      // POST - Add comment
     deleteComment: (uid: string, id: number) =>
-      `/news/v1/user/news/${uid}/comment/${id}`,                 // DELETE
-    comments: (uid: string) => `/news/v1/news/${uid}/comments`,  // GET
-    engagement: (uid: string) => `/news/v1/news/${uid}/engagement`, // GET
-    deleteNews: (uid: string) => `/news/v1/user/news/${uid}`,    // DELETE
+      `/news/v1/user/news/${uid}/comment/${id}`,                        // DELETE - Delete comment
+
+    // Analytics
+    weeklyStats: '/news/v1/news/analytics/weekly',               // GET - Weekly stats
+    dailyStats: '/news/v1/news/analytics/daily',                 // GET - Daily stats
+    topPerforming: '/news/v1/news/analytics/top',                // GET - Top performing
   },
 
-  // ─── Categories ──────────────────────────────────
+  // ─── Categories ─────────────────────────────────────────────────────────────
   categories: {
-    menu: '/categories/menu',                       // GET
-    all: '/categories/all',                         // GET
-    news: (id: number) => `/categories/${id}/news`, // GET
+    list: '/categories/',                                        // GET - List categories
+    menu: '/categories/menu',                                    // GET - Category menu
+    all: '/categories/all',                                      // GET - All categories
+    news: (id: number) => `/categories/${id}/news`,             // GET - News by category
   },
 
-  // ─── Content ─────────────────────────────────────
+  // ─── Content ────────────────────────────────────────────────────────────────
   content: {
-    // Events
-    events: '/content/events',                      // GET, POST
-    eventById: (uid: string) => `/content/events/${uid}`, // GET
-    // Polls
-    activePolls: '/content/polls/active',           // GET
-    pollById: (uid: string) => `/content/polls/${uid}`, // GET
-    pollVote: '/content/polls/vote',                // PUT
+    // Advertisements
+    advertisements: '/content/advertisements/active',                    // GET - Active ads
+    advertisementById: (id: number) => `/content/advertisements/${id}`, // GET - Get ad by ID
+    createAdvertisement: '/content/advertisements',                      // POST - Create ad
+    updateAdvertisement: (id: number) => `/content/advertisements/${id}`, // PUT - Update ad
+    toggleAdStatus: (id: number) => `/content/advertisements/${id}/toggle-status`, // POST
+
+    // Sponsored Posts
+    sponsoredPosts: '/content/sponsored-posts/active',           // GET - Active sponsored posts
+    createSponsoredPost: '/content/sponsored-posts',             // POST - Create sponsored post
+    updateSponsoredPost: (id: number) => `/content/sponsored-posts/${id}`, // PUT
+    pendingSponsoredPosts: '/content/sponsored-posts/pending',   // GET - Pending posts
+
+    // Events (Coming Soon - basic structure)
+    events: '/content/events',                                   // GET, POST
+    eventById: (uid: string) => `/content/events/${uid}`,       // GET
+
+    // Polls (Coming Soon - basic structure)
+    polls: '/content/polls',                                     // POST - Create poll
+    pollById: (uid: string) => `/content/polls/${uid}`,         // GET - Get poll
+    activePolls: '/content/polls/active',                        // GET - Active polls
+    pollVote: '/content/polls/vote',                             // PUT - Vote on poll
+    updatePoll: (id: number) => `/content/polls/${id}`,         // PUT - Update poll
+
+    // News Shorts
+    newsShorts: '/content/news-shorts',                          // GET, POST - News shorts
+
+    // Tags
+    tags: '/content/tags',                                       // GET - Get tags
+    tagContent: (name: string) => `/content/tags/${name}/content`, // GET - Content by tag
+    assignTags: (type: string, id: string) => `/content/${type}/${id}/tags`, // POST
+
+    // Flagging
+    flagContent: (type: string, id: string) => `/content/${type}/${id}/flag`, // POST
+
+    // Search & Analytics
+    search: '/content/search',                                   // GET - Search content
+    analytics: (type: string, id: string) => `/content/analytics/${type}/${id}`, // GET
+    stats: '/content/stats',                                     // GET - Content stats
+    quickStats: '/content/quick-stats',                          // GET - Quick stats
+    targetingOptions: '/content/targeting-options',              // GET - Targeting options
+    overview: '/content/overview',                               // GET - Dashboard overview
   },
 
-  // ─── Engagement ──────────────────────────────────
+  // ─── Engagement ─────────────────────────────────────────────────────────────
   engagement: {
     // Bookmarks
-    bookmarks: '/engagement/bookmarks',             // GET, POST, DELETE
-    bookmarkById: (id: number) => `/engagement/bookmarks/${id}`, // DELETE
-    checkBookmark: '/engagement/bookmarks/check',   // GET
+    bookmarks: '/engagement/bookmarks',                          // GET, POST, DELETE
+    bookmarkById: (id: number) => `/engagement/bookmarks/${id}`, // DELETE - Delete by ID
+    checkBookmark: '/engagement/bookmarks/check',                // GET - Check bookmark status
+
     // Notifications
-    notifications: '/engagement/notifications',     // GET
-    unreadCount: '/engagement/notifications/unread/count', // GET
-    markRead: (id: number) => `/engagement/notifications/${id}/read`, // PATCH
-    markAllRead: '/engagement/notifications/read-all', // PATCH
-    clearAll: '/engagement/notifications/clear',    // DELETE
+    notifications: '/engagement/notifications',                  // GET - Get notifications
+    unreadCount: '/engagement/notifications/unread/count',       // GET - Unread count
+    markRead: (id: number) => `/engagement/notifications/${id}/read`, // PATCH - Mark as read
+    markAllRead: '/engagement/notifications/read-all',           // PATCH - Mark all read
+    deleteNotification: (id: number) => `/engagement/notifications/${id}`, // DELETE
+    clearAll: '/engagement/notifications/clear',                 // DELETE - Clear all
+
+    // Summary
+    summary: (uid: string) => `/engagement/summary/${uid}`,     // GET - Engagement summary
   },
 
-  // ─── Base Location ───────────────────────────────
+  // ─── Location & Language ────────────────────────────────────────────────────
   location: {
-    languages: '/base/languages',                   // GET
-    states: '/base/states',                         // GET
-    districts: '/base/districts',                   // GET
-    cities: '/base/cities',                         // GET
-    search: '/base/search',                         // GET
+    // Languages
+    languages: '/base/languages',                                     // GET - All languages
+    languageById: (id: number) => `/base/languages/${id}`,           // GET - Language by ID
+
+    // States
+    states: '/base/states',                                           // GET - All states
+    stateById: (id: number) => `/base/states/${id}`,                 // GET - State details
+    stateHierarchy: (id: number) => `/base/hierarchy/states/${id}`,  // GET - State hierarchy
+    stateLanguage: (id: number) => `/base/states/${id}/language`,    // GET - State language
+
+    // Districts
+    districts: '/base/districts',                                     // GET - All districts
+    districtById: (id: number) => `/base/districts/${id}`,           // GET - District details
+
+    // Cities
+    cities: '/base/cities',                                           // GET - All cities
+    cityById: (id: number) => `/base/cities/${id}`,                  // GET - City details
+
+    // Search
+    search: '/base/search',                                           // GET - Search locations
   },
 
-  // ─── Rewards ─────────────────────────────────────
+  // ─── Rewards ────────────────────────────────────────────────────────────────
   rewards: {
-    me: '/rewards/me',                              // GET
-    transactions: '/rewards/transactions',          // GET
-    leaderboard: '/rewards/leaderboard',            // GET
-    badges: '/rewards/badges',                      // GET
-    dailyLogin: '/rewards/daily-login',             // POST
-    referral: '/rewards/referral',                  // GET
-    useReferral: '/rewards/use-referral',           // POST
+    me: '/rewards/me',                                           // GET - My rewards
+    badges: '/rewards/badges',                                   // GET - My badges
+    referral: '/rewards/referral',                               // GET - Referral info
+    leaderboard: '/rewards/leaderboard',                         // GET - Leaderboard
+
+    // Bingo
+    bingo: '/rewards/bingo',                                     // GET - Get bingo card
+    claimBingo: '/rewards/bingo/claim',                          // POST - Claim bingo reward
+    bingoLeaderboard: '/rewards/bingo/leaderboard',              // GET - Bingo leaderboard
+
+    // Daily & Challenges
+    dailyLogin: '/rewards/daily-login',                          // POST - Claim daily login
+    todayChallenge: '/rewards/challenge/today',                  // GET - Today's challenge
+    claimChallenge: (id: number) => `/rewards/challenge/${id}/claim`, // POST - Claim challenge
+
+    // Earning Actions
+    earnRead: '/rewards/earn/read',                              // POST - Earn for reading
+    earnShare: '/rewards/earn/share',                            // POST - Earn for sharing
+    earnComment: '/rewards/earn/comment',                        // POST - Earn for commenting
+    earnLike: '/rewards/earn/like',                              // POST - Earn for liking
+    earnBookmark: '/rewards/earn/bookmark',                      // POST - Earn for bookmarking
+
+    // Referral
+    useReferral: '/rewards/use-referral',                        // POST - Use referral code
+
+    // Ads
+    rewardedAd: '/rewards/ad/rewarded',                          // POST - Claim rewarded ad
+
+    // Transactions
+    transactions: '/rewards/transactions',                       // GET - My transactions
+    info: '/api/v1/rewards/info',                                // GET - Rewards info
   },
 
-  // ─── Insights ────────────────────────────────────
+  // ─── Insights ───────────────────────────────────────────────────────────────
   insights: {
-    list: '/insights/',                             // GET
-    byUid: (uid: string) => `/insights/uid/${uid}`, // GET
-    categories: '/insights/categories',             // GET
-    popular: '/insights/stats/popular',             // GET
+    list: '/insights/',                                          // GET - List insights
+    create: '/insights/',                                        // POST - Create insight
+    createWithUrls: '/insights/create',                          // POST - Create with URLs
+    byUid: (uid: string) => `/insights/uid/${uid}`,             // GET, DELETE, PATCH - By UID
+    byCategory: (name: string) => `/insights/${name}`,          // GET - By category
+    popular: '/insights/stats/popular',                          // GET - Popular insights
+    share: '/insights/share',                                    // POST - Share insight
+    shareById: (id: number) => `/insights/share/${id}`,         // POST - Share by ID
+    categories: '/insights/categories',                          // GET - Insight categories
+  },
+
+  // ─── Posts ──────────────────────────────────────────────────────────────────
+  posts: {
+    byId: (uid: string) => `/posts/${uid}`,                     // GET - Get post
+    userPosts: (uid: string) => `/posts/user/${uid}`,           // GET - User posts
+    byHashtag: (name: string) => `/posts/hashtag/${name}/posts`, // GET - Posts by hashtag
+    comments: (uid: string) => `/posts/${uid}/comments`,        // GET - Post comments
+  },
+
+  // ─── Follow ─────────────────────────────────────────────────────────────────
+  follow: {
+    followUser: (uid: string) => `/follow/follow/${uid}`,       // POST - Follow
+    unfollowUser: (uid: string) => `/follow/follow/${uid}`,     // DELETE - Unfollow
+    followers: (uid: string) => `/follow/follow/followers/${uid}`, // GET - Followers
+    following: (uid: string) => `/follow/follow/following/${uid}`, // GET - Following
+    suggestions: '/follow/follow/suggestions',                   // GET - Follow suggestions
+    status: (uid: string) => `/follow/follow/status/${uid}`,    // GET - Follow status
+    counts: (uid: string) => `/follow/follow/counts/${uid}`,    // GET - Follow counts
+    feed: '/follow/follow/feed/posts',                           // GET - Following posts
+  },
+
+  // ─── User Activity ──────────────────────────────────────────────────────────
+  userActivity: {
+    sessions: '/user-activity/user-activity/sessions',                 // GET - Get sessions
+    killSession: (hash: string) => `/user-activity/user-activity/sessions/${hash}`, // DELETE
+    killAllSessions: '/user-activity/user-activity/sessions/kill-all', // POST
+    activities: '/user-activity/user-activity/activities/me',          // GET - My activities
+    securityEvents: '/user-activity/user-activity/activities/security-events', // GET
+    stats: '/user-activity/user-activity/stats/me',                    // GET - Session stats
+    deviceLimit: '/user-activity/user-activity/device-limit',          // GET - Device limit
+  },
+
+  // ─── In-App Notifications ───────────────────────────────────────────────────
+  inAppNotifications: {
+    list: '/notifications/in-app',                               // GET - Get in-app notifications
+    markRead: (id: number) => `/notifications/in-app/${id}/read`, // PATCH - Mark as read
+    unreadCount: '/notifications/in-app/unread/count',           // GET - Unread count
+  },
+
+  // ─── Health Checks ──────────────────────────────────────────────────────────
+  health: {
+    root: '/',                                                   // GET - Root
+    main: '/health',                                             // GET - Main health
+    news: '/news/v1/health',                                     // GET - News health
+    content: '/content/health',                                  // GET - Content health
+    engagement: '/engagement/health',                            // GET - Engagement health
+    base: '/base/health',                                        // GET - Base health
+    categories: '/categories/health',                            // GET - Categories health
+    insights: '/insights/health',                                // GET - Insights health
+    rewards: '/rewards/health',                                  // GET - Rewards health
+    userActivity: '/user-activity/user-activity/health',        // GET - User activity health
   },
 } as const;
