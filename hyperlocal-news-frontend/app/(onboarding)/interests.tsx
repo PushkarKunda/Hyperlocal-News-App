@@ -8,29 +8,26 @@ import {
   Pressable,
   Animated,
   Platform,
-  useWindowDimensions,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router'; // ✅ Added usePathname
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useInterestsList } from '@/hooks/useApi';
+import { useCategoriesAll } from '@/hooks/useApi';
+import { usersApi } from '@/services/api'; // ✅ Added
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { useAuthStore } from '@/store/authStore';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'; // ✅ Added
 
-interface Topic {
-  id: string;
-  name: string;
-  iconName: any;
-  iconType: 'feather' | 'ionicons';
-  iconColor: string;
-  iconBg: string;
-  selectedBg: string;
-  description?: string;
-  span?: boolean;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MIN_SELECTIONS = 3;
+
+// ─── Topic Style Map ───────────────────────────────────────────────────────
 
 const TOPIC_STYLES: Record<string, {
   iconName: any;
@@ -40,64 +37,119 @@ const TOPIC_STYLES: Record<string, {
   selectedBg: string;
   span?: boolean;
 }> = {
-  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
-  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
-  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
-  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.06)', selectedBg: '#D8D9F7' },
-  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.06)', selectedBg: '#DDDEFC' },
-  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.06)', selectedBg: '#CBDFE3' },
-  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.06)', selectedBg: '#F4D1DE' },
+  // By slug or lowercase name
+  technology: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
+  tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
+  sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70,72,212,0.06)', selectedBg: '#D8D9F7' },
+  music: { iconName: 'music', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225,29,72,0.06)', selectedBg: '#F4D1DE' },
+  art: { iconName: 'brush-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70,72,212,0.06)', selectedBg: '#D8D9F7' },
+  travel: { iconName: 'compass', iconType: 'feather', iconColor: '#006A61', iconBg: 'rgba(0,106,97,0.06)', selectedBg: '#CBDFE3' },
+  food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
+  gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0,106,97,0.06)', selectedBg: '#CBDFE3' },
+  wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225,29,72,0.06)', selectedBg: '#F4D1DE', span: true },
+  design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0,106,97,0.06)', selectedBg: '#CBDFE3' },
+  business: { iconName: 'briefcase', iconType: 'feather', iconColor: '#4648d4', iconBg: 'rgba(70,72,212,0.06)', selectedBg: '#D8D9F7' },
+  politics: { iconName: 'flag-outline', iconType: 'ionicons', iconColor: '#E11D48', iconBg: 'rgba(225,29,72,0.06)', selectedBg: '#F4D1DE' },
+  entertainment: { iconName: 'film', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
 };
 
-const MIN_SELECTIONS = 3;
+// Default fallback
+const DEFAULT_STYLE = {
+  iconName: 'star-outline' as const,
+  iconType: 'ionicons' as const,
+  iconColor: '#4648d4',
+  iconBg: 'rgba(70,72,212,0.06)',
+  selectedBg: '#D8D9F7',
+};
+
+// ─── Resolve Style ─────────────────────────────────────────────────────────
+
+const resolveTopicStyle = (slug: string, name: string) => {
+  return (
+    TOPIC_STYLES[slug] ??
+    TOPIC_STYLES[name.toLowerCase()] ??
+    TOPIC_STYLES[slug.split('-')[0]] ??
+    DEFAULT_STYLE
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const pathname = usePathname(); // ✅ Added
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
-  const { width } = useWindowDimensions();
-  // Responsive bento grid: total horizontal padding = 40, gap = 16
-  const CARD_WIDTH = (width - 40 - 16) / 2 - 1;
-  const user = useAuthStore(state => state.user);
 
-  // Load onboarding topics list dynamically from simulated backend
-  const { data: interestsList = [], isLoading } = useInterestsList();
+  // ✅ Detect edit mode
+  const isEditMode = pathname.includes('edit-profile');
 
-  // Map dynamically loaded interests to their gorgeous custom design attributes
-  const mappedTopics = interestsList.map((interest) => {
-    const style = TOPIC_STYLES[interest.id] || {
-      iconName: 'star-outline',
-      iconType: 'ionicons',
-      iconColor: '#4648d4',
-      iconBg: 'rgba(70, 72, 212, 0.06)',
-      selectedBg: '#D8D9F7',
-    };
-    return {
-      id: interest.id,
-      name: interest.name,
-      description: interest.description,
-      ...style,
-    };
-  });
+  // ─── API Data ──────────────────────────────────────────────────────────────
 
-  // Pre-select 'sports' and 'art' as shown in the Figma mockup (making it 2/3 selected initially)
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(
-    user?.interests && user.interests.length > 0 ? user.interests : ['sports', 'art']
-  );
+  const { data: categoriesList = [], isLoading: isLoadingCategories } = useCategoriesAll();
+
+  // ─── State ─────────────────────────────────────────────────────────────────
+
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]); // ✅ Empty by default
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true); // ✅ Added
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const cardScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
 
+  // ─── Map Categories to Topics ──────────────────────────────────────────────
 
+  const mappedTopics = categoriesList.map((category) => {
+    const style = resolveTopicStyle(category.slug, category.name);
+    return {
+      id: String(category.id),
+      slug: category.slug,
+      name: category.name,
+      description: category.description,
+      ...style,
+    };
+  });
 
-  const handleCardPressIn = (topicId: string) => {
-    if (!cardScaleAnims[topicId]) {
-      cardScaleAnims[topicId] = new Animated.Value(1);
+  // ─── Load Saved Preferences (Edit mode only) ──────────────────────────────
+
+  useEffect(() => {
+    // ✅ New user → start fresh, no API call
+    if (!isEditMode) {
+      setIsLoadingPrefs(false);
+      return;
     }
-    Animated.spring(cardScaleAnims[topicId], {
+
+    // ✅ Edit mode → fetch saved interests
+    const loadPreferences = async () => {
+      try {
+        const prefs = await usersApi.getPreferences();
+        if (prefs.category_ids?.length) {
+          setSelectedTopics(prefs.category_ids.map(String));
+        }
+      } catch (error) {
+        console.error('[InterestsScreen] Failed to load preferences:', error);
+      } finally {
+        setIsLoadingPrefs(false);
+      }
+    };
+
+    loadPreferences();
+  }, [isEditMode]);
+
+  // ─── Animation Helpers ─────────────────────────────────────────────────────
+
+  const getOrCreateAnim = (id: string): Animated.Value => {
+    if (!cardScaleAnims[id]) {
+      cardScaleAnims[id] = new Animated.Value(1);
+    }
+    return cardScaleAnims[id];
+  };
+
+  const handleCardPressIn = (id: string) => {
+    Animated.spring(getOrCreateAnim(id), {
       toValue: 0.94,
       useNativeDriver: true,
       tension: 180,
@@ -105,11 +157,8 @@ export default function InterestsScreen() {
     }).start();
   };
 
-  const handleCardPressOut = (topicId: string) => {
-    if (!cardScaleAnims[topicId]) {
-      cardScaleAnims[topicId] = new Animated.Value(1);
-    }
-    Animated.spring(cardScaleAnims[topicId], {
+  const handleCardPressOut = (id: string) => {
+    Animated.spring(getOrCreateAnim(id), {
       toValue: 1,
       useNativeDriver: true,
       tension: 180,
@@ -117,14 +166,17 @@ export default function InterestsScreen() {
     }).start();
   };
 
-  const toggleTopic = (topicId: string) => {
-    setSelectedTopics((prev) => {
-      if (prev.includes(topicId)) {
-        return prev.filter((id) => id !== topicId);
-      }
-      return [...prev, topicId];
-    });
+  // ─── Toggle Topic ──────────────────────────────────────────────────────────
+
+  const toggleTopic = (categoryName: string) => {
+    setSelectedTopics((prev) =>
+      prev.includes(categoryName)
+        ? prev.filter((n) => n !== categoryName)
+        : [...prev, categoryName]
+    );
   };
+
+  // ─── Button Animation ──────────────────────────────────────────────────────
 
   const animateButton = (toValue: number) => {
     Animated.spring(buttonScale, {
@@ -135,25 +187,76 @@ export default function InterestsScreen() {
     }).start();
   };
 
-  const handleContinue = () => {
-    if (selectedTopics.length >= MIN_SELECTIONS) {
-      useAuthStore.setState((prev) => ({
-        user: prev.user ? { ...prev.user, interests: selectedTopics } : null
-      }));
+  // ─── Continue Handler ──────────────────────────────────────────────────────
+
+  const handleContinue = async () => {
+    if (selectedTopics.length < MIN_SELECTIONS) return;
+
+    setIsSaving(true);
+
+    try {
+      // ✅ Save interests to backend
+      await usersApi.savePreferences({
+        category_ids: selectedTopics.map(Number),
+      });
+
       router.push('/(onboarding)/setup-feed');
+    } catch (error: any) {
+      console.error('[InterestsScreen] Failed to save interests:', error);
+      Alert.alert(
+        'Save Failed',
+        error.message || 'Failed to save your interests. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
+  // ─── Derived State ─────────────────────────────────────────────────────────
+
+  const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS || isSaving;
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
+
+  if (isLoadingCategories || isLoadingPrefs) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <LoadingSpinner
+          fullScreen
+          text="Loading interests..."
+          colorScheme={colorScheme ?? 'light'}
+        />
+      </View>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   let singleItemCount = 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* Header - Top AppBar */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.divider,
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -162,21 +265,40 @@ export default function InterestsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+        <Text
+          style={[
+            styles.headerTitle,
+            { color: colors.text, fontSize: 24, letterSpacing: -0.3 },
+          ]}
+        >
           <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
-          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
-          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+          <Text
+            style={{
+              fontFamily: 'Poppins_500Medium',
+              color: isDark ? '#818CF8' : colors.primary,
+            }}
+          >
+            Local
+          </Text>
+          <Text
+            style={{
+              color: isDark ? '#818CF8' : colors.primary,
+              fontFamily: 'Poppins_700Bold',
+            }}
+          >
+            .
+          </Text>
         </Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <ScrollView
         style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Headline Section */}
+        {/* Headline */}
         <View style={styles.headlineSection}>
           <Text style={[styles.mainTitle, { color: colors.text }]}>
             What are you{'\n'}interested in?
@@ -189,28 +311,24 @@ export default function InterestsScreen() {
         {/* Bento Grid */}
         <View style={styles.bentoGrid}>
           {mappedTopics.map((topic) => {
-
-            const isSelected = selectedTopics.includes(topic.id);
-            if (!cardScaleAnims[topic.id]) {
-              cardScaleAnims[topic.id] = new Animated.Value(1);
-            }
-            const scale = cardScaleAnims[topic.id];
+            const isSelected = selectedTopics.includes(topic.name);
+            const scale = getOrCreateAnim(topic.id);
             const isSpan = !!topic.span;
-            const marginRight = isSpan ? '0%' : (singleItemCount++ % 2 === 0 ? '6%' : '0%');
+            const marginRight = isSpan
+              ? '0%'
+              : singleItemCount++ % 2 === 0
+                ? '6%'
+                : '0%';
 
             return (
               <Pressable
                 key={topic.id}
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
-                onPress={() => toggleTopic(topic.id)}
+                onPress={() => toggleTopic(topic.name)}
                 style={[
                   isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
-                  {
-                    width: isSpan ? '100%' : '47%',
-                    marginRight,
-                    marginBottom: 16
-                  }
+                  { width: isSpan ? '100%' : '47%', marginRight, marginBottom: 16 },
                 ]}
               >
                 <Animated.View
@@ -223,62 +341,109 @@ export default function InterestsScreen() {
                           backgroundColor: isDark ? '#2A2A4D' : topic.selectedBg,
                           borderColor: topic.iconColor,
                           shadowColor: topic.iconColor,
-                        }
+                        },
                       ]
                       : [
                         styles.cardUnselected,
                         {
                           backgroundColor: colors.card,
                           borderColor: colors.border,
-                        }
+                        },
                       ],
-                    { transform: [{ scale }] }
+                    { transform: [{ scale }] },
                   ]}
                 >
-                  {topic.span ? (
-                    // Wellness Spanning Layout
+                  {isSpan ? (
+                    // ── Span Layout ────────────────────────────────────────────
                     <View style={styles.spanRow}>
-                      <View style={[
-                        styles.iconContainer,
-                        isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
-                      ]}>
+                      <View
+                        style={[
+                          styles.iconContainer,
+                          {
+                            backgroundColor: isSelected
+                              ? topic.iconColor
+                              : topic.iconBg,
+                          },
+                        ]}
+                      >
                         {topic.iconType === 'feather' ? (
-                          <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                          <Feather
+                            name={topic.iconName}
+                            size={20}
+                            color={isSelected ? '#FFF' : topic.iconColor}
+                          />
                         ) : (
-                          <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                          <Ionicons
+                            name={topic.iconName}
+                            size={20}
+                            color={isSelected ? '#FFF' : topic.iconColor}
+                          />
                         )}
                       </View>
 
                       <View style={styles.spanTextContainer}>
                         <View style={styles.spanTitleRow}>
-                          <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                          <Text style={[styles.cardTitle, { color: colors.text }]}>
+                            {topic.name}
+                          </Text>
                           {isSelected && (
-                            <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={20}
+                              color={topic.iconColor}
+                            />
                           )}
                         </View>
-                        <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{topic.description}</Text>
+                        {topic.description && (
+                          <Text
+                            style={[styles.cardDesc, { color: colors.textSecondary }]}
+                            numberOfLines={1}
+                          >
+                            {topic.description}
+                          </Text>
+                        )}
                       </View>
                     </View>
                   ) : (
-                    // Single Bento Box Layout
+                    // ── Single Card Layout ─────────────────────────────────────
                     <View style={styles.singleLayout}>
                       <View style={styles.singleTopRow}>
-                        <View style={[
-                          styles.iconContainer,
-                          isSelected ? { backgroundColor: topic.iconColor } : { backgroundColor: topic.iconBg }
-                        ]}>
+                        <View
+                          style={[
+                            styles.iconContainer,
+                            {
+                              backgroundColor: isSelected
+                                ? topic.iconColor
+                                : topic.iconBg,
+                            },
+                          ]}
+                        >
                           {topic.iconType === 'feather' ? (
-                            <Feather name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                            <Feather
+                              name={topic.iconName}
+                              size={20}
+                              color={isSelected ? '#FFF' : topic.iconColor}
+                            />
                           ) : (
-                            <Ionicons name={topic.iconName} size={20} color={isSelected ? '#FFF' : topic.iconColor} />
+                            <Ionicons
+                              name={topic.iconName}
+                              size={20}
+                              color={isSelected ? '#FFF' : topic.iconColor}
+                            />
                           )}
                         </View>
                       </View>
 
                       <View style={styles.singleTitleRow}>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{topic.name}</Text>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>
+                          {topic.name}
+                        </Text>
                         {isSelected && (
-                          <Ionicons name="checkmark-circle" size={20} color={topic.iconColor} />
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={topic.iconColor}
+                          />
                         )}
                       </View>
                     </View>
@@ -290,40 +455,84 @@ export default function InterestsScreen() {
         </View>
       </ScrollView>
 
-      {/* Fixed Bottom Action Footer */}
-      <View style={[styles.bottomBar, { backgroundColor: isDark ? 'rgba(17, 17, 34, 0.95)' : 'rgba(248, 249, 255, 0.95)', borderTopColor: colors.border }]}>
-        {/* Progress Stepper Indicator */}
+      {/* Fixed Bottom Bar */}
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            backgroundColor: isDark
+              ? 'rgba(17,17,34,0.95)'
+              : 'rgba(248,249,255,0.95)',
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
+        {/* Progress Indicators */}
         <View style={styles.progressContainer}>
           <View style={styles.activeStepIndicator} />
-          <View style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]} />
-          <View style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]}
+          />
+          <View
+            style={[styles.inactiveStepIndicator, { backgroundColor: colors.border }]}
+          />
         </View>
 
+        {/* Selected Count Badge */}
+        {selectedTopics.length > 0 && (
+          <View style={styles.selectionBadge}>
+            <Text style={[styles.selectionBadgeText, { color: colors.primary }]}>
+              {selectedTopics.length} selected
+              {selectedTopics.length < MIN_SELECTIONS
+                ? ` · ${MIN_SELECTIONS - selectedTopics.length} more needed`
+                : ' · Ready!'}
+            </Text>
+          </View>
+        )}
+
         {/* Continue Button */}
-        <Animated.View style={[styles.buttonWrapper, { transform: [{ scale: buttonScale }] }]}>
+        <Animated.View
+          style={[styles.buttonWrapper, { transform: [{ scale: buttonScale }] }]}
+        >
           <Pressable
             style={[
               styles.continueButton,
-              isButtonDisabled ? styles.continueButtonDisabled : styles.continueButtonActive,
+              isButtonDisabled
+                ? styles.continueButtonDisabled
+                : styles.continueButtonActive,
             ]}
             onPressIn={() => animateButton(0.96)}
             onPressOut={() => animateButton(1)}
             onPress={handleContinue}
             disabled={isButtonDisabled}
           >
-            <Text style={styles.continueButtonText}>
-              {isButtonDisabled
-                ? `Continue (${selectedTopics.length}/${MIN_SELECTIONS} selected)`
-                : 'Continue'
-              }
-            </Text>
-            <Feather name="chevron-right" size={16} color="#FFF" style={styles.btnChevron} />
+            {isSaving ? (
+              <LoadingSpinner size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.continueButtonText}>
+                  {selectedTopics.length < MIN_SELECTIONS
+                    ? `Select ${MIN_SELECTIONS - selectedTopics.length} more`
+                    : 'Continue'}
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={16}
+                  color="#FFF"
+                  style={styles.btnChevron}
+                />
+              </>
+            )}
           </Pressable>
         </Animated.View>
       </View>
     </SafeAreaView>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
@@ -359,7 +568,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 160, // Large space for the fixed footer overlay!
+    paddingBottom: 180,
   },
   headlineSection: {
     marginBottom: 40,
@@ -400,7 +609,7 @@ const styles = StyleSheet.create({
   },
   cardUnselected: {
     backgroundColor: '#FFFFFF',
-    borderColor: 'rgba(199, 196, 215, 0.3)',
+    borderColor: 'rgba(199,196,215,0.3)',
   },
   cardSelected: {
     borderWidth: 2,
@@ -426,9 +635,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconContainerSelected: {
-    backgroundColor: '#4648D4',
   },
   cardTitle: {
     fontSize: 20,
@@ -467,21 +673,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(248, 249, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(199, 196, 215, 0.3)',
+    borderTopColor: 'rgba(199,196,215,0.3)',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   progressContainer: {
     flexDirection: 'row',
     gap: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   activeStepIndicator: {
     backgroundColor: '#4648D4',
@@ -490,10 +694,19 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   inactiveStepIndicator: {
-    backgroundColor: '#C7C4D7',
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  selectionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  selectionBadgeText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    fontWeight: '500',
   },
   buttonWrapper: {
     width: '100%',
@@ -507,7 +720,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueButtonDisabled: {
-    backgroundColor: '#A5A6F6', // Beautiful premium translucent indigo
+    backgroundColor: '#A5A6F6',
   },
   continueButtonActive: {
     backgroundColor: '#4648D4',

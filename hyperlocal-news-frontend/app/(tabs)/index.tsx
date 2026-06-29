@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNewsFeed } from '@/hooks/useApi';
+import { useNewsFeed } from '@/hooks/useNews';
+import { useBookmarks } from '@/hooks/useEngagement';
+import { NewsArticle } from '@/services/api/news';
 import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
@@ -12,7 +14,6 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 import { useTabBarStore } from '@/store/tabBarStore';
-import { NewsArticle } from '@/types';
 
 
 const CATEGORIES = [
@@ -49,7 +50,23 @@ export default function HomeScreen() {
   const isProgrammaticScroll = useRef(false);
 
   // Load news dynamically from our simulated backend using React Query
-  const { data: news = [], isLoading } = useNewsFeed();
+  const { data: feedResponse, isLoading } = useNewsFeed();
+
+  // Fetch user's bookmarks from server to pass to cards
+  const { data: rawBookmarks = [] } = useBookmarks();
+
+  // Extract only NewsArticle items from the feed response (filtering out ads/sponsored)
+  const news: NewsArticle[] = useMemo(() => {
+    if (!feedResponse?.items) return [];
+    return feedResponse.items
+      .filter(item => item.type === 'news')
+      .map(item => item.data as NewsArticle);
+  }, [feedResponse]);
+
+  // Create a Set of bookmarked news_uids for quick O(1) lookup
+  const bookmarkedIds = useMemo(() => {
+    return new Set(rawBookmarks.map(b => b.news_uid));
+  }, [rawBookmarks]);
 
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [activeCategory, setActiveCategory] = useState('for-you');
@@ -58,8 +75,9 @@ export default function HomeScreen() {
     <ImmersiveNewsCard
       item={item}
       containerHeight={scrollHeight}
+      isBookmarked={bookmarkedIds.has(item.news_uid)}
     />
-  ), [scrollHeight]);
+  ), [scrollHeight, bookmarkedIds]);
 
   // Reset tab bar visibility and header on focus
   useEffect(() => {
@@ -70,10 +88,18 @@ export default function HomeScreen() {
     return unsubscribe;
   }, [navigation]);
 
+  // Helper to convert backend category_names to local category slug
+  const getArticleCategorySlug = (article: NewsArticle) => {
+    if (!article.category_names || article.category_names.length === 0) return 'for-you';
+    const firstName = article.category_names[0].toLowerCase().replace(/\s+/g, '-');
+    const match = CATEGORIES.find(c => c.slug === firstName);
+    return match ? match.slug : 'for-you';
+  };
+
   // Filter news dynamically based on the selected category slug
   const getFilteredNews = (slug: string) => {
     if (slug === 'for-you') return news;
-    return news.filter(item => item.category?.slug === slug);
+    return news.filter(item => getArticleCategorySlug(item) === slug);
   };
 
   // Animation values and state for the header auto-hide/pop feature
@@ -117,7 +143,7 @@ export default function HomeScreen() {
 
   const hideHeader = () => {
     if (isLoading) return; // Do not hide header while news is still loading!
-    
+
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
@@ -189,11 +215,11 @@ export default function HomeScreen() {
   // Sync scroll for deep link newsId
   useEffect(() => {
     if (newsId && news.length > 0 && scrollHeight > 0) {
-      const item = news.find(i => i.id === newsId);
+      const item = news.find(i => i.news_uid === newsId);
       if (item) {
-        const itemCategory = item.category?.slug || 'for-you';
+        const itemCategory = getArticleCategorySlug(item);
         const categoryNews = getFilteredNews(itemCategory);
-        const itemIndex = categoryNews.findIndex(i => i.id === newsId);
+        const itemIndex = categoryNews.findIndex(i => i.news_uid === newsId);
 
         if (itemIndex !== -1) {
           // Set active category
@@ -219,7 +245,7 @@ export default function HomeScreen() {
   // Removed early return layout to support rendering header from the start
 
   return (
-    <View 
+    <View
       style={[styles.container, { backgroundColor: colors.background }]}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -249,7 +275,7 @@ export default function HomeScreen() {
             <View style={styles.locationContainer}>
               <Ionicons name="location-sharp" size={12} color={isDark ? '#818CF8' : colors.primary} style={styles.locationIcon} />
               <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-                {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'HYDERABAD, TS')}
+                {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'SELECT LOCATION')}
               </Text>
             </View>
           </View>
@@ -320,110 +346,110 @@ export default function HomeScreen() {
           </View>
         ) : (
           <FlatList
-          ref={horizontalFlatListRef}
-          data={CATEGORIES}
-          keyExtractor={(item) => item.slug}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={screenWidth}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          disableIntervalMomentum={true}
-          bounces={false}
-          getItemLayout={(data, index) => ({
-            length: screenWidth,
-            offset: screenWidth * index,
-            index,
-          })}
-          scrollEventThrottle={16}
-          onScroll={(e) => {
-            if (isProgrammaticScroll.current) return;
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const index = Math.round(offsetX / screenWidth);
-            if (index >= 0 && index < CATEGORIES.length) {
-              const nextSlug = CATEGORIES[index].slug;
-              if (activeCategory !== nextSlug) {
-                setActiveCategory(nextSlug);
-                categoryFlatListRef.current?.scrollToIndex({
-                  index,
-                  animated: true,
-                  viewPosition: 0.5,
-                });
+            ref={horizontalFlatListRef}
+            data={CATEGORIES}
+            keyExtractor={(item) => item.slug}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={screenWidth}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            disableIntervalMomentum={true}
+            bounces={false}
+            getItemLayout={(data, index) => ({
+              length: screenWidth,
+              offset: screenWidth * index,
+              index,
+            })}
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              if (isProgrammaticScroll.current) return;
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const index = Math.round(offsetX / screenWidth);
+              if (index >= 0 && index < CATEGORIES.length) {
+                const nextSlug = CATEGORIES[index].slug;
+                if (activeCategory !== nextSlug) {
+                  setActiveCategory(nextSlug);
+                  categoryFlatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0.5,
+                  });
+                }
               }
-            }
-          }}
-          onMomentumScrollEnd={(e) => {
-            isProgrammaticScroll.current = false;
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const index = Math.round(offsetX / screenWidth);
-            if (index >= 0 && index < CATEGORIES.length) {
-              const nextSlug = CATEGORIES[index].slug;
-              if (activeCategory !== nextSlug) {
-                setActiveCategory(nextSlug);
-                categoryFlatListRef.current?.scrollToIndex({
-                  index,
-                  animated: true,
-                  viewPosition: 0.5,
-                });
+            }}
+            onMomentumScrollEnd={(e) => {
+              isProgrammaticScroll.current = false;
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const index = Math.round(offsetX / screenWidth);
+              if (index >= 0 && index < CATEGORIES.length) {
+                const nextSlug = CATEGORIES[index].slug;
+                if (activeCategory !== nextSlug) {
+                  setActiveCategory(nextSlug);
+                  categoryFlatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0.5,
+                  });
+                }
               }
-            }
-          }}
-          renderItem={({ item: category, index }) => {
-            const categoryNews = getFilteredNews(category.slug);
-            const activeIndex = CATEGORIES.findIndex(c => c.slug === activeCategory);
-            // Pre-load 2 adjacent neighbors for buttery-smooth horizontal swipes
-            const isVisible = Math.abs(index - activeIndex) <= 2;
+            }}
+            renderItem={({ item: category, index }) => {
+              const categoryNews = getFilteredNews(category.slug);
+              const activeIndex = CATEGORIES.findIndex(c => c.slug === activeCategory);
+              // Pre-load 2 adjacent neighbors for buttery-smooth horizontal swipes
+              const isVisible = Math.abs(index - activeIndex) <= 2;
 
-            if (!isVisible) {
-              return <View style={{ width: screenWidth, height: scrollHeight }} />;
-            }
+              if (!isVisible) {
+                return <View style={{ width: screenWidth, height: scrollHeight }} />;
+              }
 
-            if (categoryNews.length === 0) {
+              if (categoryNews.length === 0) {
+                return (
+                  <View style={[styles.emptyContainer, { width: screenWidth, height: scrollHeight }]}>
+                    <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
+                    <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this category yet</Text>
+                    <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Check back later or explore other sections</Text>
+                  </View>
+                );
+              }
+
               return (
-                <View style={[styles.emptyContainer, { width: screenWidth, height: scrollHeight }]}>
-                  <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this category yet</Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Check back later or explore other sections</Text>
+                <View style={{ width: screenWidth, height: scrollHeight }}>
+                  <FlatList
+                    ref={ref => {
+                      verticalRefs.current[category.slug] = ref;
+                    }}
+                    data={categoryNews}
+                    keyExtractor={(item) => item.news_uid}
+                    renderItem={renderNewsCard}
+                    pagingEnabled
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
+                    snapToInterval={scrollHeight}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    disableIntervalMomentum={true}
+                    bounces={false}
+                    getItemLayout={(_, idx) => ({
+                      length: scrollHeight,
+                      offset: scrollHeight * idx,
+                      index: idx,
+                    })}
+                    onScrollToIndexFailed={(info) => {
+                      const wait = new Promise(resolve => setTimeout(resolve, 50));
+                      wait.then(() => {
+                        verticalRefs.current[category.slug]?.scrollToIndex({ index: info.index, animated: true });
+                      });
+                    }}
+                  />
                 </View>
               );
-            }
-
-            return (
-              <View style={{ width: screenWidth, height: scrollHeight }}>
-                <FlatList
-                  ref={ref => {
-                    verticalRefs.current[category.slug] = ref;
-                  }}
-                  data={categoryNews}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderNewsCard}
-                  pagingEnabled
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={false}
-                  snapToInterval={scrollHeight}
-                  snapToAlignment="start"
-                  decelerationRate="fast"
-                  disableIntervalMomentum={true}
-                  bounces={false}
-                  getItemLayout={(_, idx) => ({
-                    length: scrollHeight,
-                    offset: scrollHeight * idx,
-                    index: idx,
-                  })}
-                  onScrollToIndexFailed={(info) => {
-                    const wait = new Promise(resolve => setTimeout(resolve, 50));
-                    wait.then(() => {
-                      verticalRefs.current[category.slug]?.scrollToIndex({ index: info.index, animated: true });
-                    });
-                  }}
-                />
-              </View>
-            );
-          }}
-        />
-      )}
-    </View>
+            }}
+          />
+        )}
+      </View>
 
     </View>
   );

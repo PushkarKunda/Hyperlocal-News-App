@@ -1,521 +1,207 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-  Platform,
-  BackHandler,
+  View, Text, StyleSheet, ScrollView, Animated,
+  Platform, BackHandler, Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
 
-export default function FeedSetupLoaderScreen() {
+export default function SetupFeedScreen() {
   const router = useRouter();
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
-  // Progress bar animation
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const { completeOnboarding, user } = useAuthStore();
 
-  // Orbit rotation animation
-  const orbitRotation = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Ripple breathing scale and opacity animations
-  const rippleScale1 = useRef(new Animated.Value(0.95)).current;
-  const rippleOpacity1 = useRef(new Animated.Value(0.2)).current;
-  const rippleScale2 = useRef(new Animated.Value(0.95)).current;
-  const rippleOpacity2 = useRef(new Animated.Value(0.15)).current;
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Bouncing dots animations
-  const dot1Opacity = useRef(new Animated.Value(0.3)).current;
-  const dot2Opacity = useRef(new Animated.Value(0.3)).current;
-  const dot3Opacity = useRef(new Animated.Value(0.3)).current;
-
-  // Skeletons pulse animation
-  const skeletonPulse = useRef(new Animated.Value(0.4)).current;
-
+  // ✅ Prevent back during setup
   useEffect(() => {
-    const onBackPress = () => {
-      // Prevent user from going back during the critical feed setup loading process
-      return true;
-    };
-
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-    // 1. Progress Bar filling animation (3.5 seconds)
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 3500,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: false, // width needs layout
-    }).start(({ finished }) => {
-      if (finished) {
-        // Redirection to the Complete screen on completion
-        router.replace('/(onboarding)/complete');
-      }
-    });
-
-    // 2. Orbit rotation animation (continuous spinning)
-    Animated.loop(
-      Animated.timing(orbitRotation, {
-        toValue: 1,
-        duration: 3000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // 3. Ripple 1 breathing animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(rippleScale1, {
-            toValue: 1.25,
-            duration: 1500,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(rippleOpacity1, {
-            toValue: 0,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(rippleScale1, {
-            toValue: 0.95,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rippleOpacity1, {
-            toValue: 0.25,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    ).start();
-
-    // 4. Ripple 2 breathing animation (staggered delay)
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(rippleScale2, {
-            toValue: 1.4,
-            duration: 2000,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(rippleOpacity2, {
-            toValue: 0,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(rippleScale2, {
-            toValue: 0.95,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rippleOpacity2, {
-            toValue: 0.2,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    ).start();
-
-    // 5. Blinking dots animation loop
-    const animateDots = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(dot1Opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot2Opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot3Opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.delay(200),
-          Animated.parallel([
-            Animated.timing(dot1Opacity, { toValue: 0.3, duration: 300, useNativeDriver: true }),
-            Animated.timing(dot2Opacity, { toValue: 0.3, duration: 300, useNativeDriver: true }),
-            Animated.timing(dot3Opacity, { toValue: 0.3, duration: 300, useNativeDriver: true }),
-          ]),
-          Animated.delay(200),
-        ])
-      ).start();
-    };
-    animateDots();
-
-    // 6. Pulse effect for skeleton cards at bottom
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(skeletonPulse, {
-          toValue: 0.6,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(skeletonPulse, {
-          toValue: 0.3,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => handler.remove();
   }, []);
 
-  // Interpolations
-  const rotationInterpolate = orbitRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  // ✅ Entry animations
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 50, friction: 8, useNativeDriver: true }),
+    ]).start();
 
-  const oppositeRotationInterpolate = orbitRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['360deg', '0deg'],
-  });
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, []);
 
-  const barWidthInterpolation = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  // ✅ This is where completeOnboarding is called
+  // It syncs everything to backend and marks onboarding done
+  const handleFinishSetup = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await completeOnboarding();
+      router.replace('/(onboarding)/complete');
+    } catch (error: any) {
+      console.error('[SetupFeed] completeOnboarding failed:', error);
+      Alert.alert(
+        'Setup Failed',
+        error.message || 'Could not complete setup. Please try again.',
+        [{ text: 'Retry', onPress: () => setIsProcessing(false) }]
+      );
+    }
+  };
+
+  // ✅ Auto-trigger after animations settle
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleFinishSetup();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* Simulated Background Blur Vectors */}
-      <View style={[styles.purpleBlur, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(96, 99, 238, 0.15)' }]} />
-      <View style={[styles.tealBlur, { backgroundColor: isDark ? 'rgba(0, 106, 97, 0.1)' : 'rgba(134, 242, 228, 0.15)' }]} />
+      <View style={[styles.gradientBlur1, { backgroundColor: isDark ? 'rgba(70,72,212,0.08)' : 'rgba(70,72,212,0.04)' }]} />
+      <View style={[styles.gradientBlur2, { backgroundColor: isDark ? 'rgba(0,106,97,0.08)' : 'rgba(0,106,97,0.04)' }]} />
 
-      <View style={styles.mainCanvas}>
-        
-        {/* Animated Loader Section */}
-        <View style={styles.loaderSectionContainer}>
-          <View style={styles.loaderOuterCircle}>
-            
-            {/* Ripple Wave 2 */}
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                { borderColor: colors.primary },
-                {
-                  transform: [{ scale: rippleScale2 }],
-                  opacity: rippleOpacity2,
-                }
-              ]}
-            />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-            {/* Ripple Wave 1 */}
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                { borderColor: colors.primary },
-                {
-                  transform: [{ scale: rippleScale1 }],
-                  opacity: rippleOpacity1,
-                }
-              ]}
-            />
+          {/* Hero Icon */}
+          <Animated.View style={[styles.heroIconContainer, {
+            backgroundColor: isDark ? 'rgba(70,72,212,0.12)' : 'rgba(70,72,212,0.08)',
+            transform: [{ scale: pulseAnim }],
+          }]}>
+            <Ionicons name="newspaper-outline" size={80} color={colors.primary} />
+          </Animated.View>
 
-            {/* Base Background Circle */}
-            <View style={[styles.loaderBaseCircle, { backgroundColor: colors.primaryLight }]} />
-
-            {/* Rotating Orbit Container for Particles */}
-            <Animated.View
-              style={[
-                styles.orbitContainer,
-                { transform: [{ rotate: rotationInterpolate }] }
-              ]}
-            >
-              {/* Teal Orbiting Particle */}
-              <View style={[styles.orbitParticleTeal, styles.particle1]} />
-              
-              {/* Red Orbiting Particle */}
-              <View style={[styles.orbitParticleRed, styles.particle2]} />
-            </Animated.View>
-
-            {/* Central White Newspaper Badge */}
-            <View style={[styles.centerIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Ionicons name="newspaper-outline" size={38} color={colors.primary} />
-            </View>
-          </View>
-        </View>
-
-        {/* Text Content */}
-        <View style={styles.textContent}>
-          <Text style={[styles.mainTitle, { color: colors.text }]}>Setting up your feed...</Text>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>Setting up your feed</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            We're curating the best stories based on{'\n'}your interests.
+            Hang tight! We're personalizing your news experience based on your preferences.
           </Text>
-        </View>
 
-        {/* Loading Indicator */}
-        <View style={styles.progressSection}>
-          <View style={[styles.progressTrack, { backgroundColor: isDark ? '#2A2A3C' : '#DCE9FF' }]}>
-            <Animated.View
-              style={[
-                styles.progressBar,
-                { backgroundColor: colors.primary, shadowColor: colors.primary },
-                { width: barWidthInterpolation }
-              ]}
-            />
-          </View>
+          {/* Summary Cards */}
+          <View style={styles.cardsContainer}>
+            {/* Language */}
+            <View style={[styles.setupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.cardIconContainer, { backgroundColor: isDark ? 'rgba(70,72,212,0.12)' : 'rgba(70,72,212,0.08)' }]}>
+                <Ionicons name="language-outline" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Language</Text>
+                <Text style={[styles.cardValue, { color: colors.textSecondary }]}>
+                  {user?.language || 'English'}
+                </Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+            </View>
 
-          <View style={styles.indicatorSubRow}>
-            <Text style={[styles.finalizingText, { color: colors.primary }]}>FINALIZING YOUR HYPERLOCAL</Text>
-            <View style={styles.dotRow}>
-              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot1Opacity }]} />
-              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot2Opacity }]} />
-              <Animated.View style={[styles.loadingDot, { backgroundColor: colors.primary, opacity: dot3Opacity }]} />
+            {/* Location */}
+            <View style={[styles.setupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.cardIconContainer, { backgroundColor: isDark ? 'rgba(0,106,97,0.12)' : 'rgba(0,106,97,0.08)' }]}>
+                <Ionicons name="location-outline" size={24} color="#006A61" />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Location</Text>
+                <Text style={[styles.cardValue, { color: colors.textSecondary }]}>
+                  {[user?.district, user?.state].filter(Boolean).join(', ') || 'Not set'}
+                </Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+            </View>
+
+            {/* Interests */}
+            <View style={[styles.setupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.cardIconContainer, { backgroundColor: isDark ? 'rgba(225,29,72,0.12)' : 'rgba(225,29,72,0.08)' }]}>
+                <Ionicons name="heart-outline" size={24} color="#E11D48" />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Interests</Text>
+                <Text style={[styles.cardValue, { color: colors.textSecondary }]}>
+                  {user?.interests?.length
+                    ? `${user.interests.length} topics selected`
+                    : 'Not set'}
+                </Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
             </View>
           </View>
-        </View>
 
-        {/* Visual Context Preview Bento Cards */}
-        <Animated.View
-          style={[
-            styles.skeletonContainer,
-            { opacity: skeletonPulse }
-          ]}
-        >
-          {/* Card Left */}
-          <View style={[styles.skeletonCard, { backgroundColor: isDark ? '#2A2A3C' : '#E5EEFF' }]}>
-            <View style={styles.skeletonMargin}>
-              <View style={[styles.skeletonShortLine, { backgroundColor: isDark ? '#464554' : '#C7C4D7' }]} />
+          {/* Loading Bar */}
+          <View style={styles.loadingContainer}>
+            <View style={[styles.loadingBar, { backgroundColor: colors.border }]}>
+              <View style={[styles.loadingProgress, { backgroundColor: colors.primary }]} />
             </View>
-            <View style={[styles.skeletonLongLine, { backgroundColor: isDark ? 'rgba(199, 196, 215, 0.2)' : 'rgba(199, 196, 215, 0.5)' }]} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              {isProcessing ? 'Finalizing...' : 'Almost there...'}
+            </Text>
           </View>
 
-          {/* Card Right */}
-          <View style={[styles.skeletonCard, { backgroundColor: isDark ? '#2A2A3C' : '#E5EEFF' }]}>
-            <View style={styles.skeletonMargin}>
-              <View style={[styles.skeletonShortLine, { backgroundColor: isDark ? '#464554' : '#C7C4D7', width: '60%' }]} />
-            </View>
-            <View style={[styles.skeletonLongLine, { backgroundColor: isDark ? 'rgba(199, 196, 215, 0.2)' : 'rgba(199, 196, 215, 0.5)', width: '85%' }]} />
+          {/* Info Box */}
+          <View style={[styles.infoBox, {
+            backgroundColor: isDark ? 'rgba(70,72,212,0.08)' : 'rgba(70,72,212,0.05)',
+            borderColor: isDark ? 'rgba(70,72,212,0.2)' : 'rgba(70,72,212,0.15)',
+          }]}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              You can change these preferences anytime from your profile settings.
+            </Text>
           </View>
         </Animated.View>
-
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FF',
+  container: { flex: 1 },
+  gradientBlur1: { position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, zIndex: -1 },
+  gradientBlur2: { position: 'absolute', bottom: -100, left: -100, width: 300, height: 300, borderRadius: 150, zIndex: -1 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40, alignItems: 'center', justifyContent: 'center' },
+  heroIconContainer: {
+    width: 160, height: 160, borderRadius: 80, alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'center', marginBottom: 32,
+    ...Platform.select({
+      ios: { shadowColor: '#4648D4', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24 },
+      android: { elevation: 8 },
+    }),
   },
-  purpleBlur: {
-    position: 'absolute',
-    left: -59,
-    top: -108,
-    width: 195,
-    height: 442,
-    borderRadius: 9999,
-    backgroundColor: '#6063ee',
-    opacity: 0.15,
-    zIndex: -1,
+  mainTitle: { fontSize: 32, fontWeight: '700', fontFamily: 'Poppins_700Bold', letterSpacing: -0.64, textAlign: 'center', marginBottom: 12 },
+  subtitle: { fontSize: 16, fontFamily: 'Poppins_400Regular', lineHeight: 24, textAlign: 'center', marginBottom: 40, paddingHorizontal: 20 },
+  cardsContainer: { width: '100%', gap: 16, marginBottom: 32 },
+  setupCard: {
+    flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, gap: 12,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+      android: { elevation: 2 },
+    }),
   },
-  tealBlur: {
-    position: 'absolute',
-    right: -19,
-    bottom: -68,
-    width: 156,
-    height: 353,
-    borderRadius: 9999,
-    backgroundColor: '#86f2e4',
-    opacity: 0.15,
-    zIndex: -1,
-  },
-  mainCanvas: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  loaderSectionContainer: {
-    height: 232,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  loaderOuterCircle: {
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  rippleRing: {
-    position: 'absolute',
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    borderWidth: 2,
-    borderColor: '#4648D4',
-  },
-  loaderBaseCircle: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(70, 72, 212, 0.08)',
-  },
-  orbitContainer: {
-    position: 'absolute',
-    width: 168,
-    height: 168,
-    borderRadius: 84,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbitParticleTeal: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#006A61',
-  },
-  orbitParticleRed: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#DC2C4F',
-  },
-  particle1: {
-    top: 0,
-    left: 78,
-  },
-  particle2: {
-    bottom: 4,
-    right: 32,
-  },
-  centerIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(199, 196, 215, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  textContent: {
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 40,
-    letterSpacing: -0.8,
-    fontFamily: 'Poppins_700Bold',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '400',
-    color: '#464554',
-    lineHeight: 29.25,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    opacity: 0.9,
-  },
-  progressSection: {
-    width: 280,
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 48,
-  },
-  progressTrack: {
-    width: '100%',
-    height: 6,
-    backgroundColor: '#DCE9FF',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#4648D4',
-    borderRadius: 3,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-  },
-  indicatorSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  finalizingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4648D4',
-    letterSpacing: 1.2,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  dotRow: {
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  loadingDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#4648D4',
-  },
-  skeletonContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    width: '100%',
-    paddingHorizontal: 12,
-  },
-  skeletonCard: {
-    flex: 1,
-    height: 96,
-    backgroundColor: '#E5EEFF',
-    borderRadius: 12,
-    padding: 12,
-    justifyContent: 'flex-end',
-  },
-  skeletonMargin: {
-    height: 16,
-    justifyContent: 'flex-start',
-    marginBottom: 8,
-  },
-  skeletonShortLine: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#C7C4D7',
-    width: '70%',
-  },
-  skeletonLongLine: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(199, 196, 215, 0.5)',
-    width: '100%',
-  },
+  cardIconContainer: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  cardContent: { flex: 1 },
+  cardTitle: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', marginBottom: 2 },
+  cardValue: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+  loadingContainer: { width: '100%', alignItems: 'center', marginBottom: 24 },
+  loadingBar: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
+  loadingProgress: { height: '100%', borderRadius: 3, width: '100%' },
+  loadingText: { fontSize: 14, fontWeight: '500', fontFamily: 'Poppins_500Medium' },
+  infoBox: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12, width: '100%' },
+  infoText: { flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular', lineHeight: 18 },
 });

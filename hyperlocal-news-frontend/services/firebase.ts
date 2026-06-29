@@ -54,11 +54,14 @@ export const verifyPhoneOTP = async (
         userCredential = await currentUser.linkWithCredential(credential);
         console.log('✅ Phone linked successfully');
       } catch (linkError: any) {
-        if (
+        // FIX: Also check for 'auth/unknown' with the specific message, as Firebase Android sometimes uses this instead of the specific code
+        const isAlreadyLinked =
           linkError.code === 'auth/provider-already-linked' ||
-          linkError.code === 'auth/credential-already-in-use'
-        ) {
-          console.log('ℹ️ Phone already linked');
+          linkError.code === 'auth/credential-already-in-use' ||
+          (linkError.code === 'auth/unknown' && linkError.message?.includes('already been linked'));
+
+        if (isAlreadyLinked) {
+          console.log('ℹ️ Phone already linked, fetching fresh token');
           return await currentUser.getIdToken(true);
         }
         throw linkError;

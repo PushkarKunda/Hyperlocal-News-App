@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { MaterialIcons, FontAwesome5, Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Typography } from '@/constants/Typography';
-import { Image } from 'expo-image';
 
-
-import { useTrendingList, useSourcesList, useLocalitiesList, useInterestsList } from '@/hooks/useApi';
+import { useCategoriesAll, useDistrictsList } from '@/hooks/useApi';
+import { useTrendingNews, usePopularNews } from '@/hooks/useNews';
+import { useAuthStore } from '@/store/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useRouter } from 'expo-router';
 
 const TOPIC_STYLES: Record<string, {
   iconName: any;
@@ -20,6 +21,7 @@ const TOPIC_STYLES: Record<string, {
   selectedBg: string;
   span?: boolean;
 }> = {
+  technology: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
   tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
   design: { iconName: 'color-palette-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
   sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7' },
@@ -29,21 +31,67 @@ const TOPIC_STYLES: Record<string, {
   food: { iconName: 'restaurant-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
   gaming: { iconName: 'game-controller-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
   wellness: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE' },
+  health: { iconName: 'heart', iconType: 'feather', iconColor: '#E11D48', iconBg: 'rgba(225, 29, 72, 0.08)', selectedBg: '#F4D1DE' },
+  business: { iconName: 'briefcase-outline', iconType: 'ionicons', iconColor: '#B90538', iconBg: 'rgba(185, 5, 56, 0.08)', selectedBg: '#F4D1DE' },
+  entertainment: { iconName: 'film-outline', iconType: 'ionicons', iconColor: '#6063ee', iconBg: 'rgba(96, 99, 238, 0.08)', selectedBg: '#DDDEFC' },
+  science: { iconName: 'flask-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
+  education: { iconName: 'book-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70, 72, 212, 0.08)', selectedBg: '#D8D9F7' },
+  politics: { iconName: 'people-outline', iconType: 'ionicons', iconColor: '#006A61', iconBg: 'rgba(0, 106, 97, 0.08)', selectedBg: '#CBDFE3' },
 };
 
 export default function DiscoverScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Load discover page segments dynamically from simulated Axios client using React Query hooks
-  const { data: trending = [], isLoading: isLoadingTrending } = useTrendingList();
-  const { data: interests = [], isLoading: isLoadingInterests } = useInterestsList();
-  const { data: sources = [], isLoading: isLoadingSources } = useSourcesList();
-  const { data: localities = [], isLoading: isLoadingLocalities } = useLocalitiesList();
+  const user = useAuthStore(state => state.user);
 
-  const isLoading = isLoadingTrending || isLoadingInterests || isLoadingSources || isLoadingLocalities;
+  // Fetch Server Data
+  const { data: trendingNews = [], isLoading: isLoadingTrending } = useTrendingNews();
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesAll();
+  const { data: popularNews = [], isLoading: isLoadingPopular } = usePopularNews();
+  const { data: districts = [], isLoading: isLoadingDistricts } = useDistrictsList(user?.state);
+
+  const isLoading = isLoadingTrending || isLoadingCategories || isLoadingPopular || isLoadingDistricts;
+
+  // Extract unique sources dynamically from Popular News
+  const sources = React.useMemo(() => {
+    const sourceMap = new Map<string, { id: string; name: string }>();
+    popularNews.forEach(article => {
+      if (article.source && !sourceMap.has(article.source)) {
+        sourceMap.set(article.source, { id: article.source, name: article.source });
+      }
+    });
+    return Array.from(sourceMap.values()).slice(0, 8);
+  }, [popularNews]);
+
+  // Map Districts to Localities format
+  const localities = React.useMemo(() => {
+    return districts.map(d => ({
+      id: d.id,
+      name: d.name,
+      count: 'District',
+    }));
+  }, [districts]);
+
+  // Map Categories to Topic Grid
+  const mappedTopics = categories.map((cat) => {
+    const style = TOPIC_STYLES[cat.slug] || {
+      iconName: 'star-outline',
+      iconType: 'ionicons',
+      iconColor: '#4648d4',
+      iconBg: 'rgba(70, 72, 212, 0.08)',
+      selectedBg: '#D8D9F7',
+    };
+    return {
+      id: String(cat.id),
+      title: cat.name,
+      slug: cat.slug,
+      ...style,
+    };
+  });
 
   if (isLoading) {
     return (
@@ -52,22 +100,6 @@ export default function DiscoverScreen() {
       </View>
     );
   }
-
-  // Map onboarding interests to grid items with custom styles
-  const mappedTopics = interests.map((interest) => {
-    const style = TOPIC_STYLES[interest.id] || {
-      iconName: 'star-outline',
-      iconType: 'ionicons',
-      iconColor: '#4648d4',
-      iconBg: 'rgba(70, 72, 212, 0.08)',
-      selectedBg: '#D8D9F7',
-    };
-    return {
-      id: interest.id,
-      title: interest.name,
-      ...style,
-    };
-  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -91,91 +123,103 @@ export default function DiscoverScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Trending Now */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>🔥 TRENDING NOW</Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
-            </TouchableOpacity>
+        {trendingNews.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>🔥 TRENDING NOW</Text>
+              <TouchableOpacity>
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              {trendingNews.slice(0, 5).map((item, index) => (
+                <React.Fragment key={item.news_uid}>
+                  <TouchableOpacity style={styles.listItem}>
+                    <View style={styles.listItemContent}>
+                      <Text style={[styles.itemTitle, { color: colors.primary }]}>{item.title}</Text>
+                      <Text style={[styles.itemSubtitle, { color: colors.textTertiary }]}>{`${item.views} views`}</Text>
+                    </View>
+                    <Ionicons name="trending-up-outline" size={20} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                  {index < Math.min(trendingNews.length, 5) - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
+                </React.Fragment>
+              ))}
+            </View>
           </View>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {trending.map((item: any, index: number) => (
-              <React.Fragment key={item.id}>
-                <TouchableOpacity style={styles.listItem}>
-                  <View style={styles.listItemContent}>
-                    <Text style={[styles.itemTitle, { color: colors.primary }]}>{item.title}</Text>
-                    <Text style={[styles.itemSubtitle, { color: colors.textTertiary }]}>{item.count}</Text>
-                  </View>
-                  <Ionicons name={item.icon as any} size={20} color={colors.textTertiary} />
-                </TouchableOpacity>
-                {index < trending.length - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+        )}
 
         {/* Browse by Topic */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📂 BROWSE BY TOPIC</Text>
+        {mappedTopics.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📂 BROWSE BY TOPIC</Text>
+            </View>
+            <View style={styles.gridContainer}>
+              {mappedTopics.map((topic) => (
+                <TouchableOpacity
+                  key={topic.id}
+                  style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}
+                  onPress={() => router.push(`/news/category/${topic.id}` as any)}
+                >
+                  <View style={[styles.iconContainer, { backgroundColor: topic.iconBg }]}>
+                    {topic.iconType === 'feather' ? (
+                      <Feather name={topic.iconName} size={20} color={topic.iconColor} />
+                    ) : (
+                      <Ionicons name={topic.iconName} size={20} color={topic.iconColor} />
+                    )}
+                  </View>
+                  <Text style={[styles.gridItemText, { color: colors.text }]}>{topic.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-          <View style={styles.gridContainer}>
-            {mappedTopics.map((topic) => (
-              <TouchableOpacity key={topic.id} style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}>
-                <View style={[styles.iconContainer, { backgroundColor: topic.iconBg }]}>
-                  {topic.iconType === 'feather' ? (
-                    <Feather name={topic.iconName} size={20} color={topic.iconColor} />
-                  ) : (
-                    <Ionicons name={topic.iconName} size={20} color={topic.iconColor} />
-                  )}
-                </View>
-                <Text style={[styles.gridItemText, { color: colors.text }]}>{topic.title}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        )}
 
         {/* Top Sources */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📰 TOP SOURCES</Text>
+        {sources.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📰 TOP SOURCES</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+              {sources.map((source) => (
+                <TouchableOpacity key={source.id} style={styles.sourceItem}>
+                  <View style={[styles.avatar, { backgroundColor: colors.border }]}>
+                    <Text style={[styles.avatarText, { color: colors.textSecondary }]}>{source.name.charAt(0)}</Text>
+                  </View>
+                  <Text style={[styles.sourceText, { color: colors.textSecondary }]}>{source.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-            {sources.map((source: any) => (
-              <TouchableOpacity key={source.id} style={styles.sourceItem}>
-                <View style={[styles.avatar, { backgroundColor: colors.border }]}>
-                  <Text style={[styles.avatarText, { color: colors.textSecondary }]}>{source.name.charAt(0)}</Text>
-                </View>
-                <Text style={[styles.sourceText, { color: colors.textSecondary }]}>{source.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        )}
 
         {/* Nearby Localities */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📍 NEARBY LOCALITIES</Text>
+        {localities.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>📍 NEARBY LOCALITIES</Text>
+            </View>
+            <View style={styles.listContainer}>
+              {localities.map((locality) => (
+                <React.Fragment key={locality.id}>
+                  <TouchableOpacity style={[styles.localityItem, { backgroundColor: colors.surface }]}>
+                    <View style={[styles.localityIconContainer, { backgroundColor: colors.background }]}>
+                      <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
+                    </View>
+                    <View style={styles.listItemContent}>
+                      <Text style={[styles.localityTitle, { color: colors.text }]}>{locality.name}</Text>
+                      <Text style={[styles.localitySubtitle, { color: colors.primary }]}>{locality.count}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
           </View>
-          <View style={styles.listContainer}>
-            {localities.map((locality: any, index: number) => (
-              <React.Fragment key={locality.id}>
-                <TouchableOpacity style={[styles.localityItem, { backgroundColor: colors.surface }]}>
-                  <View style={[styles.localityIconContainer, { backgroundColor: colors.background }]}>
-                    <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
-                  </View>
-                  <View style={styles.listItemContent}>
-                    <Text style={[styles.localityTitle, { color: colors.text }]}>{locality.name}</Text>
-                    <Text style={[styles.localitySubtitle, { color: colors.primary }]}>{locality.count}</Text>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={20} color={colors.textTertiary} />
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+        )}
 
       </ScrollView>
     </View>

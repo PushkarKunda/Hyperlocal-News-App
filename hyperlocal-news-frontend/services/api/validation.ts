@@ -1,6 +1,12 @@
 import { ZodSchema } from 'zod';
-import { ApiError } from '@/types';
 import { getApiError } from './client';
+
+// Define ApiError type here (no external import needed)
+export interface ApiError {
+  code: string;
+  message: string;
+  details?: any;
+}
 
 export const validateResponse = <T>(schema: ZodSchema<T>, data: unknown): { data?: T; error?: ApiError } => {
   try {

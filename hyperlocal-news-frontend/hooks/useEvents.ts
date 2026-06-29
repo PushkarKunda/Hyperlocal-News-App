@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+// import { useQuery } from '@tanstack/react-query';
 
-import { eventsApi } from '@/services/api';
+// import { eventsApi } from '@/services/api';
 
-export const useEvents = () => {
-  return useQuery({
-    queryKey: ['events', 'api'],
-    queryFn: () => eventsApi.list(),
-  });
-};
+// export const useEvents = () => {
+//   return useQuery({
+//     queryKey: ['events', 'api'],
+//     queryFn: () => eventsApi.list(),
+//   });
+// };

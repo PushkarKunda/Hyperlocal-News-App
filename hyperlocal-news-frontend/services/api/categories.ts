@@ -2,55 +2,105 @@
 import { API_ROUTES } from './routes';
 import { request } from './client';
 
-// ✅ Types defined inline - no external import needed
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 export interface Category {
-  id: string;
+  id: number;
+  name: string;
+  slug: string;
+  image_url?: string;
+  color?: string;
+  display_order: number;
+  is_active: boolean;
+  news_count: number;
+  description?: string;
+}
+
+export interface CategoryMenuItem {
+  id: number;
   name: string;
   slug: string;
   icon?: string;
   color?: string;
-  display_order?: number;
-  is_active?: boolean;
-  news_count?: number;
-  description?: string | null;
-}
-
-// ✅ Backend response type
-interface CategoryResponse {
-  id: number;
-  name: string;
-  image_url: string | null;
-  display_order: number;
   is_active: boolean;
-  color: string | null;
-  description: string | null;
-  news_count: number;
 }
 
-// ✅ Helper to create slug
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const toSlug = (name: string): string =>
   name.trim().toLowerCase().replace(/\s+/g, '-');
 
-// ✅ Map backend response to app type
-const mapCategory = (category: CategoryResponse): Category => ({
-  id: String(category.id),
-  name: category.name,
-  slug: toSlug(category.name),
-  icon: category.image_url ?? undefined,
-  color: category.color ?? undefined,
-  display_order: category.display_order,
-  is_active: category.is_active,
-  news_count: category.news_count,
-  description: category.description ?? undefined,
-});
+// ─── API ─────────────────────────────────────────────────────────────────────
 
-// ✅ API
 export const categoriesApi = {
-  list: async (): Promise<Category[]> => {
-    const response = await request<CategoryResponse[]>({
+  /**
+   * GET /categories/all
+   * Get all categories with full details
+   */
+  getAll: async (): Promise<Category[]> => {
+    const response = await request<Category[]>({
       url: API_ROUTES.categories.all,
       method: 'GET',
     });
-    return response.map(mapCategory);
+
+    return response.map((cat) => ({
+      ...cat,
+      slug: toSlug(cat.name),
+      image_url: cat.image_url || undefined,
+      color: cat.color || undefined,
+      description: cat.description || undefined,
+    }));
+  },
+
+  /**
+   * GET /categories/
+   * Get basic category list
+   */
+  list: async (): Promise<Category[]> => {
+    const response = await request<Category[]>({
+      url: API_ROUTES.categories.list,
+      method: 'GET',
+    });
+
+    return response.map((cat) => ({
+      ...cat,
+      slug: toSlug(cat.name),
+      image_url: cat.image_url || undefined,
+      color: cat.color || undefined,
+      description: cat.description || undefined,
+    }));
+  },
+
+  /**
+   * GET /categories/menu
+   * Get categories for menu/navigation (lightweight)
+   */
+  getMenu: async (): Promise<CategoryMenuItem[]> => {
+    const response = await request<Category[]>({
+      url: API_ROUTES.categories.menu,
+      method: 'GET',
+    });
+
+    return response.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: toSlug(cat.name),
+      icon: cat.image_url || undefined,
+      color: cat.color || undefined,
+      is_active: cat.is_active,
+    }));
+  },
+
+  /**
+   * GET /categories/:id/news
+   * Get news articles by category ID
+   * Note: Returns news articles, not categories
+   * (This is already in newsApi.getByCategory, but included here for completeness)
+   */
+  getNewsByCategory: async (categoryId: number): Promise<any[]> => {
+    return await request<any[]>({
+      url: API_ROUTES.categories.news(categoryId),
+      method: 'GET',
+    });
   },
 };

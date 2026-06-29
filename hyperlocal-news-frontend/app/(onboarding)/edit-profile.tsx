@@ -1,4 +1,3 @@
-// app/(onboarding)/profile.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -15,7 +14,6 @@ import {
   Pressable,
   BackHandler,
   KeyboardAvoidingView,
-  Alert,
   useWindowDimensions,
   ActivityIndicator,
 } from 'react-native';
@@ -28,9 +26,10 @@ import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
-// ✅ FIXED: Import statusCodes
 import { statusCodes } from '@react-native-google-signin/google-signin';
-import { uploadsApi, usersApi } from '@/services/api';
+import { usersApi } from '@/services/api';
+import { compressImage } from '@/services/image';
+import { uploadImageToSupabase } from '@/services/supabase';
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -45,21 +44,16 @@ export default function ProfileCompletionScreen() {
     isOnboarded,
     sendPhoneOTP,
     linkPhone,
-    pendingVerificationId,
     isLoading,
   } = useAuthStore();
 
   // ─── State ────────────────────────────────────────────────────────────────
 
   const [name, setName] = useState(user?.name ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(
-    user?.phoneNumber ?? user?.phone ?? ''
-  );
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? user?.phone ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [gender, setGender] = useState(user?.gender ?? '');
   const [dob, setDob] = useState(user?.date_of_birth ?? '');
-
-  // ✅ FIXED: null → undefined conversion
   const [selectedAvatar, setSelectedAvatar] = useState<string | undefined>(
     user?.profile_picture ?? user?.avatar ?? undefined
   );
@@ -69,31 +63,10 @@ export default function ProfileCompletionScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
 
-  // ─── Google Sign-In ───────────────────────────────────────────────────────
-
-  const { signInWithGoogle, isGoogleLoading, isGoogleReady } = useGoogleFirebaseAuth({
-    onSuccess: (response) => {
-      const updatedUser = response.user;
-      updateProfile({
-        email: updatedUser.email ?? undefined,
-        email_verified: updatedUser.email_verified,
-      });
-      setEmail(updatedUser.email ?? '');
-      showCustomAlert('Success', 'Google account linked successfully!', 'success');
-    },
-    onError: (error: any) => {
-      // ✅ FIXED: statusCodes now properly imported
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
-        return;
-      }
-      showCustomAlert(
-        'Error',
-        error?.message ?? 'Failed to link Google account. Please try again.',
-        'error'
-      );
-    },
-  });
+  // ✅ FIX #2: Track the formatted phone number sent to Firebase
+  const [formattedPhone, setFormattedPhone] = useState('');
 
   // ─── Dialog State ─────────────────────────────────────────────────────────
 
@@ -120,6 +93,58 @@ export default function ProfileCompletionScreen() {
   const closeCustomAlert = () => {
     setDialogConfig((prev) => ({ ...prev, visible: false }));
   };
+
+  // ─── Load Saved Data on Mount (Edit Mode Only) ────────────────────────────
+
+  useEffect(() => {
+    if (!isOnboarded) return;
+
+    const loadSavedData = async () => {
+      setIsLoadingPreferences(true);
+      try {
+        const userProfile = await usersApi.me();
+
+        setName(userProfile.name ?? '');
+        setPhoneNumber(userProfile.phone ?? userProfile.phoneNumber ?? '');
+        setEmail(userProfile.email ?? '');
+        setGender(userProfile.gender ?? '');
+        setDob(userProfile.date_of_birth ?? '');
+        setSelectedAvatar(userProfile.profile_picture ?? userProfile.avatar ?? undefined);
+      } catch (error: any) {
+        console.error('[edit-profile] Failed to load preferences:', error);
+      } finally {
+        setIsLoadingPreferences(false);
+      }
+    };
+
+    loadSavedData();
+  }, [isOnboarded]);
+
+  // ─── Google Sign-In ───────────────────────────────────────────────────────
+
+  const { signInWithGoogle, isGoogleLoading, isGoogleReady } = useGoogleFirebaseAuth({
+    onSuccess: (response) => {
+      const updatedUser = response.user;
+
+      // ✅ Trust backend's email_verified, don't infer from email existence
+      updateProfile({
+        email: updatedUser.email ?? undefined,
+        email_verified: updatedUser.email_verified,
+      });
+      setEmail(updatedUser.email ?? '');
+      showCustomAlert('Success', 'Google account linked successfully!', 'success');
+    },
+    onError: (error: any) => {
+      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+      showCustomAlert(
+        'Error',
+        error?.message ?? 'Failed to link Google account. Please try again.',
+        'error'
+      );
+    },
+  });
 
   // ─── Animations ───────────────────────────────────────────────────────────
 
@@ -161,23 +186,28 @@ export default function ProfileCompletionScreen() {
       return;
     }
 
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      const clean = formattedPhone.replace(/\D/g, '');
+    let phone = phoneNumber.trim();
+    if (!phone.startsWith('+')) {
+      const clean = phone.replace(/\D/g, '');
       if (clean.length < 10) {
         showCustomAlert('Invalid Phone', 'Please enter a valid 10-digit phone number.', 'error');
         return;
       }
-      formattedPhone = `+91${clean.slice(-10)}`;
+      phone = `+91${clean.slice(-10)}`;
     }
 
     try {
       setIsVerifyingPhone(true);
-      await sendPhoneOTP(formattedPhone);
+
+      // ✅ FIX #2: Save formatted phone and update display
+      setFormattedPhone(phone);
+      setPhoneNumber(phone);
+
+      await sendPhoneOTP(phone);
       setShowPhoneVerification(true);
       showCustomAlert(
         'Code Sent',
-        `A verification code has been sent to ${formattedPhone}.`,
+        `A verification code has been sent to ${phone}.`,
         'success'
       );
     } catch (error: unknown) {
@@ -197,17 +227,34 @@ export default function ProfileCompletionScreen() {
 
     try {
       setIsVerifyingPhone(true);
-      await linkPhone(phoneNumber, otpCode);
+
+      // ✅ FIX #3: linkPhone already updates the store from backend response
+      // The _phoneNumber param is ignored by the store — it uses pendingPhone internally
+      await linkPhone(formattedPhone || phoneNumber, otpCode);
+
       setOtpCode('');
       setShowPhoneVerification(false);
 
-      updateProfile({
-        phone: phoneNumber,
-        phoneNumber: phoneNumber,
-        mobile_verified: true,
-      });
+      // ✅ FIX #4: Refresh user from backend to ensure mobile_verified is correct
+      // The store was already updated by linkPhone, but we double-check
+      try {
+        const freshUser = await usersApi.me();
+        updateProfile({
+          phone: freshUser.phone ?? formattedPhone,
+          phoneNumber: freshUser.phone ?? formattedPhone,
+          mobile_verified: freshUser.mobile_verified,
+        });
+        setPhoneNumber(freshUser.phone ?? formattedPhone);
+      } catch {
+        // If refresh fails, use formattedPhone as fallback — store was already updated
+        setPhoneNumber(formattedPhone);
+      }
 
-      showCustomAlert('Verified', 'Your phone number has been successfully verified!', 'success');
+      showCustomAlert(
+        'Verified',
+        'Your phone number has been successfully verified!',
+        'success'
+      );
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'OTP verification failed. Please try again.';
@@ -325,91 +372,96 @@ export default function ProfileCompletionScreen() {
       return;
     }
 
-    if (isOnboarded) {
-      setIsSaving(true);
-      try {
-        // ✅ FIXED: Always string | undefined (never null)
-        let uploadedAvatarUrl: string | undefined = selectedAvatar;
+    setIsSaving(true);
 
-        // Upload if local file
-        if (
-          selectedAvatar &&
-          (selectedAvatar.startsWith('file://') ||
-            selectedAvatar.startsWith('content://') ||
-            (!selectedAvatar.startsWith('http://') &&
-              !selectedAvatar.startsWith('https://')))
-        ) {
-          try {
-            const { compressImage, uriToFormData } = require('@/services/image');
-            const compressed = await compressImage(selectedAvatar);
-            const formData = await uriToFormData(compressed.uri);
-            const uploadRes = await uploadsApi.uploadAvatar(formData);
-            uploadedAvatarUrl = uploadRes.url;
-          } catch (uploadErr) {
-            console.error('Avatar upload failed:', uploadErr);
-            Alert.alert('Upload Failed', 'Could not upload photo, but saving other details.');
-          }
+    try {
+      let uploadedAvatarUrl: string | undefined = selectedAvatar;
+
+      const isLocalFile =
+        selectedAvatar &&
+        (selectedAvatar.startsWith('file://') ||
+          selectedAvatar.startsWith('content://') ||
+          (!selectedAvatar.startsWith('http://') &&
+            !selectedAvatar.startsWith('https://')));
+
+      if (isLocalFile && selectedAvatar) {
+        try {
+          const compressed = await compressImage(selectedAvatar, {
+            width: 512,
+            height: 512,
+            compress: 0.8,
+          });
+
+          uploadedAvatarUrl = await uploadImageToSupabase(compressed.uri, 'avatars');
+        } catch (uploadErr) {
+          console.error('[profile] Avatar upload failed:', uploadErr);
+          showCustomAlert(
+            'Upload Failed',
+            'Could not upload photo, but saving other details.',
+            'warning'
+          );
+          uploadedAvatarUrl = undefined;
         }
+      }
 
+      if (isOnboarded) {
+        // ─── Edit Profile Flow ─────────────────────────────────────────────
         await usersApi.updateMe({
           name: name.trim(),
-          profile_picture: uploadedAvatarUrl,
-          gender: gender || undefined,
-          date_of_birth: dob || undefined,
+          profile_picture: uploadedAvatarUrl ?? null,
+          gender: gender || null,
+          date_of_birth: dob || null,
         });
 
         updateProfile({
           name: name.trim(),
           avatar: uploadedAvatarUrl,
           profile_picture: uploadedAvatarUrl,
-          email: email || undefined,
-          phoneNumber: phoneNumber || undefined,
           gender: gender || undefined,
           date_of_birth: dob || undefined,
         });
 
-        Alert.alert('Saved', 'Your profile has been updated successfully!', [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)/profile'),
-          },
-        ]);
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
-        console.error('Save profile error:', err);
-        Alert.alert('Error', message);
-      } finally {
-        setIsSaving(false);
-      }
-    } else {
-      // Onboarding flow - update store and navigate
-      updateProfile({
-        name: name.trim(),
-        avatar: selectedAvatar,
-        profile_picture: selectedAvatar,
-        email: email || undefined,
-        phoneNumber: phoneNumber || undefined,
-        gender: gender || undefined,
-        date_of_birth: dob || undefined,
-      });
+        showCustomAlert('Saved', 'Your profile has been updated successfully!', 'success');
 
-      router.push('/(onboarding)/setup-feed' as any);
+        setTimeout(() => {
+          router.replace('/(tabs)/profile');
+        }, 1200);
+      } else {
+        // ─── Onboarding Flow ───────────────────────────────────────────────
+        updateProfile({
+          name: name.trim(),
+          avatar: uploadedAvatarUrl ?? selectedAvatar,
+          profile_picture: uploadedAvatarUrl ?? selectedAvatar,
+          gender: gender || undefined,
+          date_of_birth: dob || undefined,
+        });
+
+        router.push('/(onboarding)/setup-feed' as any);
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
+      console.error('[profile] Save error:', err);
+      showCustomAlert('Error', message, 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // ─── Derived State ────────────────────────────────────────────────────────
 
   const isNameValid = name.trim().length >= 2 && name.trim().length <= 50;
-  const isButtonDisabled = !isNameValid || isSaving || isLoading;
+  const isButtonDisabled = !isNameValid || isSaving || isLoading || isLoadingPreferences;
 
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [colors.border, colors.primary],
   });
 
-  const phoneVerified = user?.mobile_verified ?? false;
-  const emailVerified = !!(user?.email_verified || email);
+  // ✅ FIX #1: Having an email ≠ verified. Only backend verification counts.
+  const phoneVerified = user?.mobile_verified === true;
+  const emailVerified = user?.email_verified === true;
+
   const avatarSize = Math.min(Math.max(width * 0.28, 88), 130);
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -476,6 +528,16 @@ export default function ProfileCompletionScreen() {
         <View style={styles.headerPlaceholder} />
       </View>
 
+      {/* Loading Preferences Overlay */}
+      {isOnboarded && isLoadingPreferences && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading your profile...
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -486,6 +548,7 @@ export default function ProfileCompletionScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            scrollEnabled={!isLoadingPreferences}
           >
             <Animated.View
               style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
@@ -533,6 +596,7 @@ export default function ProfileCompletionScreen() {
                   onPressIn={handleAvatarPressIn}
                   onPressOut={handleAvatarPressOut}
                   style={styles.uploaderTouch}
+                  disabled={isLoadingPreferences}
                 >
                   <Animated.View
                     style={[
@@ -602,6 +666,7 @@ export default function ProfileCompletionScreen() {
                     onBlur={handleInputBlur}
                     autoCapitalize="words"
                     maxLength={50}
+                    editable={!isLoadingPreferences}
                   />
                   {name.length > 30 && (
                     <Text style={[styles.charCountText, { color: colors.textSecondary }]}>
@@ -656,7 +721,7 @@ export default function ProfileCompletionScreen() {
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
                     maxLength={15}
-                    editable={!phoneVerified && !isVerifyingPhone}
+                    editable={!phoneVerified && !isVerifyingPhone && !isLoadingPreferences}
                   />
                   <Feather
                     name="phone"
@@ -687,7 +752,7 @@ export default function ProfileCompletionScreen() {
                       { backgroundColor: colors.primaryLight, marginTop: 10 },
                     ]}
                     onPress={handleSendPhoneVerification}
-                    disabled={isVerifyingPhone}
+                    disabled={isVerifyingPhone || isLoadingPreferences}
                     activeOpacity={0.7}
                   >
                     {isVerifyingPhone ? (
@@ -724,6 +789,7 @@ export default function ProfileCompletionScreen() {
                         onChangeText={setOtpCode}
                         keyboardType="number-pad"
                         maxLength={6}
+                        editable={!isLoadingPreferences}
                       />
                       <Feather
                         name="lock"
@@ -740,10 +806,14 @@ export default function ProfileCompletionScreen() {
                       style={[
                         styles.otpConfirmButton,
                         { backgroundColor: colors.primary },
-                        (isVerifyingPhone || otpCode.length !== 6) && { opacity: 0.6 },
+                        (isVerifyingPhone || otpCode.length !== 6 || isLoadingPreferences) && {
+                          opacity: 0.6,
+                        },
                       ]}
                       onPress={handleConfirmPhoneOtp}
-                      disabled={isVerifyingPhone || otpCode.length !== 6}
+                      disabled={
+                        isVerifyingPhone || otpCode.length !== 6 || isLoadingPreferences
+                      }
                       activeOpacity={0.8}
                     >
                       {isVerifyingPhone ? (
@@ -796,7 +866,7 @@ export default function ProfileCompletionScreen() {
                   <TouchableOpacity
                     style={[styles.googleLinkBtn, { backgroundColor: colors.primary }]}
                     onPress={signInWithGoogle}
-                    disabled={!isGoogleReady || isGoogleLoading}
+                    disabled={!isGoogleReady || isGoogleLoading || isLoadingPreferences}
                     activeOpacity={0.8}
                   >
                     {isGoogleLoading ? (
@@ -804,9 +874,7 @@ export default function ProfileCompletionScreen() {
                     ) : (
                       <>
                         <Ionicons name="logo-google" size={18} color="#FFFFFF" />
-                        <Text style={styles.googleLinkBtnText}>
-                          Link Google Account
-                        </Text>
+                        <Text style={styles.googleLinkBtnText}>Link Google Account</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -837,6 +905,7 @@ export default function ProfileCompletionScreen() {
                         ]}
                         onPress={() => setGender(g.toLowerCase())}
                         activeOpacity={0.7}
+                        disabled={isLoadingPreferences}
                       >
                         <Text
                           style={[
@@ -885,6 +954,7 @@ export default function ProfileCompletionScreen() {
                     }}
                     keyboardType="numeric"
                     maxLength={10}
+                    editable={!isLoadingPreferences}
                   />
                   <Feather
                     name="calendar"
@@ -964,7 +1034,7 @@ export default function ProfileCompletionScreen() {
               { transform: [{ scale: buttonScale }] },
             ]}
           >
-            {isSaving ? (
+            {isSaving || isLoadingPreferences ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
@@ -1148,6 +1218,22 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 64,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
   },
   uploaderSection: { alignItems: 'center', marginBottom: 32 },
   uploaderTouch: { marginBottom: 12 },

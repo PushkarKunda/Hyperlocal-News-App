@@ -105,8 +105,13 @@ apiClient.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         // Call refresh endpoint
-        const response = await axios.post(
-          `${API_CONFIG.baseUrl}${API_ROUTES.auth.refreshToken}?refresh_token=${refreshToken}`
+        const response = await axios.get(
+          `${API_CONFIG.baseUrl}${API_ROUTES.auth.refreshToken}`,
+          {
+            params: {
+              refresh_token: refreshToken,
+            },
+          }
         );
 
         const { access_token, refresh_token } = response.data;

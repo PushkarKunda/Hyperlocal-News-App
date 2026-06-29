@@ -1,19 +1,43 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { Image } from 'expo-image';
 import { Typography } from '@/constants/Typography';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
-import { ShortVideo } from '@/types';
-import { useShortsList } from '@/hooks/useApi';
+import { useNewsShorts } from '@/hooks/useNews';
+import { useQuery } from '@tanstack/react-query';
+import { contentApi, Advertisement } from '@/services/api/content';
+import { NewsArticle } from '@/services/api/news';
+import { injectAdsIntoFeed, isAdvertisement } from '@/hooks/feedInjection';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
+type ShortFeedItem = NewsArticle | { type: 'ad'; data: Advertisement; position: number };
 
-const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: ShortVideo; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
+const ShortAdCard = React.memo(({ item, itemHeight }: { item: { type: 'ad'; data: Advertisement }; itemHeight: number }) => {
+  return (
+    <View style={[styles.itemContainer, { height: itemHeight, backgroundColor: '#000' }]}>
+      <Image source={{ uri: item.data.image_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={[styles.bottomGradient, { paddingBottom: 40 }]}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.title} numberOfLines={2}>{item.data.title}</Text>
+          {item.data.redirect_url && (
+            <TouchableOpacity style={styles.adCtaButton}>
+              <Text style={styles.adCtaText}>Learn More</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.adDisclaimer}>Sponsored</Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+});
+
+const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: NewsArticle; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
   const insets = useSafeAreaInsets();
-  const player = useVideoPlayer(shouldLoad ? { uri: item.videoUrl } : null, player => {
+  const player = useVideoPlayer(shouldLoad && item.image_url ? { uri: item.image_url } : null, player => {
     player.loop = true;
   });
 
@@ -44,35 +68,35 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
       <TouchableWithoutFeedback onPress={handlePress}>
         <View style={StyleSheet.absoluteFillObject} />
       </TouchableWithoutFeedback>
-      
+
       {/* Right Interaction Stack */}
       <View style={styles.rightStack}>
         <View style={styles.actionItem}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.author.avatarInitial}</Text>
+              <Text style={styles.avatarText}>{item.source ? item.source.charAt(0) : 'U'}</Text>
             </View>
             <View style={styles.plusIconContainer}>
               <MaterialIcons name="add" size={12} color="white" />
             </View>
           </View>
         </View>
-        
+
         <TouchableOpacity style={styles.actionItem}>
           <Ionicons name="heart" size={32} color="white" style={styles.iconShadow} />
-          <Text style={styles.actionText}>{item.stats.likes}</Text>
+          <Text style={styles.actionText}>{item.likes}</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.actionItem}>
           <Ionicons name="chatbubble" size={30} color="white" style={styles.iconShadow} />
-          <Text style={styles.actionText}>{item.stats.comments}</Text>
+          <Text style={styles.actionText}>{item.comments}</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.actionItem}>
           <MaterialIcons name="reply" size={32} color="white" style={[styles.iconShadow, { transform: [{ scaleX: -1 }] }]} />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.actionItem}>
           <MaterialIcons name="more-horiz" size={32} color="white" style={styles.iconShadow} />
         </TouchableOpacity>
@@ -87,24 +111,24 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
         <View style={styles.infoContainer}>
           {/* User Info */}
           <View style={styles.userInfoRow}>
-            <Text style={styles.username}>{item.author.handle}</Text>
-            {item.isLive && (
+            <Text style={styles.username}>@{item.source || 'unknown'}</Text>
+            {item.is_breaking && (
               <View style={styles.liveBadge}>
                 <Text style={styles.liveText}>LIVE</Text>
               </View>
             )}
           </View>
-          
+
           {/* Title & Description */}
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.description} numberOfLines={2}>
-            {item.description}
+            {item.summary}
           </Text>
-          
+
           {/* Hashtags */}
           <View style={styles.hashtagsRow}>
-            {item.hashtags.map((tag, index) => (
-              <Text key={index} style={styles.hashtag}>{tag}</Text>
+            {(item.category_names || []).map((tag, index) => (
+              <Text key={index} style={styles.hashtag}>#{tag}</Text>
             ))}
           </View>
         </View>
@@ -123,7 +147,7 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
     prevProps.isActive === nextProps.isActive &&
     prevProps.shouldLoad === nextProps.shouldLoad &&
     prevProps.itemHeight === nextProps.itemHeight &&
-    prevProps.item.id === nextProps.item.id
+    prevProps.item.news_uid === nextProps.item.news_uid
   );
 });
 
@@ -134,9 +158,17 @@ export default function ShortsScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
 
-  const { data: shorts = [], isLoading } = useShortsList();
+  const { data: rawShorts = [], isLoading: isLoadingShorts } = useNewsShorts();
+  const { data: ads = [], isLoading: isLoadingAds } = useQuery({
+    queryKey: ['active-ads', 'shorts'],
+    queryFn: () => contentApi.getActiveAdvertisements(),
+  });
 
+  const shortsFeed = useMemo(() => {
+    return injectAdsIntoFeed(rawShorts, ads, 5);
+  }, [rawShorts, ads]);
 
+  const isLoading = isLoadingShorts || isLoadingAds;
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
@@ -148,17 +180,27 @@ export default function ShortsScreen() {
     itemVisiblePercentThreshold: 50,
   };
 
-  const renderVideoItem = useCallback(({ item, index }: { item: ShortVideo; index: number }) => {
+  const renderVideoItem = useCallback(({ item, index }: { item: ShortFeedItem; index: number }) => {
     const shouldLoad = Math.abs(index - activeIndex) <= 1;
+
+    if (isAdvertisement(item)) {
+      return <ShortAdCard item={item} itemHeight={listHeight} />;
+    }
+
     return (
-      <ShortVideoItem 
-        item={item} 
-        isActive={index === activeIndex} 
+      <ShortVideoItem
+        item={item}
+        isActive={index === activeIndex}
         shouldLoad={shouldLoad}
-        itemHeight={listHeight} 
+        itemHeight={listHeight}
       />
     );
   }, [activeIndex, listHeight]);
+
+  const keyExtractor = useCallback((item: ShortFeedItem, index: number) => {
+    if (isAdvertisement(item)) return `ad-${item.data.ad_id}-${index}`;
+    return item.news_uid;
+  }, []);
 
   if (isLoading) {
     return (
@@ -171,8 +213,8 @@ export default function ShortsScreen() {
   return (
     <View style={styles.container} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
       <FlatList
-        data={shorts}
-        keyExtractor={(item) => item.id}
+        data={shortsFeed}
+        keyExtractor={keyExtractor}
         renderItem={renderVideoItem}
         pagingEnabled
         showsVerticalScrollIndicator={false}
@@ -200,7 +242,7 @@ export default function ShortsScreen() {
               <Text style={[styles.tabText, activeTab === 'Following' && styles.activeTabText]}>Following</Text>
               {activeTab === 'Following' && <View style={styles.activeTabIndicator} />}
             </TouchableOpacity>
-            
+
             <TouchableOpacity onPress={() => setActiveTab('For You')} style={styles.tabItem}>
               <Text style={[styles.tabText, activeTab === 'For You' && styles.activeTabText]}>For You</Text>
               {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
@@ -274,7 +316,7 @@ const styles = StyleSheet.create({
   rightStack: {
     position: 'absolute',
     right: Spacing.md,
-    bottom: 120, 
+    bottom: 120,
     alignItems: 'center',
     gap: Spacing.xl,
     zIndex: 10,
@@ -337,7 +379,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   infoContainer: {
-    width: '80%', 
+    width: '80%',
   },
   userInfoRow: {
     flexDirection: 'row',
@@ -412,5 +454,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  adCtaButton: {
+    marginTop: 12,
+    backgroundColor: '#4648D4',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: BorderRadius.lg,
+    alignSelf: 'flex-start',
+  },
+  adCtaText: {
+    color: '#FFF',
+    fontFamily: Typography.fonts.bold,
+    fontSize: Typography.sizes.sm,
+  },
+  adDisclaimer: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: Typography.sizes.xs,
+    marginTop: 8,
+    fontFamily: Typography.fonts.medium,
   },
 });

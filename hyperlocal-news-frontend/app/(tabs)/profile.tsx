@@ -20,88 +20,14 @@ import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import MenuOptions from '@/components/MenuOptions';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
-import { usePublisherArticles, useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
-import { useBookmarks } from '@/hooks/useBookmarks';
+import { useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
+import { useBookmarks } from '@/hooks/useEngagement';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { usersApi, uploadsApi } from '@/services/api';
+import { usersApi } from '@/services/api';
 import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// Cover / Preset themes for quick post selection
-const POST_PRESETS = [
-  { id: '1', label: 'Beach', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500' },
-  { id: '2', label: 'Harbor', url: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=500' },
-  { id: '3', label: 'Temple', url: 'https://images.unsplash.com/photo-1542397284385-6010176424b2?w=500' },
-  { id: '4', label: 'Sunset', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500' },
-  { id: '5', label: 'Night View', url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500' },
-  { id: '6', label: 'Forest Road', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500' },
-];
-
-// Mock Data Constants
-const INITIAL_POSTS = [
-  { id: 'p1', imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500', status: 'Approved', likes: 45, comments: 12, caption: 'Beautiful sunny day at the beach!' },
-  { id: 'p2', imageUrl: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=500', status: 'Pending', likes: 32, comments: 8, caption: 'Boats at the local harbor.' },
-  { id: 'p3', imageUrl: 'https://images.unsplash.com/photo-1542397284385-6010176424b2?w=500', status: 'Approved', likes: 28, comments: 5, caption: 'Peaceful temple visit in the morning.' },
-  { id: 'p4', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Pending', likes: 14, comments: 2, caption: 'Sunset view from the hills.' },
-  { id: 'p5', imageUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500', status: 'Approved', likes: 56, comments: 18, caption: 'Stunning city line at night.' },
-  { id: 'p6', imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=500', status: 'Rejected', likes: 3, comments: 1, caption: 'A walk down the forest road.' },
-];
-
-const INITIAL_NEWS = [
-  {
-    id: 'n1',
-    title: 'Breaking: New Local Policy Initiative Launched',
-    date: 'May 24, 2025',
-    views: '1,234 Views',
-    likes: 89,
-    comments: 23,
-    shares: 45,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=500',
-  },
-  {
-    id: 'n2',
-    title: 'Beach Road Development Project Update',
-    date: 'May 21, 2025',
-    views: '856 Views',
-    likes: 45,
-    comments: 12,
-    shares: 23,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500',
-  },
-  {
-    id: 'n3',
-    title: 'New Smart Classrooms Inaugurated in 10 Schools',
-    date: 'May 18, 2025',
-    views: '745 Views',
-    likes: 38,
-    comments: 9,
-    shares: 17,
-    status: 'Approved',
-    imageUrl: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=500',
-  },
-  {
-    id: 'n4',
-    title: 'Local Festival 2025 - Grand Celebrations Soon',
-    date: 'Submitted on May 23, 2025',
-    status: 'Pending',
-    estimatedTime: '24–48 hours',
-    imageUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=500',
-  },
-  {
-    id: 'n5',
-    title: 'Unverified Air Quality Report',
-    date: 'May 20, 2025',
-    views: '210 Views',
-    status: 'Rejected',
-    reason: 'Inaccurate information / No source provided',
-    imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500',
-  },
-];
 
 export default function ProfileScreen() {
   const colorScheme = useAppColorScheme();
@@ -117,12 +43,16 @@ export default function ProfileScreen() {
   const { signInWithGoogle, isGoogleLoading } = useGoogleFirebaseAuth({
     onSuccess: (res) => {
       Alert.alert('Success 🎉', 'Google account linked and email verified successfully!');
-      // fetchEligibility(); // Uncomment if you have this function
     },
     onError: (err) => {
       Alert.alert('Link Failed', err.message || 'Failed to link Google account.');
     },
   });
+
+  // API Mutations
+  const { mutate: createArticleMutate } = useCreateArticle();
+  const { mutate: deleteArticleMutate } = useDeleteArticle();
+  const { data: bookmarks = [] } = useBookmarks();
 
   // Profile Active Tab State
   const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'verify'>('posts');
@@ -141,44 +71,40 @@ export default function ProfileScreen() {
   const [postCaption, setPostCaption] = useState('');
   const [postCoverImage, setPostCoverImage] = useState('');
 
-  // Mock Data States
-  const [posts, setPosts] = useState(INITIAL_POSTS);
-  const [newsList, setNewsList] = useState(INITIAL_NEWS);
-  const [savedPosts, setSavedPosts] = useState([
-    { id: 's1', imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', status: 'Approved', likes: 120, comments: 40 },
-    { id: 's2', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', status: 'Approved', likes: 88, comments: 19 },
-  ]);
+  // Since there is no specific "My Articles" or "My Posts" endpoint provided, we initialize empty.
+  // The Create functions will push to the server via APIs.
+  const [posts, setPosts] = useState<any[]>([]);
+  const [newsList, setNewsList] = useState<any[]>([]);
 
   // Verification Form State
-  const [fullName, setFullName] = useState('');
-  const [city, setCity] = useState('');
+  const [fullName, setFullName] = useState(user?.name || '');
+  const [city, setCity] = useState(user?.district || '');
   const [bio, setBio] = useState('');
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
 
   const isPublisher = user?.isPublisher || false;
 
-  // Custom simulation variables based on verification status
-  const displayName = user?.name || (isGuest ? 'Guest User' : 'John Doe');
+  const displayName = user?.name || 'User';
 
   // Auto-generate username handle dynamically based on user name
   const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = user?.district ? `${user.district}, ${user.state || 'AP'}` : 'Visakhapatnam, AP';
+  const userLocation = user?.district ? `${user.district}, ${user.state || ''}` : 'Set Location';
 
-  // Dynamic Stats
+  // Dynamic Stats placeholder (No dummy data)
   const stats = isPublisher ? {
-    posts: '25',
-    likes: '1.2K',
-    comments: '323',
-    level: 'Level 3',
-    coins: '890',
-    points: '2,450',
-  } : {
-    posts: '12',
-    likes: '287',
-    comments: '64',
+    posts: '0',
+    likes: '0',
+    comments: '0',
     level: 'Level 1',
-    coins: '120',
-    points: '560',
+    coins: '0',
+    points: '0',
+  } : {
+    posts: '0',
+    likes: '0',
+    comments: '0',
+    level: 'Level 1',
+    coins: '0',
+    points: '0',
   };
 
   const requestImagePermissions = async () => {
@@ -270,51 +196,44 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleVerifyEmail = () => {
-    updateProfileLocal({
-      email_verified: true,
-    });
-    Alert.alert('Email Verified', 'Your email address has been successfully verified.');
-  };
-
-  const handleApplyVerification = () => {
+  const handleApplyVerification = async () => {
     setIsSubmittingVerify(true);
-    setTimeout(() => {
-      updateProfile(
-        user?.name,
-        user?.avatar,
-        user?.email,
-        user?.phoneNumber,
-        true,
-        true
-      );
-      setIsSubmittingVerify(false);
+    try {
+      await switchToPublisher();
+      Alert.alert('Congratulations!', 'You are now a Verified Publisher!');
       setActiveTab('posts');
-      Alert.alert('Congratulations!', 'Your verification request has been approved instantly for demo purposes. You are now a Verified Publisher!');
-    }, 1200);
+    } catch (error: any) {
+      Alert.alert('Verification Failed', error.message || 'Could not switch to publisher. Make sure your email and phone are verified.');
+    } finally {
+      setIsSubmittingVerify(false);
+    }
   };
 
-  const handleCreateNewsArticle = (data: {
-    headline: string;
-    summary: string;
-    category: string;
-    sourceName: string;
-    readingTime: string;
-    imageUrl: string;
-  }) => {
-    const newArticle = {
-      id: 'n_' + Date.now(),
+  const handleCreateNewsArticle = (data: any) => {
+    createArticleMutate({
       title: data.headline,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      views: '0 Views',
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      status: 'Approved',
-      imageUrl: data.imageUrl,
-    };
-    setNewsList([newArticle, ...newsList]);
-    Alert.alert('Published!', 'Your news article has been published and is now live under Approved news.');
+      summary: data.summary || '',
+      category_id: parseInt(data.category, 10) || undefined,
+      image_url: data.imageUrl || undefined,
+    }, {
+      onSuccess: () => {
+        Alert.alert('Submitted!', 'Your news article has been submitted for review.');
+      },
+      onError: (err: any) => {
+        Alert.alert('Error', err.message || 'Failed to publish article.');
+      }
+    });
+  };
+
+  const handlePickPostImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      setPostCoverImage(result.assets[0].uri);
+    }
   };
 
   const handleCreatePost = () => {
@@ -327,10 +246,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    // Append to local state for immediate visibility, actual upload would need a postsApi
     const newPost = {
       id: 'p_' + Date.now(),
       imageUrl: postCoverImage,
-      status: 'Approved',
+      status: 'Pending',
       likes: 0,
       comments: 0,
       caption: postCaption.trim(),
@@ -340,41 +260,20 @@ export default function ProfileScreen() {
     setPostCaption('');
     setPostCoverImage('');
     setShowCreatePostModal(false);
-    Alert.alert('Success', 'Your post has been published successfully!');
+    Alert.alert('Success', 'Your post has been submitted!');
   };
 
-  const handleDeleteArticle = (id: string) => {
+  const handleDeleteArticle = (uid: string) => {
     Alert.alert('Delete Article', 'Are you sure you want to delete this article?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setNewsList(newsList.filter(item => item.id !== id));
+          deleteArticleMutate(uid);
         },
       },
     ]);
-  };
-
-  // Filter & Sort newsList dynamically
-  const getFilteredAndSortedNews = () => {
-    let list = [...newsList];
-    if (newsFilter !== 'all') {
-      list = list.filter(item => item.status.toLowerCase() === newsFilter);
-    }
-    // Apply sorting
-    if (newsSort === 'views') {
-      list.sort((a, b) => {
-        const valA = parseInt(a.views?.replace(/,/g, '') || '0');
-        const valB = parseInt(b.views?.replace(/,/g, '') || '0');
-        return valB - valA;
-      });
-    } else if (newsSort === 'likes') {
-      list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-    } else if (newsSort === 'date') {
-      list.sort((a, b) => b.id.localeCompare(a.id));
-    }
-    return list;
   };
 
   return (
@@ -400,7 +299,7 @@ export default function ProfileScreen() {
           <View>
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
             <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>3</Text>
+              <Text style={styles.headerBadgeText}>0</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -421,7 +320,7 @@ export default function ProfileScreen() {
             <View style={styles.profileInfoContainer}>
               <View style={styles.avatarWrapper}>
                 <Image
-                  source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200' }}
+                  source={{ uri: user?.avatar || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=U' }}
                   style={styles.avatarImage}
                 />
                 <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress}>
@@ -459,13 +358,13 @@ export default function ProfileScreen() {
                   </View>
                   <View style={[styles.metaItem, { marginLeft: 12 }]}>
                     <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined Jan 2024</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}</Text>
                   </View>
                 </View>
 
                 {/* Followers */}
                 <Text style={[styles.followersText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '1,234' : '234'}</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>{isPublisher ? '567' : '178'}</Text> Following
+                  <Text style={{ fontWeight: '700', color: colors.text }}>0</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>0</Text> Following
                 </Text>
               </View>
             </View>
@@ -526,7 +425,7 @@ export default function ProfileScreen() {
                   activeOpacity={0.8}
                   onPress={() => setActiveTab('verify')}
                 >
-                  <Text style={styles.verifyBannerButtonText}>Apply for Verification</Text>
+                  <Text style={styles.verifyBannerButtonText}>Apply Now</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -536,7 +435,7 @@ export default function ProfileScreen() {
               <Text style={[styles.infoRowText, { color: colors.textSecondary }]}>
                 {!user?.email_verified
                   ? 'Email verification is required before applying for publisher verification.'
-                  : 'News Publishing is available only for verified publishers. Learn More'
+                  : 'News Publishing is available only for verified publishers.'
                 }
               </Text>
             </View>
@@ -549,7 +448,6 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.statsGrid}>
-          {/* Card 1: Posts */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.1)' }]}>
               <Ionicons name="document-text-outline" size={20} color="#4648D4" />
@@ -560,7 +458,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Card 2: Likes */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
               <Ionicons name="heart-outline" size={20} color="#EF4444" />
@@ -571,7 +468,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Card 3: Comments */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
               <Ionicons name="chatbubble-ellipses-outline" size={20} color="#10B981" />
@@ -582,7 +478,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Card 4: Contributor Level */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
               <Ionicons name="trophy-outline" size={20} color="#8B5CF6" />
@@ -593,7 +488,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Card 5: Coins */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
               <FontAwesome5 name="coins" size={18} color="#F59E0B" />
@@ -604,7 +498,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Card 6: Points */}
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
               <Ionicons name="star-outline" size={20} color="#F59E0B" />
@@ -616,85 +509,19 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* News Articles Status (Verified Publisher Only) */}
-        {isPublisher && (
-          <View style={styles.newsStatsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>News Articles Status</Text>
-            </View>
-            <View style={styles.newsStatsWrapper}>
-              <View style={styles.newsStatsGrid1}>
-                {/* Approved */}
-                <View style={[styles.newsStatBox, { backgroundColor: colors.surface }]}>
-                  <View style={[styles.newsStatIndicator, { backgroundColor: '#4CAF50' }]}>
-                    <Ionicons name="checkmark-sharp" size={14} color="#FFFFFF" />
-                  </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>18</Text>
-                  <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approved</Text>
-                </View>
-
-                {/* Pending */}
-                <View style={[styles.newsStatBox, { backgroundColor: colors.surface }]}>
-                  <View style={[styles.newsStatIndicator, { backgroundColor: '#FF9800' }]}>
-                    <Ionicons name="time-outline" size={14} color="#FFFFFF" />
-                  </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>5</Text>
-                  <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Pending</Text>
-                </View>
-
-                {/* Rejected */}
-                <View style={[styles.newsStatBox, { backgroundColor: colors.surface }]}>
-                  <View style={[styles.newsStatIndicator, { backgroundColor: '#F44336' }]}>
-                    <Ionicons name="close-sharp" size={14} color="#FFFFFF" />
-                  </View>
-                  <Text style={[styles.newsStatVal, { color: colors.text }]}>2</Text>
-                  <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Rejected</Text>
-                </View>
-              </View>
-
-              <View style={styles.newsStatsGrid2}>
-                <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
-                  <Ionicons name="document-text-outline" size={20} color={colors.primary} style={{ marginRight: 10 }} />
-                  <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>25</Text>
-                    <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Total News</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.newsStatRowBox, { backgroundColor: colors.surface }]}>
-                  <Ionicons name="trending-up-outline" size={20} color="#8B5CF6" style={{ marginRight: 10 }} />
-                  <View>
-                    <Text style={[styles.newsStatVal, { color: colors.text }]}>72%</Text>
-                    <Text style={[styles.newsStatLbl, { color: colors.textSecondary }]}>Approval Rate</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
         {/* Navigation Tabs Header */}
         <View style={[styles.tabsHeader, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('posts')}
-          >
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]} onPress={() => setActiveTab('posts')}>
             <Ionicons name="document-text" size={16} color={activeTab === 'posts' ? colors.primary : colors.textSecondary} />
             <Text style={[styles.tabLabel, { color: activeTab === 'posts' ? colors.primary : colors.textSecondary }]}>Posts</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'news' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('news')}
-          >
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'news' && styles.tabButtonActive]} onPress={() => setActiveTab('news')}>
             <Ionicons name="newspaper" size={16} color={activeTab === 'news' ? colors.primary : colors.textSecondary} />
             <Text style={[styles.tabLabel, { color: activeTab === 'news' ? colors.primary : colors.textSecondary }]}>News</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'saved' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('saved')}
-          >
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'saved' && styles.tabButtonActive]} onPress={() => setActiveTab('saved')}>
             <Ionicons name="bookmark" size={16} color={activeTab === 'saved' ? colors.primary : colors.textSecondary} />
             <Text style={[styles.tabLabel, { color: activeTab === 'saved' ? colors.primary : colors.textSecondary }]}>Saved</Text>
           </TouchableOpacity>
@@ -726,302 +553,19 @@ export default function ProfileScreen() {
         {activeTab === 'posts' && (
           <View style={styles.postsGrid}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>My Posts</Text>
-            <View style={styles.postsWrapper}>
-              {posts.map((post) => (
-                <View key={post.id} style={styles.postCard}>
-                  <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
-
-                  <View style={[
-                    styles.postBadge,
-                    {
-                      backgroundColor:
-                        post.status === 'Approved' ? 'rgba(76, 175, 80, 0.9)' :
-                          post.status === 'Pending' ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)'
-                    }
-                  ]}>
-                    <Text style={styles.postBadgeText}>{post.status}</Text>
-                  </View>
-
-                  <View style={styles.postOverlay}>
-                    <View style={styles.overlayStat}>
-                      <Ionicons name="heart" size={12} color="#FFFFFF" />
-                      <Text style={styles.overlayStatText}>{post.likes}</Text>
-                    </View>
-                    <View style={[styles.overlayStat, { marginLeft: 8 }]}>
-                      <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
-                      <Text style={styles.overlayStatText}>{post.comments}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
-              <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {activeTab === 'news' && (
-          <View style={styles.newsSection}>
-            <Text style={[styles.tabContentTitle, { color: colors.text }]}>News Overview</Text>
-
-            {!isPublisher && (
-              <View style={[styles.unverifiedNewsPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Ionicons name="shield-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.promptTitle, { color: colors.text }]}>Publisher Verification Required</Text>
-                <Text style={[styles.promptSubtitle, { color: colors.textSecondary }]}>
-                  You need to be verified as a publisher to view news insights and manage news articles.
-                </Text>
-                <TouchableOpacity
-                  style={[styles.promptButton, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveTab('verify')}
-                >
-                  <Text style={styles.promptButtonText}>Get Verified</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {isPublisher && (
-              <>
-                <View style={{ height: 50 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                    <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'all' && [styles.filterPillActive, { backgroundColor: colors.primary }]]}
-                      onPress={() => setNewsFilter('all')}
-                    >
-                      <Text style={[styles.filterLabel, newsFilter === 'all' && styles.filterLabelActive]}>All ({newsList.length})</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'approved' && [styles.filterPillActive, { backgroundColor: '#4CAF50' }]]}
-                      onPress={() => setNewsFilter('approved')}
-                    >
-                      <Text style={[styles.filterLabel, newsFilter === 'approved' && styles.filterLabelActive]}>
-                        Approved ({newsList.filter((item) => item.status === 'Approved').length})
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'pending' && [styles.filterPillActive, { backgroundColor: '#FF9800' }]]}
-                      onPress={() => setNewsFilter('pending')}
-                    >
-                      <Text style={[styles.filterLabel, newsFilter === 'pending' && styles.filterLabelActive]}>
-                        Pending ({newsList.filter((item) => item.status === 'Pending').length})
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.filterPill, newsFilter === 'rejected' && [styles.filterPillActive, { backgroundColor: '#F44336' }]]}
-                      onPress={() => setNewsFilter('rejected')}
-                    >
-                      <Text style={[styles.filterLabel, newsFilter === 'rejected' && styles.filterLabelActive]}>
-                        Rejected ({newsList.filter((item) => item.status === 'Rejected').length})
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.filterPill, { borderColor: colors.border }]}
-                      activeOpacity={0.7}
-                      onPress={() => setShowSortModal(true)}
-                    >
-                      <Ionicons name="filter-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.filterLabel, { marginLeft: 4, color: colors.textSecondary }]}>
-                        Filter ({newsSort === 'date' ? 'Date' : newsSort === 'views' ? 'Views' : 'Likes'})
-                      </Text>
-                    </TouchableOpacity>
-                  </ScrollView>
-                </View>
-
-                <View style={styles.articleList}>
-                  {(() => {
-                    const sortedNews = getFilteredAndSortedNews();
-
-                    const renderArticleCard = (item: any) => (
-                      <View key={item.id} style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Image source={{ uri: item.imageUrl }} style={styles.articleImage} />
-
-                        <View style={styles.articleDetails}>
-                          <View style={styles.articleHeaderRow}>
-                            <View style={[
-                              styles.statusIndicatorBadge,
-                              {
-                                backgroundColor:
-                                  item.status === 'Approved' ? 'rgba(76, 175, 80, 0.1)' :
-                                    item.status === 'Pending' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
-                                borderColor:
-                                  item.status === 'Approved' ? '#4CAF50' :
-                                    item.status === 'Pending' ? '#FF9800' : '#F44336'
-                              }
-                            ]}>
-                              <Text style={[
-                                styles.statusIndicatorText,
-                                {
-                                  color:
-                                    item.status === 'Approved' ? '#4CAF50' :
-                                      item.status === 'Pending' ? '#FF9800' : '#F44336'
-                                }
-                              ]}>{item.status}</Text>
-                            </View>
-
-                            <TouchableOpacity activeOpacity={0.6} onPress={() => handleDeleteArticle(item.id)}>
-                              <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                          </View>
-
-                          <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-
-                          {item.status === 'Approved' && (
-                            <>
-                              <View style={styles.articleMetaRow}>
-                                <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.date}</Text>
-                                <Text style={[styles.metaDivider, { color: colors.textSecondary }]}>•</Text>
-                                <Ionicons name="eye-outline" size={13} color={colors.textSecondary} />
-                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.views}</Text>
-                              </View>
-                              <View style={styles.articleStatsRow}>
-                                <View style={styles.statItem}>
-                                  <Ionicons name="heart-outline" size={13} color={colors.textSecondary} />
-                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.likes}</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
-                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.comments}</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Ionicons name="repeat-outline" size={13} color={colors.textSecondary} />
-                                  <Text style={[styles.statItemText, { color: colors.textSecondary }]}>{item.shares}</Text>
-                                </View>
-                              </View>
-
-                              <View style={styles.articleActionsRow}>
-                                <TouchableOpacity style={[styles.outlineActionBtn, { borderColor: colors.primary }]} activeOpacity={0.7}>
-                                  <Ionicons name="open-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                                  <Text style={[styles.outlineActionBtnText, { color: colors.primary }]}>View</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={[styles.outlineActionBtn, { borderColor: colors.primary, marginLeft: 8 }]} activeOpacity={0.7}>
-                                  <Ionicons name="bar-chart-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                                  <Text style={[styles.outlineActionBtnText, { color: colors.primary }]}>Analytics</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </>
-                          )}
-
-                          {item.status === 'Pending' && (
-                            <>
-                              <Text style={[styles.articleMeta, { color: colors.textSecondary }]}>
-                                Submitted on {item.date.replace('Submitted on ', '')}
-                              </Text>
-                              <Text style={styles.pendingReviewText}>
-                                Estimated review time: {item.estimatedTime || '24–48 hours'}
-                              </Text>
-
-                              <View style={styles.articleActionsRow}>
-                                <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7}>
-                                  <Ionicons name="pencil-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Edit</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={[styles.simpleActionBtn, { marginLeft: 16 }]} activeOpacity={0.7} onPress={() => handleDeleteArticle(item.id)}>
-                                  <Ionicons name="trash-outline" size={14} color="#F44336" style={{ marginRight: 4 }} />
-                                  <Text style={{ color: '#F44336', fontSize: 13, fontWeight: '600' }}>Delete</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </>
-                          )}
-
-                          {item.status === 'Rejected' && (
-                            <>
-                              <View style={styles.articleMetaRow}>
-                                <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.date}</Text>
-                                <Text style={[styles.metaDivider, { color: colors.textSecondary }]}>•</Text>
-                                <Ionicons name="eye-outline" size={13} color={colors.textSecondary} />
-                                <Text style={[styles.articleMetaText, { color: colors.textSecondary }]}>{item.views}</Text>
-                              </View>
-                              <Text style={styles.rejectedReasonText}>
-                                Reason: {item.reason}
-                              </Text>
-
-                              <View style={styles.articleActionsRow}>
-                                <TouchableOpacity style={styles.simpleActionBtn} activeOpacity={0.7} onPress={() => setShowCreateArticleModal(true)}>
-                                  <Ionicons name="refresh-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Edit & Resubmit</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={[styles.simpleActionBtn, { marginLeft: 16 }]} activeOpacity={0.7} onPress={() => handleDeleteArticle(item.id)}>
-                                  <Ionicons name="trash-outline" size={14} color="#F44336" style={{ marginRight: 4 }} />
-                                  <Text style={{ color: '#F44336', fontSize: 13, fontWeight: '600' }}>Delete</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </>
-                          )}
-
-                        </View>
-                      </View>
-                    );
-
-                    const approved = sortedNews.filter(i => i.status === 'Approved');
-                    const pending = sortedNews.filter(i => i.status === 'Pending');
-                    const rejected = sortedNews.filter(i => i.status === 'Rejected');
-
-                    const renderSection = (title: string, count: number, items: any[], color: string) => {
-                      if (items.length === 0) return null;
-                      return (
-                        <View key={title} style={{ marginBottom: 24 }}>
-                          <Text style={[styles.newsGroupHeader, { color }]}>{title} ({count})</Text>
-                          <View style={{ gap: 16 }}>
-                            {items.map(renderArticleCard)}
-                          </View>
-                        </View>
-                      );
-                    };
-
-                    if (newsFilter === 'all') {
-                      return (
-                        <>
-                          {renderSection('Approved', approved.length, approved, '#4CAF50')}
-                          {renderSection('Pending', pending.length, pending, '#FF9800')}
-                          {renderSection('Rejected', rejected.length, rejected, '#F44336')}
-                        </>
-                      );
-                    } else if (newsFilter === 'approved') {
-                      return renderSection('Approved', approved.length, approved, '#4CAF50');
-                    } else if (newsFilter === 'pending') {
-                      return renderSection('Pending', pending.length, pending, '#FF9800');
-                    } else if (newsFilter === 'rejected') {
-                      return renderSection('Rejected', rejected.length, rejected, '#F44336');
-                    }
-
-                    return null;
-                  })()}
-                </View>
-
-                <TouchableOpacity style={[styles.loadMoreButton, { borderColor: colors.border }]} activeOpacity={0.7}>
-                  <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load More News</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
-
-        {activeTab === 'saved' && (
-          <View style={styles.postsGrid}>
-            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Saved Articles</Text>
-            {savedPosts.length === 0 ? (
+            {posts.length === 0 ? (
               <View style={styles.emptyTabContent}>
-                <Ionicons name="bookmark-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No saved bookmarks found.</Text>
+                <Ionicons name="document-text-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No posts yet. Create your first post!</Text>
               </View>
             ) : (
               <View style={styles.postsWrapper}>
-                {savedPosts.map((post) => (
+                {posts.map((post) => (
                   <View key={post.id} style={styles.postCard}>
                     <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
+                    <View style={[styles.postBadge, { backgroundColor: 'rgba(255, 152, 0, 0.9)' }]}>
+                      <Text style={styles.postBadgeText}>{post.status}</Text>
+                    </View>
                     <View style={styles.postOverlay}>
                       <View style={styles.overlayStat}>
                         <Ionicons name="heart" size={12} color="#FFFFFF" />
@@ -1030,6 +574,60 @@ export default function ProfileScreen() {
                       <View style={[styles.overlayStat, { marginLeft: 8 }]}>
                         <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
                         <Text style={styles.overlayStatText}>{post.comments}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {activeTab === 'news' && (
+          <View style={styles.newsSection}>
+            <Text style={[styles.tabContentTitle, { color: colors.text }]}>News Overview</Text>
+
+            {!isPublisher ? (
+              <View style={[styles.unverifiedNewsPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="shield-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
+                <Text style={[styles.promptTitle, { color: colors.text }]}>Publisher Verification Required</Text>
+                <Text style={[styles.promptSubtitle, { color: colors.textSecondary }]}>
+                  You need to be verified as a publisher to view news insights and manage news articles.
+                </Text>
+                <TouchableOpacity style={[styles.promptButton, { backgroundColor: colors.primary }]} activeOpacity={0.8} onPress={() => setActiveTab('verify')}>
+                  <Text style={styles.promptButtonText}>Get Verified</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyTabContent}>
+                <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>Your published articles will appear here.</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {activeTab === 'saved' && (
+          <View style={styles.postsGrid}>
+            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Saved Articles</Text>
+            {bookmarks.length === 0 ? (
+              <View style={styles.emptyTabContent}>
+                <Ionicons name="bookmark-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No saved bookmarks found.</Text>
+              </View>
+            ) : (
+              <View style={styles.postsWrapper}>
+                {bookmarks.filter(b => b.news).map((b) => (
+                  <View key={b.news_uid} style={styles.postCard}>
+                    <Image source={{ uri: b.news?.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=N' }} style={styles.postImage} />
+                    <View style={styles.postOverlay}>
+                      <View style={styles.overlayStat}>
+                        <Ionicons name="heart" size={12} color="#FFFFFF" />
+                        <Text style={styles.overlayStatText}>{b.news?.likes || 0}</Text>
+                      </View>
+                      <View style={[styles.overlayStat, { marginLeft: 8 }]}>
+                        <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
+                        <Text style={styles.overlayStatText}>{b.news?.comments || 0}</Text>
                       </View>
                     </View>
                   </View>
@@ -1153,8 +751,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <MenuOptions isVisible={isMenuVisible} onClose={() => setIsMenuVisible(false)} />
-
       <CreateArticleModal
         isVisible={showCreateArticleModal}
         onClose={() => setShowCreateArticleModal(false)}
@@ -1194,7 +790,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { color: colors.text }]}>Select Image Cover Theme</Text>
+                <Text style={[styles.formLabel, { color: colors.text }]}>Cover Image</Text>
                 {postCoverImage ? (
                   <View style={styles.postCoverContainer}>
                     <Image source={{ uri: postCoverImage }} style={styles.postCoverImg} />
@@ -1203,21 +799,13 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={styles.presetsGridContainer}>
-                    {POST_PRESETS.map((preset) => (
-                      <TouchableOpacity
-                        key={preset.id}
-                        style={[styles.presetItemCard, postCoverImage === preset.url && styles.presetItemCardActive]}
-                        activeOpacity={0.8}
-                        onPress={() => setPostCoverImage(preset.url)}
-                      >
-                        <Image source={{ uri: preset.url }} style={styles.presetItemImg} />
-                        <View style={styles.presetItemLabelWrapper}>
-                          <Text style={styles.presetItemLabel}>{preset.label}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.textInput, { alignItems: 'center', justifyContent: 'center', height: 100 }]}
+                    onPress={handlePickPostImage}
+                  >
+                    <Ionicons name="image-outline" size={24} color={colors.textSecondary} style={{ marginBottom: 4 }} />
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Pick from Gallery</Text>
+                  </TouchableOpacity>
                 )}
               </View>
 
@@ -1232,70 +820,6 @@ export default function ProfileScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
-
-      {/* News Sorting Filter Modal */}
-      <Modal
-        visible={showSortModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSortModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowSortModal(false)}
-        >
-          <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
-            <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.pickerTitle, { color: colors.text }]}>Sort Articles By</Text>
-              <TouchableOpacity onPress={() => setShowSortModal(false)}>
-                <Ionicons name="close" size={22} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.pickerOptionsList}>
-              <TouchableOpacity
-                style={[styles.pickerOptionRow, newsSort === 'date' && { backgroundColor: colors.primaryLight }]}
-                onPress={() => {
-                  setNewsSort('date');
-                  setShowSortModal(false);
-                }}
-              >
-                <Text style={[styles.pickerOptionLabel, { color: colors.text }, newsSort === 'date' && { color: colors.primary, fontWeight: '700' }]}>
-                  Newest Submissions
-                </Text>
-                {newsSort === 'date' && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.pickerOptionRow, newsSort === 'views' && { backgroundColor: colors.primaryLight }]}
-                onPress={() => {
-                  setNewsSort('views');
-                  setShowSortModal(false);
-                }}
-              >
-                <Text style={[styles.pickerOptionLabel, { color: colors.text }, newsSort === 'views' && { color: colors.primary, fontWeight: '700' }]}>
-                  Most Viewed
-                </Text>
-                {newsSort === 'views' && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.pickerOptionRow, newsSort === 'likes' && { backgroundColor: colors.primaryLight }]}
-                onPress={() => {
-                  setNewsSort('likes');
-                  setShowSortModal(false);
-                }}
-              >
-                <Text style={[styles.pickerOptionLabel, { color: colors.text }, newsSort === 'likes' && { color: colors.primary, fontWeight: '700' }]}>
-                  Most Liked
-                </Text>
-                {newsSort === 'likes' && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
       </Modal>
 
     </View>
@@ -1567,61 +1091,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1,
   },
-  newsStatsSection: {
-    marginTop: 8,
-  },
-  newsStatsWrapper: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  newsStatsGrid1: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  newsStatBox: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  newsStatIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  newsStatVal: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  newsStatLbl: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  newsStatsGrid2: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  newsStatRowBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
-  },
   tabsHeader: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -1716,31 +1185,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 3,
   },
-  loadMoreButton: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderWidth: 1,
-    borderRadius: 24,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadMoreText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   newsSection: {
     width: '100%',
-  },
-  newsGroupHeader: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    marginTop: 8,
-    marginBottom: 12,
-    marginHorizontal: 16,
   },
   unverifiedNewsPrompt: {
     marginHorizontal: 16,
@@ -1773,149 +1219,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  filterScroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'transparent',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterPillActive: {},
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  filterLabelActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  articleList: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  articleCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    padding: 12,
-  },
-  articleImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 12,
-  },
-  articleDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  articleHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusIndicatorBadge: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  statusIndicatorText: {
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  articleTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  articleMeta: {
-    fontSize: 11,
-    marginTop: 6,
-  },
-  articleStats: {
-    fontSize: 11,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  articleMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 4,
-  },
-  articleMetaText: {
-    fontSize: 11,
-    fontFamily: 'Poppins_400Regular',
-  },
-  metaDivider: {
-    marginHorizontal: 4,
-    fontSize: 11,
-  },
-  articleStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 12,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statItemText: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: 'Poppins_500Medium',
-  },
-  articleActionsRow: {
-    flexDirection: 'row',
-    marginTop: 10,
-  },
-  outlineActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  outlineActionBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  simpleActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  pendingReviewText: {
-    color: '#FF9800',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  rejectedReasonText: {
-    color: '#F44336',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
-    lineHeight: 15,
-  },
   emptyTabContent: {
     paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 32,
   },
   verifySection: {
     width: '100%',
@@ -2069,41 +1377,6 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  presetsGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  presetItemCard: {
-    width: (screenWidth - 60) / 3,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  presetItemCardActive: {
-    borderColor: '#4648D4',
-  },
-  presetItemImg: {
-    width: '100%',
-    height: '100%',
-  },
-  presetItemLabelWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingVertical: 2,
-    alignItems: 'center',
-  },
-  presetItemLabel: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
   postCoverContainer: {
     width: '100%',
     aspectRatio: 16 / 9,
@@ -2142,42 +1415,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 24,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  pickerOptionsList: {
-    padding: 8,
-  },
-  pickerOptionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginVertical: 4,
-  },
-  pickerOptionLabel: {
-    fontSize: 15,
   },
 });

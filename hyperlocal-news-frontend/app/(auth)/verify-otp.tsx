@@ -69,19 +69,66 @@ export default function VerifyOTPScreen() {
       return;
     }
 
+    // Check if user is already authenticated (e.g. via Google from Edit Profile)
+    const wasAlreadyAuthenticated = useAuthStore.getState().isAuthenticated;
+
     try {
       const response = await verifyPhoneOTP(otp);
-      const isNew = response.user?.is_new_user ?? (response as any).is_new_user ?? false;
-      if (isNew) {
-        router.replace('/(onboarding)/language');
+
+      if (wasAlreadyAuthenticated) {
+        // User was linking their phone from Edit Profile
+        Alert.alert(
+          'Success',
+          'Your phone number has been verified successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)/profile');
+                }
+              },
+            },
+          ]
+        );
       } else {
-        router.replace('/(tabs)');
+        // Fresh login via Phone Auth
+        const isNew = response.user?.is_new_user ?? (response as any).is_new_user ?? false;
+        if (isNew) {
+          router.replace('/(onboarding)/language');
+        } else {
+          router.replace('/(tabs)');
+        }
       }
     } catch (error: any) {
-      let errorMsg = error.message || 'Invalid OTP. Please try again.';
-      if (error.config?.url) {
-        errorMsg += `\n\nURL: ${error.config.url}`;
+      let errorMsg = 'Invalid OTP. Please try again.';
+
+      if (error.message?.includes('already been linked') || error.code === 'auth/provider-already-linked') {
+        // Fallback UI safety if the firebase.ts fix didn't catch it smoothly
+        errorMsg = 'This phone number is already linked to your account.';
+        Alert.alert('Already Verified', errorMsg, [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/profile');
+              }
+            },
+          },
+        ]);
+        return;
       }
+
+      if (error.code === 'auth/invalid-verification-code') {
+        errorMsg = 'The code you entered is incorrect.';
+      } else if (error.code === 'auth/code-expired') {
+        errorMsg = 'The code has expired. Please request a new one.';
+      }
+
       Alert.alert('Verification Failed', errorMsg);
       setOtp('');
     }

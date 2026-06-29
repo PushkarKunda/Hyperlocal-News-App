@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 
-import { useBookmarks, useRemoveBookmark } from '@/hooks/useBookmarks';
+import { useBookmarks, useRemoveBookmark } from '@/hooks/useEngagement';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
 
@@ -23,7 +23,7 @@ interface MenuBookmarkItem {
   category: string;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrl: string | undefined;
   timeAgo: string;
   reads: string;
 }
@@ -57,18 +57,19 @@ export default function MenuBookmarksScreen() {
 
   // Map backend articles to local MenuBookmarkItem format
   const bookmarks = useMemo(() => {
-    return rawBookmarks.map((article) => {
-      const categoryName = article.category?.name || 'General';
+    return rawBookmarks.map((bookmark) => {
+      const article = bookmark.news;
+      const categoryName = article?.category_names?.[0] || 'General';
       return {
-        id: article.id,
+        id: bookmark.news_uid, // Use news_uid for toggling and routing
         category: categoryName,
-        title: article.headline,
-        description: article.summary || '',
-        imageUrl: article.imageUrl,
-        timeAgo: formatTimeAgo(article.publishedAt),
-        reads: `${formatNumber(article.stats?.views || 0)} reads`,
+        title: article?.title || 'Untitled',
+        description: article?.summary || '',
+        imageUrl: article?.image_url,
+        timeAgo: formatTimeAgo(article?.created_at || bookmark.created_at),
+        reads: `${formatNumber(article?.views || 0)} reads`,
       };
-    });
+    }).filter(b => b.title !== 'Untitled'); // Filter out broken bookmarks if any
   }, [rawBookmarks]);
 
   // Filtered bookmark list logic
@@ -76,10 +77,10 @@ export default function MenuBookmarksScreen() {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const catUpper = item.category.toUpperCase();
     const filterUpper = selectedCategory.toUpperCase();
-    
+
     const matchesCategory =
       selectedCategory === 'all' ||
       catUpper === filterUpper ||
@@ -98,7 +99,7 @@ export default function MenuBookmarksScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#111122' : '#F8F9FF', paddingTop: insets.top }]}>
-      
+
       {/* Header - Top App Bar */}
       <View style={[styles.header, { borderBottomColor: isDark ? '#374151' : '#E2E8F0' }]}>
         <View style={styles.headerLeft}>
@@ -111,14 +112,14 @@ export default function MenuBookmarksScreen() {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Bookmarks</Text>
         </View>
-        
+
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => router.push('/(tabs)/discover')}
             activeOpacity={0.7}
           >
-             <Ionicons name="search-outline" size={22} color={colors.text} />
+            <Ionicons name="search-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -162,8 +163,8 @@ export default function MenuBookmarksScreen() {
                       backgroundColor: isActive
                         ? '#6063EE'
                         : isDark
-                        ? '#1A1A35'
-                        : '#E5EEFF',
+                          ? '#1A1A35'
+                          : '#E5EEFF',
                     },
                   ]}
                   onPress={() => setSelectedCategory(cat.value)}
@@ -176,8 +177,8 @@ export default function MenuBookmarksScreen() {
                         color: isActive
                           ? '#FFFFFF'
                           : isDark
-                          ? '#94A3B8'
-                          : '#464554',
+                            ? '#94A3B8'
+                            : '#464554',
                         fontWeight: isActive ? '700' : '500',
                       },
                     ]}
@@ -243,7 +244,7 @@ export default function MenuBookmarksScreen() {
                           {item.category}
                         </Text>
                       </View>
-                      
+
                       <TouchableOpacity
                         style={styles.bookmarkIconButton}
                         onPress={() => toggleBookmark(item.id)}

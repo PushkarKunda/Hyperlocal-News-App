@@ -1,19 +1,38 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
-import { useArticleDetails } from '@/hooks/useApi';
+import { useNewsArticle, useNewsEngagement, useLikeArticle, useUnlikeArticle, useRecordView, useRecordShare, useNewsComments } from '@/hooks/useNews';
+import { useCheckBookmark, useAddBookmark, useRemoveBookmark } from '@/hooks/useEngagement';
+import { useQuery } from '@tanstack/react-query';
+import { contentApi, Advertisement } from '@/services/api/content';
 import { formatDate } from '@/utils/formatters';
-import { Badge } from '@/components/ui/Badge';
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import * as WebBrowser from 'expo-web-browser';
+
+// Ad Card Component for injecting inside the article
+const AdCard = ({ ad, colors }: { ad: Advertisement; colors: any }) => (
+  <View style={[styles.adCardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <Text style={[styles.adDisclaimer, { color: colors.textTertiary }]}>Sponsored</Text>
+    <Image source={{ uri: ad.image_url }} style={styles.adImage} contentFit="cover" />
+    <View style={styles.adContent}>
+      <Text style={[styles.adTitle, { color: colors.text }]} numberOfLines={2}>{ad.title}</Text>
+      {ad.redirect_url ? (
+        <TouchableOpacity style={[styles.adCtaButton, { backgroundColor: colors.primary }]} onPress={() => WebBrowser.openBrowserAsync(ad.redirect_url!)}>
+          <Text style={styles.adCtaText}>Learn More</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  </View>
+);
 
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -23,8 +42,66 @@ export default function NewsDetailScreen() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
-  // Load article dynamically using React Query Hook
-  const { data: article, isLoading } = useArticleDetails(id as string);
+  // Load article dynamically
+  const { data: article, isLoading } = useNewsArticle(id as string);
+  const { data: engagement } = useNewsEngagement(id as string);
+  const { data: bookmarkCheck } = useCheckBookmark(id as string);
+  const { data: comments } = useNewsComments(id as string);
+
+  // Fetch Ads
+  const { data: ads = [] } = useQuery({
+    queryKey: ['active-ads', 'detail'],
+    queryFn: () => contentApi.getActiveAdvertisements(),
+  });
+
+  // Engagement Mutations
+  const { mutate: recordView } = useRecordView();
+  const { mutate: likeArticle } = useLikeArticle();
+  const { mutate: unlikeArticle } = useUnlikeArticle();
+  const { mutate: addBookmark } = useAddBookmark();
+  const { mutate: removeBookmark } = useRemoveBookmark();
+  const { mutate: recordShare } = useRecordShare();
+
+  const [isLiked, setIsLiked] = useState(false);
+
+  // Record view on mount
+  useEffect(() => {
+    if (id) {
+      recordView(id as string);
+    }
+  }, [id]);
+
+  const handleToggleLike = () => {
+    if (!id) return;
+    if (isLiked) {
+      unlikeArticle(id as string, { onSettled: () => setIsLiked(false) });
+    } else {
+      likeArticle(id as string, { onSettled: () => setIsLiked(true) });
+    }
+  };
+
+  const handleToggleBookmark = () => {
+    if (!id) return;
+    if (bookmarkCheck?.is_bookmarked) {
+      removeBookmark(id as string);
+    } else {
+      addBookmark(id as string);
+    }
+  };
+
+  const handleShare = () => {
+    if (!id) return;
+    recordShare({ uid: id as string, platform: 'general' });
+    // Add native share logic here if desired
+  };
+
+  const handleOpenSource = () => {
+    if (article?.source) {
+      // Since the API doesn't return a source URL, we search Google for the source and title
+      const query = encodeURIComponent(`${article.source} ${article.title}`);
+      WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${query}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -56,15 +133,17 @@ export default function NewsDetailScreen() {
     );
   }
 
+  const categoryName = article.category_names?.[0] || 'News';
+  const adToInject = ads.length > 0 ? ads[0] : null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
-      
+
       {/* Immersive Top Bar */}
       <View style={[styles.topBar, { top: Math.max(insets.top, 20) }]}>
-        <TouchableOpacity 
-          style={styles.circularButton} 
+        <TouchableOpacity
+          style={styles.circularButton}
           onPress={() => {
             if (router.canGoBack()) {
               router.back();
@@ -79,24 +158,24 @@ export default function NewsDetailScreen() {
         </TouchableOpacity>
 
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.circularButton}>
+          <TouchableOpacity style={styles.circularButton} onPress={handleShare}>
             <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
               <Feather name="share" size={20} color="#FFF" />
             </BlurView>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.circularButton, { marginLeft: Spacing.sm }]}>
+          <TouchableOpacity style={[styles.circularButton, { marginLeft: Spacing.sm }]} onPress={handleToggleBookmark}>
             <BlurView intensity={Platform.OS === 'ios' ? 40 : 100} tint="dark" style={styles.blur}>
-              <MaterialIcons name="bookmark-border" size={24} color="#FFF" />
+              <MaterialIcons name={bookmarkCheck?.is_bookmarked ? "bookmark" : "bookmark-border"} size={24} color="#FFF" />
             </BlurView>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} bounces={true} scrollEventThrottle={16}>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={true} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Immersive Hero Image */}
         <View style={styles.heroContainer}>
           <Image
-            source={{ uri: article.imageUrl }}
+            source={{ uri: article.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800' }}
             style={styles.heroImage}
             contentFit="cover"
             transition={1000}
@@ -110,40 +189,26 @@ export default function NewsDetailScreen() {
         <View style={[styles.content, { backgroundColor: colors.surface }]}>
           {/* Metadata Row */}
           <View style={styles.categoryRow}>
-            <Badge 
-              label={article.category.name} 
-              color={article.category.color || colors.primary} 
-              variant="subtle"
-              size="md"
-            />
-            <View style={[styles.dot, { backgroundColor: colors.textTertiary }]} />
-            <Text style={[styles.readTime, { color: colors.textTertiary }]}>
-              {article.readTime}
-            </Text>
+            <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '18' }]}>
+              <Text style={[styles.categoryBadgeText, { color: colors.primary }]}>{categoryName}</Text>
+            </View>
           </View>
 
           {/* Premium Headline */}
           <Text style={[styles.headline, { color: colors.text }]}>
-            {article.headline}
+            {article.title}
           </Text>
 
           {/* Refined Byline */}
           <View style={[styles.byline, { borderBottomColor: colors.divider }]}>
-             <Image 
-              source={{ uri: article.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100' }} 
-              style={styles.authorAvatar} 
-            />
             <View style={styles.authorInfo}>
               <Text style={[styles.authorName, { color: colors.text }]}>
-                {article.author?.name || 'Editorial Team'}
+                {article.source || 'Editorial Team'}
               </Text>
               <Text style={[styles.publishedDate, { color: colors.textSecondary }]}>
-                {article.source.name} • {formatDate(article.publishedAt)}
+                {formatDate(article.created_at)}
               </Text>
             </View>
-            <TouchableOpacity style={[styles.followBtn, { borderColor: colors.primary }]}>
-              <Text style={[styles.followBtnText, { color: colors.primary }]}>Follow</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Article Body */}
@@ -151,21 +216,49 @@ export default function NewsDetailScreen() {
             <Text style={[styles.leadIn, { color: colors.text }]}>
               {article.summary}
             </Text>
-            
-            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-              {article.content || "Experience the future of local storytelling. Our deep dive into this developing situation reveals critical insights for the community..."}
-            </Text>
 
-            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            </Text>
+            {/* Injected Full-Screen Ad Placeholder */}
+            {adToInject && (
+              <View style={{ marginVertical: Spacing.lg }}>
+                <AdCard ad={adToInject} colors={colors} />
+              </View>
+            )}
 
-            <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-              Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-            </Text>
+            {/* Note: The current API only returns summary. If backend adds content, map it here. No dummy data. */}
           </View>
+
+          {/* Source URL Footer */}
+          <TouchableOpacity style={[styles.sourceFooter, { borderColor: colors.border }]} onPress={handleOpenSource}>
+            <Ionicons name="globe-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+            <Text style={[styles.sourceFooterText, { color: colors.primary }]}>
+              Read full story at {article.source || 'Source'}
+            </Text>
+            <Ionicons name="open-outline" size={16} color={colors.primary} style={{ marginLeft: 'auto' }} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Floating Bottom Engagement Bar */}
+      <View style={[styles.engagementBar, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: insets.bottom || 12 }]}>
+        <TouchableOpacity style={styles.engagementItem} onPress={handleToggleLike}>
+          <Ionicons name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "#EF4444" : colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_likes || article.likes || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.engagementItem} onPress={() => { /* Navigate to comments section/modal */ }}>
+          <Ionicons name="chatbubble-outline" size={22} color={colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_comments || article.comments || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.engagementItem} onPress={handleShare}>
+          <Ionicons name="share-social-outline" size={24} color={colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_shares || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.engagementItem} onPress={handleToggleBookmark}>
+          <Ionicons name={bookmarkCheck?.is_bookmarked ? "bookmark" : "bookmark-outline"} size={24} color={bookmarkCheck?.is_bookmarked ? colors.primary : colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -217,7 +310,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 40,
     backgroundColor: 'inherit',
     borderTopLeftRadius: BorderRadius['2xl'],
     borderTopRightRadius: BorderRadius['2xl'],
@@ -227,6 +320,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.md,
+  },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   dot: {
     width: 4,
@@ -239,9 +344,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
   },
   headline: {
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: 'Poppins_700Bold',
-    lineHeight: 40,
+    lineHeight: 36,
     marginBottom: Spacing.xl,
     letterSpacing: -0.5,
   },
@@ -259,7 +364,6 @@ const styles = StyleSheet.create({
   },
   authorInfo: {
     flex: 1,
-    marginLeft: Spacing.md,
   },
   authorName: {
     fontSize: 16,
@@ -284,21 +388,99 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   leadIn: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
-    lineHeight: 30,
+    lineHeight: 28,
     marginBottom: Spacing.lg,
     opacity: 0.9,
   },
   bodyText: {
-    fontSize: 19,
+    fontSize: 17,
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 32,
+    lineHeight: 28,
     letterSpacing: 0.3,
     marginBottom: Spacing.lg,
   },
   backButton: {
     marginTop: Spacing.md,
     padding: Spacing.sm,
+  },
+  adCardContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  adDisclaimer: {
+    fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  adImage: {
+    width: '100%',
+    height: 200,
+  },
+  adContent: {
+    padding: 16,
+  },
+  adTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+  adCtaButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 9999,
+    alignSelf: 'flex-start',
+  },
+  adCtaText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  sourceFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  sourceFooterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  engagementBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    zIndex: 50,
+  },
+  engagementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  engagementText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
   },
 });

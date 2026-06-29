@@ -45,6 +45,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="language" />
       <Stack.Screen name="location" />
       <Stack.Screen name="districts" />
+      <Stack.Screen name="cities" />
       <Stack.Screen name="interests" />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="setup-feed" />

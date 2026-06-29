@@ -7,24 +7,12 @@ import {
   Poppins_600SemiBold,
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
-import {
-  // ✅ FIXED: Correct casing - Newsreader NOT NewsReader
-  Newsreader_400Regular,
-  Newsreader_500Medium,
-  Newsreader_600SemiBold,
-  Newsreader_700Bold,
-} from '@expo-google-fonts/newsreader';
+
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
-// ✅ CRITICAL: WebBrowser must be before any component
+// CRITICAL: WebBrowser must be before any component
 import * as WebBrowser from 'expo-web-browser';
 WebBrowser.maybeCompleteAuthSession();
 
@@ -143,14 +131,6 @@ export default function RootLayout() {
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Newsreader_400Regular,
-    Newsreader_500Medium,
-    Newsreader_600SemiBold,
-    Newsreader_700Bold,
   });
 
   // ─── Firebase Init ────────────────────────────────────────────────────────

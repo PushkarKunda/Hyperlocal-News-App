@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,8 +16,9 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { useStore } from '@/store/useStore';
+import { useBookmarks } from '@/hooks/useEngagement';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 /** Returns a human-readable relative time string */
 function timeAgo(isoDate: string): string {
@@ -44,15 +45,16 @@ interface HistoryItem {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  politics:    '#E11D48',
-  tech:        '#6063ee',
-  sports:      '#4648D4',
-  business:    '#006A61',
-  health:      '#0D9488',
+  politics: '#E11D48',
+  tech: '#6063ee',
+  technology: '#6063ee',
+  sports: '#4648D4',
+  business: '#006A61',
+  health: '#0D9488',
   entertainment: '#D97706',
-  local:       '#7C3AED',
-  national:    '#BE185D',
-  world:       '#0369A1',
+  local: '#7C3AED',
+  national: '#BE185D',
+  world: '#0369A1',
 };
 
 /** Group items by date bucket */
@@ -165,27 +167,37 @@ export default function ProfileReadingHistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Pull articles from the store and retrieve read history from published articles
-  const allArticles = useStore((s) => s.allArticles);
+  // Fetch user's bookmarks from server to represent reading history
+  const { data: bookmarks = [], isLoading } = useBookmarks();
 
   const initialHistory: HistoryItem[] = useMemo(() =>
-    allArticles
-      .filter((a) => a.status === 'published')
-      .slice(0, 12)
-      .map((a, i) => ({
-        id: a.id,
-        title: a.headline,
-        category: a.category?.name ?? 'General',
-        categoryColor: CATEGORY_COLORS[a.category?.slug ?? ''] ?? '#4648D4',
-        image: a.imageUrl,
-        source: a.source?.name ?? 'HyperLocal',
-        publishedAt: a.publishedAt ?? new Date(Date.now() - i * 3600000 * 4).toISOString(),
-        readTime: Math.max(2, Math.floor(a.headline.length / 30)),
-      })),
-    [allArticles]
+    bookmarks
+      .filter((b) => b.news) // Ensure the nested news article exists
+      .map((b) => {
+        const article = b.news!;
+        const category = article.category_names?.[0] ?? 'General';
+        const slug = category.toLowerCase().replace(/\s+/g, '-');
+        return {
+          id: b.news_uid,
+          title: article.title,
+          category: category,
+          categoryColor: CATEGORY_COLORS[slug] ?? '#4648D4',
+          image: article.image_url,
+          source: article.source ?? 'HyperLocal',
+          publishedAt: article.created_at ?? b.created_at,
+          readTime: Math.max(2, Math.floor(article.title.length / 30)),
+        };
+      }),
+    [bookmarks]
   );
 
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
+
+  // Sync local state when server data loads/updates
+  useEffect(() => {
+    setHistory(initialHistory);
+  }, [initialHistory]);
+
   const [filter, setFilter] = useState<'all' | 'today' | 'yesterday'>('all');
 
   const filtered = useMemo(() => {
@@ -209,7 +221,7 @@ export default function ProfileReadingHistoryScreen() {
   const handleClearAll = () => {
     Alert.alert(
       'Clear History',
-      'Are you sure you want to clear your entire reading history?',
+      'Are you sure you want to clear your entire reading history view?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Clear All', style: 'destructive', onPress: () => setHistory([]) },
@@ -226,6 +238,14 @@ export default function ProfileReadingHistoryScreen() {
     { key: 'today', label: 'Today' },
     { key: 'yesterday', label: 'Yesterday' },
   ];
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <LoadingSpinner fullScreen text="Loading history..." colorScheme={colorScheme ?? 'light'} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>

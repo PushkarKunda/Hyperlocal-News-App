@@ -70,7 +70,7 @@ export const authApi = {
     const response = await request<BackendLoginResponse>({
       url: API_ROUTES.auth.firebaseLogin,
       method: 'POST',
-      data: { firebase_token: firebaseToken }, // ✅ Correct field name
+      data: { firebase_token: firebaseToken }, // Correct field name
     });
     console.log("firebaseToken", firebaseToken);
     console.log("response", response);

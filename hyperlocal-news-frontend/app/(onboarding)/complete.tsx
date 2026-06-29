@@ -1,126 +1,94 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Animated,
-  BackHandler,
-  ActivityIndicator,
+  View, Text, StyleSheet, Pressable, Animated,
+  BackHandler, ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useAuthStore } from '@/store/authStore';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-
-interface SummaryItem {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
-  value: string;
-}
+import { useState } from 'react';
 
 export default function CompleteScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
   const router = useRouter();
   const navigation = useNavigation();
-  const { completeOnboarding, user } = useAuthStore();
+  const { user } = useAuthStore();
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Animations
+  // ─── Animations ────────────────────────────────────────────────────────────
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  // Summary data - In real app, this would come from store/context
-  const summaryItems: SummaryItem[] = [
-    { icon: 'language', label: 'Language', value: user?.language || 'English' },
-    { icon: 'place', label: 'Location', value: user?.district ? `${user.district}, ${user.state || ''}` : (user?.state || 'Hyderabad, Telangana') },
-    { icon: 'bookmark-border', label: 'Interests', value: `${user?.interests?.length || 0} Topic${(user?.interests?.length || 0) !== 1 ? 's' : ''} Selected` },
-  ];
-
+  // ✅ Block hardware back
   useEffect(() => {
-    const onBackPress = () => {
-      // Once onboarding is complete, pressing physical back button should exit the app
-      // instead of going back to previous onboarding screens.
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
       BackHandler.exitApp();
       return true;
-    };
-
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-    // Staggered animations
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-
-    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    });
+    return () => handler.remove();
   }, []);
 
-  const handlePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.94,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
+  // ✅ Entry animations
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
 
-  const handlePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handleStartReading = async () => {
+  // ✅ Navigate to main app - reset navigation stack
+  const handleStartReading = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
     try {
-      setIsLoading(true);
-      setHasError(false);
-      await completeOnboarding();
-      (navigation as any).reset({
-        index: 0,
-        routes: [{ name: '(tabs)' }],
-      });
-    } catch (error) {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
+      (navigation as any).reset({ index: 0, routes: [{ name: '(tabs)' }] });
+    } catch {
+      router.replace('/(tabs)');
     }
   };
 
+  // ✅ Summary built from authStore user (already populated during onboarding)
+  const summaryItems = [
+    {
+      icon: 'language' as const,
+      label: 'Language',
+      value: user?.language || 'English',
+    },
+    {
+      icon: 'place' as const,
+      label: 'Location',
+      value: [user?.district, user?.state].filter(Boolean).join(', ') || 'Not set',
+    },
+    {
+      icon: 'bookmark-border' as const,
+      label: 'Interests',
+      value: `${user?.interests?.length ?? 0} Topic${(user?.interests?.length ?? 0) !== 1 ? 's' : ''} Selected`,
+    },
+  ];
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+
+      {/* Background blurs */}
+      <View style={[styles.gradientBlur1, { backgroundColor: isDark ? 'rgba(70,72,212,0.1)' : 'rgba(70,72,212,0.05)' }]} />
+      <View style={[styles.gradientBlur2, { backgroundColor: isDark ? 'rgba(0,106,97,0.1)' : 'rgba(0,106,97,0.05)' }]} />
 
       {/* Success Icon Section */}
       <View style={styles.successSection}>
-        {/* Confetti Particles */}
+        {/* Confetti */}
         <View style={styles.confettiContainer}>
           <View style={[styles.confetti, styles.confetti1, { backgroundColor: colors.primary }]} />
           <View style={[styles.confetti, styles.confetti2, { backgroundColor: '#F472B6' }]} />
@@ -129,57 +97,30 @@ export default function CompleteScreen() {
           <View style={[styles.confetti, styles.confetti5, { backgroundColor: colors.primary + '66' }]} />
         </View>
 
-        {/* Success Icon */}
-        <Animated.View
-          style={[
-            styles.successIconOuter,
-            { backgroundColor: colors.primaryLight },
-            { transform: [{ scale: scaleAnim }] },
-          ]}
-        >
-          <View style={[styles.successIconInner, { backgroundColor: colors.primary }, Shadows.primaryGlow]}>
+        <Animated.View style={[styles.successIconOuter, { backgroundColor: colors.primaryLight, transform: [{ scale: scaleAnim }] }]}>
+          <View style={[styles.successIconInner, { backgroundColor: colors.primary }]}>
             <MaterialIcons name="check" size={48} color="#FFF" />
           </View>
         </Animated.View>
       </View>
 
-      {/* Title Section */}
-      <Animated.View
-        style={[
-          styles.titleSection,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.text }]}>
-          You're All Set!
-        </Text>
+      {/* Title */}
+      <Animated.View style={[styles.titleSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Text style={[styles.title, { color: colors.text }]}>You're All Set!</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Start exploring local news personalized for you
         </Text>
       </Animated.View>
 
       {/* Summary Card */}
-      <Animated.View
-        style={[
-          styles.summaryCard,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
+      <Animated.View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         {summaryItems.map((item, index) => (
           <View
             key={item.label}
             style={[
               styles.summaryRow,
               index < summaryItems.length - 1 && styles.summaryRowBorder,
-              index < summaryItems.length - 1 && { borderBottomColor: 'rgba(70, 72, 212, 0.1)' },
+              index < summaryItems.length - 1 && { borderBottomColor: 'rgba(70,72,212,0.1)' },
             ]}
           >
             <View style={styles.summaryIcon}>
@@ -189,47 +130,28 @@ export default function CompleteScreen() {
               <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
                 {item.label.toUpperCase()}
               </Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>
-                {item.value}
-              </Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{item.value}</Text>
             </View>
           </View>
         ))}
       </Animated.View>
 
-      {/* Spacer */}
       <View style={styles.spacer} />
 
       {/* Footer */}
       <View style={styles.footer}>
-        {hasError && (
-          <Text style={[styles.errorText, { color: '#EF4444' }]}>
-            Failed to save onboarding preferences. Please try again.
-          </Text>
-        )}
-
         <Pressable
           style={{ width: '100%' }}
           onPress={handleStartReading}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          disabled={isLoading}
+          onPressIn={() => Animated.spring(buttonScale, { toValue: 0.94, useNativeDriver: true, tension: 180, friction: 12 }).start()}
+          onPressOut={() => Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true, tension: 180, friction: 12 }).start()}
+          disabled={isNavigating}
         >
-          <Animated.View
-            style={[
-              styles.startButton,
-              { backgroundColor: colors.primary, transform: [{ scale: buttonScale }] },
-              Shadows.primaryGlow,
-              isLoading && { opacity: 0.7 },
-            ]}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.startButtonText}>
-                {hasError ? 'Retry Onboarding' : 'Start Reading'}
-              </Text>
-            )}
+          <Animated.View style={[styles.startButton, { backgroundColor: colors.primary, transform: [{ scale: buttonScale }] }, isNavigating && { opacity: 0.7 }]}>
+            {isNavigating
+              ? <ActivityIndicator color="#FFF" />
+              : <Text style={styles.startButtonText}>Start Reading</Text>
+            }
           </Animated.View>
         </Pressable>
 
@@ -240,197 +162,44 @@ export default function CompleteScreen() {
 
       {/* Home Indicator */}
       <View style={styles.homeIndicatorContainer}>
-        <View
-          style={[
-            styles.homeIndicator,
-            { backgroundColor: colorScheme === 'dark' ? colors.border : colors.divider },
-          ]}
-        />
+        <View style={[styles.homeIndicator, { backgroundColor: isDark ? colors.border : colors.divider }]} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  statusBar: {
-    height: 48,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.sm,
-  },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  statusIcons: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  successSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.xl,
-    position: 'relative',
-  },
-  confettiContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.3,
-  },
-  confetti: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-  },
-  confetti1: {
-    top: 40,
-    left: 60,
-    transform: [{ rotate: '12deg' }],
-  },
-  confetti2: {
-    top: 80,
-    right: 40,
-    transform: [{ rotate: '-12deg' }],
-  },
-  confetti3: {
-    bottom: 40,
-    left: 40,
-    transform: [{ rotate: '45deg' }],
-  },
-  confetti4: {
-    top: 120,
-    right: 80,
-    transform: [{ rotate: '12deg' }],
-  },
-  confetti5: {
-    bottom: 80,
-    right: 100,
-    transform: [{ rotate: '-45deg' }],
-  },
-  successIconOuter: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.full,
-  },
-  successIconInner: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  titleSection: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
+  container: { flex: 1 },
+  gradientBlur1: { position: 'absolute', top: -150, right: -150, width: 400, height: 400, borderRadius: 200, zIndex: -1 },
+  gradientBlur2: { position: 'absolute', bottom: -150, left: -150, width: 400, height: 400, borderRadius: 200, zIndex: -1 },
+  successSection: { alignItems: 'center', justifyContent: 'center', paddingTop: 60, paddingBottom: 24, position: 'relative' },
+  confettiContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 },
+  confetti: { position: 'absolute', width: 8, height: 8, borderRadius: 2 },
+  confetti1: { top: 40, left: 60, transform: [{ rotate: '12deg' }] },
+  confetti2: { top: 80, right: 40, transform: [{ rotate: '-12deg' }] },
+  confetti3: { bottom: 40, left: 40, transform: [{ rotate: '45deg' }] },
+  confetti4: { top: 120, right: 80, transform: [{ rotate: '12deg' }] },
+  confetti5: { bottom: 80, right: 100, transform: [{ rotate: '-45deg' }] },
+  successIconOuter: { padding: 20, borderRadius: 9999 },
+  successIconInner: { width: 80, height: 80, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
+  titleSection: { alignItems: 'center', paddingHorizontal: 24 },
+  title: { fontSize: 28, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 8 },
+  subtitle: { fontSize: 18, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 26 },
   summaryCard: {
-    marginHorizontal: Spacing.xl,
-    marginTop: Spacing['2xl'],
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1.5,
-    padding: Spacing.lg,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.06,
-    shadowRadius: 24,
-    elevation: 3,
+    marginHorizontal: 24, marginTop: 32, borderRadius: 20, borderWidth: 1.5, padding: 16,
+    shadowColor: '#4648D4', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 3,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  summaryRowBorder: {
-    borderBottomWidth: 1.5,
-  },
-  summaryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-    backgroundColor: 'rgba(70, 72, 212, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(70, 72, 212, 0.1)',
-  },
-  summaryText: {
-    flex: 1,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: 'Poppins_500Medium',
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  spacer: {
-    flex: 1,
-  },
-  footer: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.lg,
-    alignItems: 'center',
-  },
-  startButton: {
-    height: 56,
-    borderRadius: BorderRadius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  startButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  versionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Poppins_500Medium',
-    marginTop: Spacing.md,
-  },
-  homeIndicatorContainer: {
-    paddingBottom: Spacing.sm,
-    alignItems: 'center',
-  },
-  homeIndicator: {
-    width: 128,
-    height: 6,
-    borderRadius: 100,
-  },
-  errorText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  summaryRowBorder: { borderBottomWidth: 1.5 },
+  summaryIcon: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12, backgroundColor: 'rgba(70,72,212,0.08)', borderWidth: 1, borderColor: 'rgba(70,72,212,0.1)' },
+  summaryText: { flex: 1 },
+  summaryLabel: { fontSize: 11, fontWeight: '500', fontFamily: 'Poppins_500Medium', letterSpacing: 1, marginBottom: 2 },
+  summaryValue: { fontSize: 16, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
+  spacer: { flex: 1 },
+  footer: { paddingHorizontal: 24, paddingBottom: 16, alignItems: 'center' },
+  startButton: { height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', width: '100%', shadowColor: '#4648D4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
+  startButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  versionText: { fontSize: 12, fontWeight: '500', fontFamily: 'Poppins_500Medium', marginTop: 12 },
+  homeIndicatorContainer: { paddingBottom: 8, alignItems: 'center' },
+  homeIndicator: { width: 128, height: 6, borderRadius: 100 },
 });

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useRouter } from 'expo-router';
@@ -44,7 +44,7 @@ export default function NotificationsScreen() {
 
       let timeStr = 'Just now';
       try {
-        const diffMs = now - new Date(n.timestamp).getTime();
+        const diffMs = now - new Date(n.created_at).getTime();
         const diffMin = Math.floor(diffMs / 60000);
         if (diffMin < 60) timeStr = `${Math.max(1, diffMin)}m ago`;
         else {
@@ -58,19 +58,19 @@ export default function NotificationsScreen() {
 
       let section: 'Today' | 'Earlier' = 'Earlier';
       try {
-        const diffMs = now - new Date(n.timestamp).getTime();
+        const diffMs = now - new Date(n.created_at).getTime();
         if (diffMs < 24 * 3600 * 1000) {
           section = 'Today';
         }
-      } catch {}
+      } catch { }
 
       return {
-        id: n.id,
+        id: String(n.id),
         type: uiType,
         title: n.title,
         body: n.message,
         time: timeStr,
-        unread: !n.isRead,
+        unread: !n.is_read,
         section,
       };
     });
@@ -120,7 +120,7 @@ export default function NotificationsScreen() {
   const renderIcon = (type: NotificationItem['type']) => {
     const details = getIconDetails(type);
     const size = 20;
-    
+
     if (details.lib === 'MaterialIcons') {
       return <MaterialIcons name={details.name as any} size={size} color={details.iconColor} />;
     }
@@ -132,7 +132,7 @@ export default function NotificationsScreen() {
 
   const renderNotificationCard = (item: NotificationItem) => {
     const details = getIconDetails(item.type);
-    
+
     return (
       <TouchableOpacity
         key={item.id}
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
       {/* Main List */}
       {notifications.length > 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           {/* Today Group */}
           {todayNotifications.length > 0 && (
             <View style={styles.section}>

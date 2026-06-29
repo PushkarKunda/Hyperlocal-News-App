@@ -37,7 +37,7 @@ export const API_ROUTES = {
     search: '/news/v1/search',                                   // GET - Search news
 
     // News Shorts
-    shorts: '/news/v1/news-shorts',                              // GET - News shorts
+    shorts: '/news/v1/news-shorts',                             // GET - News shorts
 
     // Engagement
     engagement: (uid: string) => `/news/v1/news/${uid}/engagement`, // GET - News engagement stats
@@ -70,15 +70,15 @@ export const API_ROUTES = {
     // Advertisements
     advertisements: '/content/advertisements/active',                    // GET - Active ads
     advertisementById: (id: number) => `/content/advertisements/${id}`, // GET - Get ad by ID
-    createAdvertisement: '/content/advertisements',                      // POST - Create ad
-    updateAdvertisement: (id: number) => `/content/advertisements/${id}`, // PUT - Update ad
-    toggleAdStatus: (id: number) => `/content/advertisements/${id}/toggle-status`, // POST
+    createAdvertisement: '/content/advertisements',                      // POST - Create ad (admin)
+    updateAdvertisement: (id: number) => `/content/advertisements/${id}`, // PUT - Update ad (admin)
+    toggleAdStatus: (id: number) => `/content/advertisements/${id}/toggle-status`, // POST (admin)
 
     // Sponsored Posts
     sponsoredPosts: '/content/sponsored-posts/active',           // GET - Active sponsored posts
-    createSponsoredPost: '/content/sponsored-posts',             // POST - Create sponsored post
-    updateSponsoredPost: (id: number) => `/content/sponsored-posts/${id}`, // PUT
-    pendingSponsoredPosts: '/content/sponsored-posts/pending',   // GET - Pending posts
+    createSponsoredPost: '/content/sponsored-posts',             // POST - Create sponsored post (admin side only)
+    updateSponsoredPost: (id: number) => `/content/sponsored-posts/${id}`, // PUT (admin only)
+    pendingSponsoredPosts: '/content/sponsored-posts/pending',   // GET - Pending posts (admin only)
 
     // Events (Coming Soon - basic structure)
     events: '/content/events',                                   // GET, POST

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -7,10 +7,8 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LocalNewsCard, LocalNewsItem } from '@/components/LocalNewsCard';
-import { LocalEventCard, LocalEventItem } from '@/components/LocalEventCard';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationNews } from '@/hooks/useNews';
-import { useEvents } from '@/hooks/useEvents';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
 
@@ -22,31 +20,27 @@ export default function LocalScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All Time');
-  
+
   const scale = useAppTextScale();
   const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
   const user = useAuthStore(state => state.user);
 
-
-
-  // Fetch live local news and events
+  // Fetch live local news
   const { data: rawNews = [], isLoading: isLoadingNews } = useLocationNews({
     state: user?.state || undefined,
     district: user?.district || undefined,
   });
 
-  const { data: rawEvents = [], isLoading: isLoadingEvents } = useEvents();
-
   // Filtered lists based on activeFilter
   const filteredNews = useMemo(() => {
     let list = [...rawNews];
     const now = Date.now();
-    
+
     if (activeFilter === 'Today') {
       list = list.filter(item => {
         try {
-          return (now - new Date(item.publishedAt).getTime()) < 24 * 3600 * 1000;
+          return (now - new Date(item.created_at).getTime()) < 24 * 3600 * 1000;
         } catch {
           return true;
         }
@@ -54,42 +48,17 @@ export default function LocalScreen() {
     } else if (activeFilter === 'This Week') {
       list = list.filter(item => {
         try {
-          return (now - new Date(item.publishedAt).getTime()) < 7 * 24 * 3600 * 1000;
+          return (now - new Date(item.created_at).getTime()) < 7 * 24 * 3600 * 1000;
         } catch {
           return true;
         }
       });
     } else if (activeFilter === 'Newest') {
-      list.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
-    
+
     return list;
   }, [rawNews, activeFilter]);
-
-  const filteredEvents = useMemo(() => {
-    let list = [...rawEvents];
-    const now = Date.now();
-    
-    if (activeFilter === 'Today') {
-      list = list.filter(item => {
-        try {
-          return (now - new Date(item.date).getTime()) < 24 * 3600 * 1000;
-        } catch {
-          return true;
-        }
-      });
-    } else if (activeFilter === 'This Week') {
-      list = list.filter(item => {
-        try {
-          return (now - new Date(item.date).getTime()) < 7 * 24 * 3600 * 1000;
-        } catch {
-          return true;
-        }
-      });
-    }
-    
-    return list;
-  }, [rawEvents, activeFilter]);
 
   // Buckets for today / yesterday news
   const { todayNews, yesterdayNews } = useMemo(() => {
@@ -101,20 +70,20 @@ export default function LocalScreen() {
       let isToday = false;
       let timeStr = 'Recently';
       try {
-        const diffMs = now - new Date(article.publishedAt).getTime();
+        const diffMs = now - new Date(article.created_at).getTime();
         if (diffMs < 24 * 3600 * 1000) {
           isToday = true;
         }
-        timeStr = formatTimeAgo(article.publishedAt);
-      } catch {}
+        timeStr = formatTimeAgo(article.created_at);
+      } catch { }
 
       const mapped: LocalNewsItem = {
-        id: article.id,
-        title: article.headline,
-        distance: '0.8 km away',
+        id: article.news_uid,
+        title: article.title,
+        distance: article.location?.district || article.location?.city || '',
         timeAgo: timeStr,
-        views: `${formatNumber(article.stats?.views || 0)} views`,
-        imageUrl: article.imageUrl,
+        views: `${formatNumber(article.views || 0)} views`,
+        imageUrl: article.image_url ?? '',
         variant: idx === 0 ? 'vertical' : 'horizontal',
       };
 
@@ -142,25 +111,11 @@ export default function LocalScreen() {
     return { todayNews: today, yesterdayNews: yesterday };
   }, [filteredNews]);
 
-  // Map backend Event to LocalEventItem UI format
-  const mappedEvents = useMemo(() => {
-    return filteredEvents.map((evt) => {
-      return {
-        id: evt.id,
-        category: evt.category?.name || 'Neighborhood Event',
-        title: evt.title,
-        distance: '1.2 km away',
-        schedule: `Scheduled: ${new Date(evt.date).toLocaleDateString()} ${evt.time || ''}`,
-        mapImageUrl: evt.imageUrl || 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800',
-      };
-    });
-  }, [filteredEvents]);
+  const userLocationStr = user?.district
+    ? `${user.district}, ${user.state || ''}`
+    : 'Select Location';
 
-  const userLocationStr = user?.district 
-    ? `${user.district}, ${user.state || ''}` 
-    : 'Kukatpally, Hyderabad';
-
-  if (isLoadingNews || isLoadingEvents) {
+  if (isLoadingNews) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
         <LoadingSpinner fullScreen text="Loading local stories..." colorScheme={colorScheme ?? 'light'} />
@@ -170,14 +125,14 @@ export default function LocalScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      
+
       {/* Header Section */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Local News</Text>
       </View>
 
       <View style={styles.headerLocationContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.locationPicker, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => router.push('/(onboarding)/location')}
         >
@@ -188,7 +143,7 @@ export default function LocalScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Filters Section */}
         <View style={styles.filtersWrapper}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContainer}>
@@ -199,7 +154,7 @@ export default function LocalScreen() {
                   key={filter}
                   style={[
                     styles.filterPill,
-                    { 
+                    {
                       backgroundColor: isActive ? colors.primary : colors.surface,
                       borderColor: isActive ? colors.primary : colors.border
                     }
@@ -228,14 +183,14 @@ export default function LocalScreen() {
 
         {/* Feed Content */}
         <View style={styles.feedContent}>
-          {todayNews.length === 0 && yesterdayNews.length === 0 && mappedEvents.length === 0 ? (
+          {todayNews.length === 0 && yesterdayNews.length === 0 ? (
             <View style={styles.emptyStateContainer}>
               <View style={[styles.emptyIconCircle, { backgroundColor: colors.primaryLight }]}>
                 <Ionicons name="map-outline" size={48} color={colors.primary} />
               </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No Local Stories</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                There are no published news articles or scheduled events in your selected district: {user?.district || 'Kukatpally'}.
+                There are no published news articles in your selected district: {user?.district || 'your area'}.
               </Text>
             </View>
           ) : (
@@ -246,9 +201,9 @@ export default function LocalScreen() {
                   <Text style={[styles.sectionTitle, { color: colors.textTertiary }, scaledFontSize(12)]}>TODAY</Text>
                   <View style={styles.cardsContainer}>
                     {todayNews.map(item => (
-                      <LocalNewsCard 
-                        key={item.id} 
-                        item={item} 
+                      <LocalNewsCard
+                        key={item.id}
+                        item={item}
                         onPress={() => router.push(`/news/${item.id}` as any)}
                       />
                     ))}
@@ -262,26 +217,10 @@ export default function LocalScreen() {
                   <Text style={[styles.sectionTitle, { color: colors.textTertiary }, scaledFontSize(12)]}>YESTERDAY</Text>
                   <View style={styles.cardsContainer}>
                     {yesterdayNews.map(item => (
-                      <LocalNewsCard 
-                        key={item.id} 
-                        item={item} 
+                      <LocalNewsCard
+                        key={item.id}
+                        item={item}
                         onPress={() => router.push(`/news/${item.id}` as any)}
-                      />
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* EVENTS Section */}
-              {mappedEvents.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={[styles.sectionTitle, { color: colors.textTertiary }, scaledFontSize(12)]}>LOCAL EVENTS</Text>
-                  <View style={styles.cardsContainer}>
-                    {mappedEvents.map(item => (
-                      <LocalEventCard 
-                        key={item.id} 
-                        item={item} 
-                        onPress={() => router.push('/(tabs)/events' as any)}
                       />
                     ))}
                   </View>
@@ -296,8 +235,8 @@ export default function LocalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

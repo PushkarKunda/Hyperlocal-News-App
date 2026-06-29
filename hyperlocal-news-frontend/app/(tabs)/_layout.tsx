@@ -127,13 +127,13 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="create-article"
         options={{
           href: null,
           tabBarStyle: { display: 'none' },
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="menu-bookmarks"
         options={{
@@ -189,27 +189,27 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' },
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="events"
         options={{
           href: null,
           tabBarStyle: { display: 'none' },
         }}
-      />
-      <Tabs.Screen
+      /> */}
+      {/* <Tabs.Screen
         name="articles"
         options={{
           href: null,
           tabBarStyle: { display: 'none' },
         }}
-      />
-      <Tabs.Screen
+      /> */}
+      {/* <Tabs.Screen
         name="polls"
         options={{
           href: null,
           tabBarStyle: { display: 'none' },
         }}
-      />
+      /> */}
     </Tabs>
   );
 }

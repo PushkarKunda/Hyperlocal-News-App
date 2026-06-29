@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { Notification, NotificationType } from '@/types';
-import { formatDistanceToNow } from 'date-fns';
+import { Notification } from '@/services/api/notifications';
+import { formatTimeAgo } from '@/utils/formatters';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
 interface NotificationItemProps {
@@ -11,22 +11,18 @@ interface NotificationItemProps {
   onPress?: () => void;
 }
 
-const getIconForType = (type: NotificationType) => {
+const getIconForType = (type: string) => {
   switch (type) {
     case 'alert': return 'warning';
-    case 'event': return 'event';
-    case 'poll': return 'poll';
     case 'news': return 'article';
     case 'system': return 'info';
     default: return 'notifications';
   }
 };
 
-const getColorForType = (type: NotificationType, colors: any) => {
+const getColorForType = (type: string, colors: any) => {
   switch (type) {
-    case 'alert': return '#EF4444'; // Red
-    case 'event': return '#10B981'; // Green
-    case 'poll': return '#F59E0B'; // Orange
+    case 'alert': return '#EF4444';
     case 'news': return colors.primary;
     case 'system': return colors.textSecondary;
     default: return colors.primary;
@@ -36,23 +32,23 @@ const getColorForType = (type: NotificationType, colors: any) => {
 export function NotificationItem({ notification, onPress }: NotificationItemProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  
+
   const iconName = getIconForType(notification.type);
   const iconColor = getColorForType(notification.type, colors);
-  const formattedTime = formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true });
+  const formattedTime = formatTimeAgo(notification.created_at);
 
   return (
-    <Pressable 
+    <Pressable
       style={[
-        styles.container, 
-        { backgroundColor: notification.isRead ? colors.surface : colors.primaryLight }
+        styles.container,
+        { backgroundColor: notification.is_read ? colors.surface : colors.primaryLight }
       ]}
       onPress={onPress}
     >
       <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
         <MaterialIcons name={iconName as any} size={24} color={iconColor} />
       </View>
-      
+
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
@@ -66,8 +62,8 @@ export function NotificationItem({ notification, onPress }: NotificationItemProp
           {notification.message}
         </Text>
       </View>
-      
-      {!notification.isRead && (
+
+      {!notification.is_read && (
         <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
       )}
     </Pressable>

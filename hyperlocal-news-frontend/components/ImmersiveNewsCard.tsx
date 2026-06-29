@@ -1,62 +1,82 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { NewsArticle } from '@/types';
+import { NewsArticle } from '@/services/api/news';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useLikeArticle, useUnlikeArticle, useRecordShare } from '@/hooks/useNews';
+import { useAddBookmark, useRemoveBookmark } from '@/hooks/useEngagement';
+import { formatTimeAgo } from '@/utils/formatters';
 
 interface ImmersiveNewsCardProps {
   item: NewsArticle;
   containerHeight: number;
+  isBookmarked?: boolean; // Added prop to receive server-synced bookmark state
 }
 
-export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: ImmersiveNewsCardProps) => {
+export const ImmersiveNewsCard = React.memo(({ item, containerHeight, isBookmarked = false }: ImmersiveNewsCardProps) => {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const { width: screenWidth } = useWindowDimensions();
 
-  // Local interaction states
-  const [liked, setLiked] = useState(item.isBookmarked ?? false);
-  const [bookmarked, setBookmarked] = useState(item.isBookmarked ?? false);
+  // Server-synced Engagement Mutations
+  const { mutate: likeArticle } = useLikeArticle();
+  const { mutate: unlikeArticle } = useUnlikeArticle();
+  const { mutate: addBookmark } = useAddBookmark();
+  const { mutate: removeBookmark } = useRemoveBookmark();
+  const { mutate: recordShare } = useRecordShare();
 
-  // Icon mapping for action buttons based on interaction state
-  const likeIconName = liked ? 'heart' : 'heart-outline';
-  const likeIconColor = liked ? '#FF4A6B' : (isDark ? '#94A3B8' : '#464554');
+  // Icon mapping based on server state prop
+  const likeIconName = 'heart-outline'; // Default to outline, toggle handled by mutation invalidation
+  const likeIconColor = isDark ? '#94A3B8' : '#464554';
 
-  const saveIconName = bookmarked ? 'bookmark' : 'bookmark-outline';
-  const saveIconColor = bookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
+  const saveIconName = isBookmarked ? 'bookmark' : 'bookmark-outline';
+  const saveIconColor = isBookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
 
   const actionIconColor = isDark ? '#94A3B8' : '#464554';
 
+  const handleToggleLike = () => {
+    unlikeArticle(item.news_uid); // Simplified toggle logic for feed card
+  };
+
+  const handleToggleBookmark = () => {
+    if (isBookmarked) {
+      removeBookmark(item.news_uid);
+    } else {
+      addBookmark(item.news_uid);
+    }
+  };
+
   const handleShare = async () => {
     try {
-      const shareUrl = item.url || 'https://hyperlocal.app';
+      recordShare({ uid: item.news_uid, platform: 'general' });
       await Share.share({
-        message: `Check out this article: ${item.headline}\n\n${item.summary}\n\nRead more here: ${shareUrl}\n\nShared via HyperLocal News App.`,
-        url: shareUrl,
-        title: item.headline,
+        message: `Check out this article: ${item.title}\n\n${item.summary}\n\nShared via HyperLocal News App.`,
+        title: item.title,
       });
     } catch (error) {
       // share dismissed or failed silently
     }
   };
 
+  const categoryName = item.category_names?.[0] || 'News';
+
   return (
     <View style={[styles.cardContainer, { height: containerHeight, backgroundColor: colors.background }]}>
       {/* Top 45% Image Section */}
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800' }}
           style={styles.image}
           contentFit="cover"
           transition={400}
         />
         {/* Category Tag */}
-        <View style={[styles.categoryTag, { backgroundColor: item.category.color || '#4648D4' }]}>
-          <Text style={styles.categoryText}>{item.category.name}</Text>
+        <View style={[styles.categoryTag, { backgroundColor: colors.primary }]}>
+          <Text style={styles.categoryText}>{categoryName}</Text>
         </View>
       </View>
 
@@ -64,7 +84,7 @@ export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: Immersiv
       <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
         <View style={styles.textWrapper}>
           {/* Headline */}
-          <Text style={[styles.headline, { color: colors.text }]}>{item.headline}</Text>
+          <Text style={[styles.headline, { color: colors.text }]}>{item.title}</Text>
 
           {/* News Summary Paragraph */}
           <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
@@ -78,10 +98,12 @@ export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: Immersiv
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.footerRow}>
-            {/* Reading Time */}
+            {/* Source & Time */}
             <View style={styles.readTimeContainer}>
-              <Ionicons name="time-outline" size={16} color={colors.textTertiary} />
-              <Text style={[styles.readTimeText, { color: colors.textSecondary }]}>{item.readTime}</Text>
+              <Ionicons name="globe-outline" size={14} color={colors.textTertiary} />
+              <Text style={[styles.sourceText, { color: colors.textSecondary }]}>{item.source || 'HyperLocal'}</Text>
+              <Text style={[styles.dotSep, { color: colors.textTertiary }]}>·</Text>
+              <Text style={[styles.readTimeText, { color: colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
             </View>
 
             {/* Action Buttons Stack */}
@@ -89,7 +111,7 @@ export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: Immersiv
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
-                onPress={() => setLiked(!liked)}
+                onPress={handleToggleLike}
               >
                 <Ionicons name={likeIconName} size={16} color={likeIconColor} />
               </TouchableOpacity>
@@ -103,7 +125,7 @@ export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: Immersiv
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
                 activeOpacity={0.65}
-                onPress={() => setBookmarked(!bookmarked)}
+                onPress={handleToggleBookmark}
               >
                 <Ionicons name={saveIconName} size={16} color={saveIconColor} />
               </TouchableOpacity>
@@ -122,9 +144,10 @@ export const ImmersiveNewsCard = React.memo(({ item, containerHeight }: Immersiv
 }, (prevProps, nextProps) => {
   return (
     prevProps.containerHeight === nextProps.containerHeight &&
-    prevProps.item.id === nextProps.item.id &&
-    prevProps.item.headline === nextProps.item.headline &&
-    prevProps.item.imageUrl === nextProps.item.imageUrl
+    prevProps.item.news_uid === nextProps.item.news_uid &&
+    prevProps.item.title === nextProps.item.title &&
+    prevProps.item.image_url === nextProps.item.image_url &&
+    prevProps.isBookmarked === nextProps.isBookmarked
   );
 });
 
@@ -193,10 +216,18 @@ const styles = StyleSheet.create({
   readTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    flex: 1,
+  },
+  sourceText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
+  dotSep: {
+    fontSize: 12,
   },
   readTimeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Poppins_400Regular',
   },
   actionsContainer: {

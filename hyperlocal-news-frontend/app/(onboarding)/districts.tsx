@@ -9,6 +9,7 @@ import {
   Animated,
   TextInput,
   DimensionValue,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,12 @@ import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useDistrictsList } from '@/hooks/useApi';
-import { useAuthStore } from '@/store/authStore';
+import { usersApi } from '@/services/api';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface DistrictCardProps {
   name: string;
@@ -29,7 +35,19 @@ interface DistrictCardProps {
   marginBottom?: DimensionValue;
 }
 
-function DistrictCard({ name, code, isSelected, onPress, width, marginRight, marginBottom }: DistrictCardProps) {
+// ═══════════════════════════════════════════════════════════════════════════
+// DISTRICT CARD COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function DistrictCard({
+  name,
+  code,
+  isSelected,
+  onPress,
+  width,
+  marginRight,
+  marginBottom,
+}: DistrictCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -66,7 +84,9 @@ function DistrictCard({ name, code, isSelected, onPress, width, marginRight, mar
           isSelected ? styles.cardSelected : styles.cardUnselected,
           {
             backgroundColor: isSelected
-              ? (isDark ? '#2A2A4D' : '#E6E7FB')
+              ? isDark
+                ? '#2A2A4D'
+                : '#E6E7FB'
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
           },
@@ -77,12 +97,21 @@ function DistrictCard({ name, code, isSelected, onPress, width, marginRight, mar
           style={[
             styles.badgeCircle,
             {
-              backgroundColor: isSelected ? colors.primary : (isDark ? '#2A2A3C' : '#F1F5F9'),
+              backgroundColor: isSelected
+                ? colors.primary
+                : isDark
+                  ? '#2A2A3C'
+                  : '#F1F5F9',
               borderColor: isSelected ? colors.primary : colors.border,
-            }
+            },
           ]}
         >
-          <Text style={[styles.badgeText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
+          <Text
+            style={[
+              styles.badgeText,
+              { color: isSelected ? '#FFFFFF' : colors.primary },
+            ]}
+          >
             {code || name.substring(0, 3).toUpperCase()}
           </Text>
         </View>
@@ -90,7 +119,7 @@ function DistrictCard({ name, code, isSelected, onPress, width, marginRight, mar
           style={[
             styles.districtName,
             { color: isSelected ? colors.primary : colors.text },
-            isSelected && styles.districtNameSelected
+            isSelected && styles.districtNameSelected,
           ]}
           numberOfLines={1}
         >
@@ -101,13 +130,18 @@ function DistrictCard({ name, code, isSelected, onPress, width, marginRight, mar
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+
 export default function DistrictsScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { state } = useLocalSearchParams<{ state?: string }>();
 
-  // Load districts dynamically using the React Query hook based on onboarding State selection
+  // ─── API & State ───────────────────────────────────────────────────────────
+
   const { data: districts = [], isLoading } = useDistrictsList(state);
 
   const isAP = state === 'ap';
@@ -115,20 +149,44 @@ export default function DistrictsScreen() {
   const defaultDistrictId = isAP ? 'visakhapatnam' : 'hyderabad';
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState(defaultDistrictId);
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  // Set default selection when switching states or once dynamic districts are fetched
-  useEffect(() => {
-    if (districts.length > 0) {
-      const hasDefault = districts.some(d => d.id === defaultDistrictId);
-      setSelectedDistrict(hasDefault ? defaultDistrictId : districts[0].id);
-    }
-    setSearchQuery('');
-  }, [state, districts, defaultDistrictId]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const searchBorderAnim = useRef(new Animated.Value(0)).current;
+
+  // ─── Load User Preferences ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const preferences = await usersApi.getPreferences();
+
+        if (preferences.district_name && districts.length > 0) {
+          const matchedDistrict = districts.find(
+            (d) => d.name.toLowerCase() === preferences.district_name?.toLowerCase()
+          );
+          if (matchedDistrict) {
+            setSelectedDistrict(matchedDistrict.id);
+          } else {
+            setSelectedDistrict(defaultDistrictId);
+          }
+        } else {
+          setSelectedDistrict(defaultDistrictId);
+        }
+      } catch (error) {
+        console.error('[DistrictsScreen] Failed to load preferences:', error);
+        setSelectedDistrict(defaultDistrictId);
+      }
+    };
+
+    if (districts.length > 0) {
+      loadPreferences();
+    }
+  }, [districts, defaultDistrictId]);
+
+  // ─── Search Animations ─────────────────────────────────────────────────────
 
   const handleSearchFocus = () => {
     setIsSearchFocused(true);
@@ -148,6 +206,8 @@ export default function DistrictsScreen() {
     }).start();
   };
 
+  // ─── Button Animations ─────────────────────────────────────────────────────
+
   const handleContinuePressIn = () => {
     Animated.spring(buttonScale, {
       toValue: 0.95,
@@ -166,34 +226,110 @@ export default function DistrictsScreen() {
     }).start();
   };
 
-  const handleContinue = () => {
-    const matchedDistrict = districts.find(d => d.id === selectedDistrict);
-    if (matchedDistrict) {
-      useAuthStore.setState(prev => ({
-        user: prev.user ? { ...prev.user, district: matchedDistrict.name } : null
-      }));
+  // ─── Continue Handler ──────────────────────────────────────────────────────
+
+  const handleContinue = async () => {
+    if (!selectedDistrict) {
+      Alert.alert('District Required', 'Please select your district to continue.');
+      return;
     }
-    router.push('/(onboarding)/interests');
+
+    setIsSaving(true);
+
+    try {
+      const matchedDistrict = districts.find((d) => d.id === selectedDistrict);
+      if (!matchedDistrict) {
+        throw new Error('Selected district not found');
+      }
+
+      // Save district preference to backend
+      await usersApi.savePreferences({
+        district_id: matchedDistrict.backendId,
+      });
+
+      // Navigate to cities screen
+      router.push({
+        pathname: '/(onboarding)/cities',
+        params: {
+          state,
+          district: selectedDistrict,
+        },
+      });
+    } catch (error: any) {
+      console.error('[DistrictsScreen] Failed to save district:', error);
+      Alert.alert(
+        'Save Failed',
+        error.message || 'Failed to save district preference. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const filteredDistricts = districts.filter(district =>
-    district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (district.code && district.code.toLowerCase().includes(searchQuery.toLowerCase()))
+  // ─── Filtered Districts ────────────────────────────────────────────────────
+
+  const filteredDistricts = districts.filter(
+    (district) =>
+      district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (district.code && district.code.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Interpolate search border colors dynamically based on active theme
   const searchBorderColor = searchBorderAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [colors.border, colors.primary],
   });
+
+  // ─── Loading State ─────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <LoadingSpinner
+          fullScreen
+          text="Loading districts..."
+          colorScheme={colorScheme ?? 'light'}
+        />
+      </View>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Background Blurs */}
-      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.05)' }]} />
-      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.05)' }]} />
+      <View
+        style={[
+          styles.purpleBlur,
+          {
+            backgroundColor:
+              colorScheme === 'dark'
+                ? 'rgba(70, 72, 212, 0.12)'
+                : 'rgba(70, 72, 212, 0.05)',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.tealBlur,
+          {
+            backgroundColor:
+              colorScheme === 'dark'
+                ? 'rgba(0, 106, 97, 0.12)'
+                : 'rgba(0, 106, 97, 0.05)',
+          },
+        ]}
+      />
 
       {/* Header Bar */}
       <View style={[styles.header, { borderBottomColor: colors.divider }]}>
@@ -205,10 +341,29 @@ export default function DistrictsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.text, fontSize: 24, letterSpacing: -0.3 }]}>
+        <Text
+          style={[
+            styles.headerTitle,
+            { color: colors.text, fontSize: 24, letterSpacing: -0.3 },
+          ]}
+        >
           <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
-          <Text style={{ fontFamily: 'Poppins_500Medium', color: colorScheme === 'dark' ? '#818CF8' : colors.primary }}>Local</Text>
-          <Text style={{ color: colorScheme === 'dark' ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+          <Text
+            style={{
+              fontFamily: 'Poppins_500Medium',
+              color: colorScheme === 'dark' ? '#818CF8' : colors.primary,
+            }}
+          >
+            Local
+          </Text>
+          <Text
+            style={{
+              color: colorScheme === 'dark' ? '#818CF8' : colors.primary,
+              fontFamily: 'Poppins_700Bold',
+            }}
+          >
+            .
+          </Text>
         </Text>
 
         <View style={styles.headerSpacer} />
@@ -223,7 +378,9 @@ export default function DistrictsScreen() {
       >
         {/* Hero Title */}
         <View style={styles.headlineSection}>
-          <Text style={[styles.mainTitle, { color: colors.text }]}>Which district?</Text>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>
+            Which district?
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Select your district in {stateLabel} to get hyperlocal updates.
           </Text>
@@ -238,10 +395,15 @@ export default function DistrictsScreen() {
                 backgroundColor: colors.card,
                 borderColor: searchBorderColor,
                 shadowOpacity: isSearchFocused ? 0.15 : 0.05,
-              }
+              },
             ]}
           >
-            <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.searchIcon}
+            />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search district..."
@@ -256,27 +418,26 @@ export default function DistrictsScreen() {
 
         {/* District Selection Area */}
         <View style={styles.districtsSection}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DISTRICTS OF {stateLabel.toUpperCase()}</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+            DISTRICTS OF {stateLabel.toUpperCase()}
+          </Text>
 
           <View style={styles.gridContainer}>
-            {(() => {
-              let singleCount = 0;
-              return filteredDistricts.map((district) => {
-                const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
-                return (
-                  <DistrictCard
-                    key={district.id}
-                    name={district.name}
-                    code={district.code}
-                    isSelected={selectedDistrict === district.id}
-                    onPress={() => setSelectedDistrict(district.id)}
-                    width="47%"
-                    marginRight={marginRight}
-                    marginBottom={16}
-                  />
-                );
-              });
-            })()}
+            {filteredDistricts.map((district, index) => {
+              const marginRight = index % 2 === 0 ? '6%' : '0%';
+              return (
+                <DistrictCard
+                  key={district.id}
+                  name={district.name}
+                  code={district.code}
+                  isSelected={selectedDistrict === district.id}
+                  onPress={() => setSelectedDistrict(district.id)}
+                  width="47%"
+                  marginRight={marginRight}
+                  marginBottom={16}
+                />
+              );
+            })}
           </View>
         </View>
       </ScrollView>
@@ -285,18 +446,30 @@ export default function DistrictsScreen() {
       <View style={[styles.footer, { backgroundColor: colors.background }]}>
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <Pressable
-            style={styles.continueButton}
+            style={[
+              styles.continueButton,
+              (!selectedDistrict || isSaving) && styles.continueButtonDisabled,
+            ]}
             onPress={handleContinue}
             onPressIn={handleContinuePressIn}
             onPressOut={handleContinuePressOut}
+            disabled={!selectedDistrict || isSaving}
           >
-            <Text style={styles.continueButtonText}>Confirm & Continue</Text>
+            {isSaving ? (
+              <LoadingSpinner size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueButtonText}>Confirm & Continue</Text>
+            )}
           </Pressable>
         </Animated.View>
       </View>
     </SafeAreaView>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
@@ -468,21 +641,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E6E7FB',
   },
-  badgeCircleSelected: {
-    borderColor: '#4648D4',
-    backgroundColor: '#4648D4',
-    shadowOpacity: 0.15,
-  },
   badgeText: {
     fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
-  },
-  badgeTextSelected: {
-    color: '#FFFFFF',
-  },
-  badgeTextUnselected: {
-    color: '#4648D4',
   },
   districtName: {
     fontSize: 13,
@@ -514,6 +676,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
+  },
+  continueButtonDisabled: {
+    backgroundColor: '#B0B0C0',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   continueButtonText: {
     color: '#FFF',

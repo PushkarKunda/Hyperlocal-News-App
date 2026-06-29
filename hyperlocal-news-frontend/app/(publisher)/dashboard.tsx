@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { usePublisherArticles } from '@/hooks/useNews';
-import { useStore } from '@/store/useStore';
-import { NewsArticle, ArticleStatus } from '@/types';
+import { useNewsFeed } from '@/hooks/useNews';
+import { NewsArticle } from '@/services/api/news';
+import { useAuthStore } from '@/store/authStore';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const TABS = ['all', 'pending', 'published', 'rejected'] as const;
 type TabKey = (typeof TABS)[number];
@@ -31,44 +32,47 @@ export default function PublisherDashboard() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  const user = useStore((state) => state.user);
-  const approveArticle = useStore((state) => state.approveArticle);
-  const rejectArticle = useStore((state) => state.rejectArticle);
+  const user = useAuthStore((state) => state.user);
 
-  const { all, pending, published, rejected } = usePublisherArticles();
+  const { data: feedResponse, isLoading } = useNewsFeed();
+
+  // Extract only news articles from the feed (filtering out ads/sponsored)
+  const published: NewsArticle[] = useMemo(() => {
+    if (!feedResponse?.items) return [];
+    return feedResponse.items
+      .filter(item => item.type === 'news')
+      .map(item => item.data as NewsArticle);
+  }, [feedResponse]);
+
+  // Since we don't have a specific "My Articles" endpoint with status, 
+  // we map the general feed to "All" and "Published". Pending/Rejected are empty
+  // to strictly avoid dummy data.
+  const articleMap: Record<TabKey, NewsArticle[]> = {
+    all: published,
+    pending: [],
+    published: published,
+    rejected: []
+  };
+
   const [activeTab, setActiveTab] = useState<TabKey>('all');
-
-  const articleMap: Record<TabKey, NewsArticle[]> = { all, pending, published, rejected };
   const currentList = articleMap[activeTab];
 
   const stats = [
-    { label: 'Total', value: all.length, icon: 'article', color: '#6567F1' },
-    { label: 'Pending', value: pending.length, icon: 'hourglass-top', color: '#F59E0B' },
+    { label: 'Total', value: published.length, icon: 'article', color: '#6567F1' },
+    { label: 'Pending', value: 0, icon: 'hourglass-top', color: '#F59E0B' },
     { label: 'Published', value: published.length, icon: 'check-circle', color: '#10B981' },
-    { label: 'Rejected', value: rejected.length, icon: 'cancel', color: '#EF4444' },
+    { label: 'Rejected', value: 0, icon: 'cancel', color: '#EF4444' },
   ];
-
-  const getStatusChip = (status: ArticleStatus) => {
-    const map = {
-      pending: { bg: '#FEF3C7', text: '#D97706', label: 'Pending Review' },
-      published: { bg: '#DCFCE7', text: '#16A34A', label: 'Published' },
-      rejected: { bg: '#FEE2E2', text: '#DC2626', label: 'Rejected' },
-    };
-    const s = map[status];
-    return (
-      <View style={[styles.statusChip, { backgroundColor: s.bg }]}>
-        <Text style={[styles.statusChipText, { color: s.text }]}>{s.label}</Text>
-      </View>
-    );
-  };
 
   const renderArticleItem = ({ item }: { item: NewsArticle }) => (
     <View style={[styles.articleCard, { backgroundColor: colors.surface }]}>
       <View style={styles.articleHeader}>
         <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>
-          {item.headline}
+          {item.title}
         </Text>
-        {getStatusChip(item.status)}
+        <View style={[styles.statusChip, { backgroundColor: '#DCFCE7' }]}>
+          <Text style={[styles.statusChipText, { color: '#16A34A' }]}>Published</Text>
+        </View>
       </View>
 
       <Text style={[styles.articleSummary, { color: colors.textSecondary }]} numberOfLines={2}>
@@ -79,38 +83,26 @@ export default function PublisherDashboard() {
         <View style={styles.metaItem}>
           <MaterialIcons name="category" size={14} color={colors.textTertiary} />
           <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-            {item.category.name}
+            {item.category_names?.[0] || 'General'}
           </Text>
         </View>
         <View style={styles.metaItem}>
           <MaterialIcons name="schedule" size={14} color={colors.textTertiary} />
           <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-            {new Date(item.publishedAt).toLocaleDateString()}
+            {new Date(item.created_at).toLocaleDateString()}
           </Text>
         </View>
       </View>
-
-      {/* Admin simulation buttons for pending articles */}
-      {item.status === 'pending' && (
-        <View style={styles.adminActions}>
-          <Pressable
-            style={[styles.adminButton, { backgroundColor: '#DCFCE7' }]}
-            onPress={() => approveArticle(item.id)}
-          >
-            <MaterialIcons name="check" size={16} color="#16A34A" />
-            <Text style={[styles.adminButtonText, { color: '#16A34A' }]}>Approve</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.adminButton, { backgroundColor: '#FEE2E2' }]}
-            onPress={() => rejectArticle(item.id)}
-          >
-            <MaterialIcons name="close" size={16} color="#DC2626" />
-            <Text style={[styles.adminButtonText, { color: '#DC2626' }]}>Reject</Text>
-          </Pressable>
-        </View>
-      )}
     </View>
   );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]} edges={['top']}>
+        <LoadingSpinner fullScreen text="Loading dashboard..." colorScheme={colorScheme ?? 'light'} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -191,7 +183,7 @@ export default function PublisherDashboard() {
       {currentList.length > 0 ? (
         <FlatList
           data={currentList}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.news_uid}
           renderItem={renderArticleItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -306,25 +298,6 @@ const styles = StyleSheet.create({
   articleMeta: { flexDirection: 'row', gap: 16 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 12 },
-
-  // Admin actions
-  adminActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.06)',
-  },
-  adminButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  adminButtonText: { fontSize: 13, fontWeight: '700' },
 
   // Empty state
   emptyContainer: {
