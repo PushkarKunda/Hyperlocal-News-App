@@ -11,13 +11,14 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname } from 'expo-router'; // ✅ Added usePathname
+import { useRouter, usePathname } from 'expo-router'; // Added usePathname
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguagesList } from '@/hooks/useApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { usersApi } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -214,39 +215,25 @@ export default function LanguageScreen() {
 
   // ─── Continue Handler ──────────────────────────────────────────────────────
 
+  // FIXED: Store data locally, no API call
   const handleContinue = async () => {
     if (!selectedLanguage) {
       Alert.alert('Language Required', 'Please select a language to continue.');
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      // Find selected language details
-      const matchedLanguage = languagesList.find((l) => l.id === selectedLanguage);
-
-      if (!matchedLanguage) {
-        throw new Error('Selected language not found');
-      }
-
-      // Save language preference to backend (stores full name like "Telugu")
-      await usersApi.savePreferences({
-        language_id: matchedLanguage.backendId,
-      });
-
-      // Navigate to next step
-      router.push('/(onboarding)/location');
-    } catch (error: any) {
-      console.error('[LanguageScreen] Failed to save language:', error);
-      Alert.alert(
-        'Save Failed',
-        error.message || 'Failed to save language preference. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsSaving(false);
+    const matchedLanguage = languagesList.find((l) => l.id === selectedLanguage);
+    if (!matchedLanguage) {
+      Alert.alert('Error', 'Selected language not found');
+      return;
     }
+
+    // Store in authStore onboarding data
+    const { setOnboardingData } = useAuthStore.getState();
+    setOnboardingData({ language_id: matchedLanguage.backendId });
+
+    // Navigate to next step
+    router.push('/(onboarding)/location');
   };
 
   // ─── Loading State ─────────────────────────────────────────────────────────

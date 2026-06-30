@@ -25,7 +25,7 @@ export function isValidOTP(otp: string, length: number = 4): boolean {
 /**
  * Check if string is empty or whitespace
  */
-export function isEmpty(value: string | null | undefined): boolean {
+export function isEmpty(value: string | null | null): boolean {
   return !value || value.trim().length === 0;
 }
 

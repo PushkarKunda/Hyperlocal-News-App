@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth'; // ✅ Added auth import
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import {
   sendPhoneOTP as firebaseSendOTP,
   verifyPhoneOTP as firebaseVerifyOTP,
@@ -36,26 +36,26 @@ export interface User {
   mobile_verified: boolean;
   is_suspended: boolean;
   created_at: string;
-  language?: string;
+  language?: string | null;
   theme?: 'light' | 'dark' | 'system';
-  avatar?: string;
-  profile_picture?: string;
-  phoneNumber?: string;
-  interests?: string[];
-  category_ids?: number[];
-  state?: string;
-  district?: string;
-  language_id?: number;
-  state_id?: number;
-  district_id?: number;
-  city_id?: number;
-  language_name?: string;
-  state_name?: string;
-  district_name?: string;
-  city_name?: string;
+  avatar?: string | null;
+  profile_picture?: string | null;
+  phoneNumber?: string | null;
+  interests?: string[] | null;
+  category_ids?: number[] | null;
+  state?: string | null;
+  district?: string | null;
+  language_id?: number | null;
+  state_id?: number | null;
+  district_id?: number | null;
+  city_id?: number | null;
+  language_name?: string | null;
+  state_name?: string | null;
+  district_name?: string | null;
+  city_name?: string | null;
   isPublisher?: boolean;
-  gender?: string;
-  date_of_birth?: string;
+  gender?: string | null;
+  date_of_birth?: string | null;
 }
 
 type RawUser = Omit<User, 'is_suspended' | 'created_at' | 'profile_picture'> & {
@@ -68,7 +68,7 @@ type RawUser = Omit<User, 'is_suspended' | 'created_at' | 'profile_picture'> & {
 };
 
 const sanitizeUser = (user: RawUser): User => {
-  const isPhone = (str: string | null | undefined): boolean => {
+  const isPhone = (str: string | null): boolean => {
     if (!str) return false;
     const clean = str.replace(/[\s\-()]/g, '');
     return /^\+?\d{7,15}$/.test(clean);
@@ -82,7 +82,7 @@ const sanitizeUser = (user: RawUser): User => {
     if (!updatedPhone) updatedPhone = user.name;
   }
 
-  const profilePicture = user.profile_picture ?? undefined;
+  const profilePicture = user.profile_picture ?? null;
 
   return {
     ...user,
@@ -90,16 +90,16 @@ const sanitizeUser = (user: RawUser): User => {
     created_at: user.created_at ?? new Date().toISOString(),
     name: updatedName,
     phone: updatedPhone,
-    phoneNumber: updatedPhone ?? undefined,
-    mobile_verified: user.mobile_verified === true, // ✅ FIX: Trust backend, not phone existence
+    phoneNumber: updatedPhone ?? null,
+    mobile_verified: user.mobile_verified === true,
     isPublisher: user.role >= 2,
     avatar: profilePicture,
     profile_picture: profilePicture,
-    language: user.language ?? user.language_name ?? undefined,
-    state: user.state ?? user.state_name ?? undefined,
-    district: user.district ?? user.district_name ?? undefined,
-    interests: user.interests ?? undefined,
-    category_ids: user.category_ids ?? user.categories?.map((category) => category.id),
+    language: user.language ?? user.language_name ?? null,
+    state: user.state ?? user.state_name ?? null,
+    district: user.district ?? user.district_name ?? null,
+    interests: user.interests ?? null,
+    category_ids: user.category_ids ?? user.categories?.map((category) => category.id) ?? null,
   };
 };
 
@@ -117,6 +117,15 @@ interface AuthState {
   pendingVerificationId: string | null;
   lastOtpSentTime: number | null;
 
+  // ✅ NEW: Temporary onboarding data collection
+  onboardingData: {
+    language_id?: number | null;
+    state_id?: number | null;
+    district_id?: number | null;
+    city_id?: number | null;
+    category_ids?: number[] | null;
+  };
+
   sendPhoneOTP: (phoneNumber: string) => Promise<void>;
   verifyPhoneOTP: (otp: string) => Promise<BackendLoginResponse>;
   loginWithGoogle: (idToken: string) => Promise<BackendLoginResponse>;
@@ -128,6 +137,9 @@ interface AuthState {
   updateProfileLocal: (updates: Partial<User>) => void;
   updateLanguage: (language: string) => void;
   updateTheme: (theme: 'light' | 'dark' | 'system') => void;
+
+  // ✅ NEW: Set onboarding data during flow
+  setOnboardingData: (data: Partial<AuthState['onboardingData']>) => void;
 
   switchToPublisher: () => Promise<void>;
   checkPublisherEligibility: () => Promise<PublisherEligibilityResponse>;
@@ -146,11 +158,6 @@ class AuthError extends Error {
   }
 }
 
-/**
- * ✅ FIX: Helper to detect "already linked" errors
- * Firebase returns auth/unknown with "already been linked" message
- * instead of auth/provider-already-linked in some RN Firebase versions
- */
 const isAlreadyLinkedError = (error: any): boolean => {
   if (error.code === 'auth/provider-already-linked') return true;
   if (
@@ -229,6 +236,9 @@ export const useAuthStore = create<AuthState>()(
       pendingVerificationId: null,
       lastOtpSentTime: null,
 
+      // ✅ NEW: Initialize empty onboarding data
+      onboardingData: {},
+
       // ─── Send Phone OTP ────────────────────────────────────────────────────
 
       sendPhoneOTP: async (phoneNumber: string) => {
@@ -267,7 +277,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      // ─── Verify Phone OTP (for phone-only login, NOT for linking) ──────────
+      // ─── Verify Phone OTP ──────────────────────────────────────────────────
 
       verifyPhoneOTP: async (otp: string) => {
         set({ isLoading: true, error: null });
@@ -353,8 +363,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       // ─── Link Phone Number ─────────────────────────────────────────────────
-      // ✅ FIX: Handles "already linked" as success
-      // Called from edit-profile when authenticated user verifies phone
 
       linkPhone: async (_phoneNumber: string, otp: string) => {
         set({ isLoading: true, error: null });
@@ -367,58 +375,33 @@ export const useAuthStore = create<AuthState>()(
           }
 
           let firebaseToken: string;
-          let wasAlreadyLinked = false;
 
           try {
-            // Normal flow: link phone credential to existing Firebase user
-            firebaseToken = await linkPhoneNumber(
-              pendingVerificationId,
-              otp
-            );
+            firebaseToken = await linkPhoneNumber(pendingVerificationId, otp);
           } catch (linkError: any) {
-            // ✅ FIX: "Already linked" means OTP was verified and phone is already linked
-            // This is SUCCESS, not failure
             if (isAlreadyLinkedError(linkError)) {
-              console.log(
-                '📞 Phone already linked on Firebase — OTP verified successfully'
-              );
-              wasAlreadyLinked = true;
-
-              // Get fresh ID token (includes phone claim) to sync with backend
+              console.log('📞 Phone already linked — OTP verified successfully');
               const currentUser = auth().currentUser;
               if (!currentUser) {
-                throw new AuthError(
-                  'No authenticated user found',
-                  'NO_USER'
-                );
+                throw new AuthError('No authenticated user found', 'NO_USER');
               }
               firebaseToken = await currentUser.getIdToken(true);
             } else {
-              // Other errors (invalid code, expired, credential-in-use) — re-throw
               throw linkError;
             }
           }
 
-          // Sync with backend — backend reads Firebase token and updates user
           const response = await authApi.loginWithFirebase(firebaseToken);
           const updatedUser = sanitizeUser(response.user);
 
-          // ✅ Safety: if backend didn't set mobile_verified, update phone explicitly
-          // This handles the case where backend didn't sync from Firebase token
           if (!updatedUser.mobile_verified && pendingPhone) {
             try {
-              console.log(
-                '📞 Backend missing mobile_verified — updating phone explicitly'
-              );
               await usersApi.updateMe({ phone: pendingPhone });
               updatedUser.phone = pendingPhone;
               updatedUser.phoneNumber = pendingPhone;
               updatedUser.mobile_verified = true;
             } catch (updateErr) {
-              console.warn(
-                '[linkPhone] Failed to update phone on backend:',
-                updateErr
-              );
+              console.warn('[linkPhone] Failed to update phone:', updateErr);
             }
           }
 
@@ -457,6 +440,7 @@ export const useAuthStore = create<AuthState>()(
             pendingPhone: null,
             pendingVerificationId: null,
             lastOtpSentTime: null,
+            onboardingData: {}, // ✅ Clear onboarding data
           });
         }
       },
@@ -489,17 +473,13 @@ export const useAuthStore = create<AuthState>()(
 
       updateProfile: (updates: Partial<User>) => {
         set((state) => ({
-          user: state.user
-            ? sanitizeUser({ ...state.user, ...updates })
-            : null,
+          user: state.user ? sanitizeUser({ ...state.user, ...updates }) : null,
         }));
       },
 
       updateProfileLocal: (updates: Partial<User>) => {
         set((state) => ({
-          user: state.user
-            ? sanitizeUser({ ...state.user, ...updates })
-            : null,
+          user: state.user ? sanitizeUser({ ...state.user, ...updates }) : null,
         }));
       },
 
@@ -511,15 +491,24 @@ export const useAuthStore = create<AuthState>()(
         get().updateProfileLocal({ theme });
       },
 
+      // ✅ NEW: Set onboarding data during onboarding flow
+      setOnboardingData: (data: Partial<AuthState['onboardingData']>) => {
+        set((state) => ({
+          onboardingData: { ...state.onboardingData, ...data },
+        }));
+      },
+
       // ─── Complete Onboarding ───────────────────────────────────────────────
+      // ✅ FIXED: Now sends ALL preferences in ONE POST request
 
       completeOnboarding: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { user } = get();
+          const { user, onboardingData } = get();
           if (!user) throw new AuthError('No user found', 'NO_USER');
 
-          let uploadedAvatarUrl: string | undefined = user.avatar;
+          // ✅ Upload avatar if local file
+          let uploadedAvatarUrl: string | null = user.avatar ?? null;
 
           const isLocalFile =
             user.avatar &&
@@ -541,14 +530,12 @@ export const useAuthStore = create<AuthState>()(
                 'avatars'
               );
             } catch (uploadErr) {
-              console.error(
-                '[completeOnboarding] Avatar upload failed:',
-                uploadErr
-              );
-              uploadedAvatarUrl = undefined;
+              console.error('[completeOnboarding] Avatar upload failed:', uploadErr);
+              uploadedAvatarUrl = null;
             }
           }
 
+          // ✅ Update basic profile (name, avatar, gender, DOB)
           await usersApi.updateMe({
             name: user.name ?? undefined,
             profile_picture: uploadedAvatarUrl ?? null,
@@ -556,20 +543,32 @@ export const useAuthStore = create<AuthState>()(
             date_of_birth: user.date_of_birth ?? null,
           });
 
-          await usersApi.updatePreferences({
-            language_id: user.language_id ?? null,
-            state_id: user.state_id ?? null,
-            district_id: user.district_id ?? null,
-            city_id: user.city_id ?? null,
-            category_ids: user.category_ids ?? null,
+          // ✅ Save ALL preferences in ONE POST request
+          await usersApi.savePreferences({
+            language_id: onboardingData.language_id ?? null,
+            state_id: onboardingData.state_id ?? null,
+            district_id: onboardingData.district_id ?? null,
+            city_id: onboardingData.city_id ?? null,
+            category_ids: onboardingData.category_ids ?? null,
           });
 
+          // ✅ Update local user state
           get().updateProfileLocal({
             avatar: uploadedAvatarUrl,
             profile_picture: uploadedAvatarUrl,
+            language_id: onboardingData.language_id,
+            state_id: onboardingData.state_id,
+            district_id: onboardingData.district_id,
+            city_id: onboardingData.city_id,
+            category_ids: onboardingData.category_ids,
           });
 
-          set({ isOnboarded: true, isLoading: false });
+          // ✅ Mark onboarding complete and clear temp data
+          set({
+            isOnboarded: true,
+            isLoading: false,
+            onboardingData: {},
+          });
         } catch (error: any) {
           const authError = handleAuthError(error);
           set({ isLoading: false, error: authError.message });

@@ -15,7 +15,7 @@ import {
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname } from 'expo-router'; // ✅ Added usePathname
+import { useRouter, usePathname } from 'expo-router'; // Added usePathname
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -24,6 +24,7 @@ import { usersApi } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { scaleFontSize } from '@/utils/responsive';
 import { shouldShowDistrictCity } from '@/services/api/location';
+import { useAuthStore } from '@/store/authStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -142,9 +143,9 @@ export default function LocationScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  const pathname = usePathname(); // ✅ Added
+  const pathname = usePathname(); // Added
 
-  // ✅ Detect edit mode vs new user onboarding
+  // Detect edit mode vs new user onboarding
   const isEditMode = pathname.includes('edit-profile');
 
   // ─── API & State ───────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ export default function LocationScreen() {
   const { data: statesList = [], isLoading } = useStatesList();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedState, setSelectedState] = useState('ts'); // ✅ Default 'ts'
+  const [selectedState, setSelectedState] = useState('ts'); // Default 'ts'
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -167,13 +168,13 @@ export default function LocationScreen() {
   useEffect(() => {
     if (!statesList.length) return;
 
-    // ✅ New user onboarding → use default, no API call needed
+    // New user onboarding → use default, no API call needed
     if (!isEditMode) {
       setSelectedState('ts'); // Default Telangana
       return;
     }
 
-    // ✅ Edit mode → fetch and pre-fill saved preference
+    // Edit mode → fetch and pre-fill saved preference
     const loadPreferences = async () => {
       try {
         const prefs = await usersApi.getPreferences();
@@ -339,51 +340,40 @@ export default function LocationScreen() {
 
   // ─── Continue Handler ──────────────────────────────────────────────────────
 
-  const handleContinue = async () => {
+  // FIXED: Store data locally, no API call
+  const handleContinue = () => {
     if (!selectedState) {
       Alert.alert('State Required', 'Please select your state to continue.');
       return;
     }
 
-    setIsSaving(true);
+    const matchedState = statesList.find((s) => s.id === selectedState);
+    if (!matchedState) {
+      Alert.alert('Error', 'Selected state not found');
+      return;
+    }
 
-    try {
-      const matchedState = statesList.find((s) => s.id === selectedState);
-      if (!matchedState) {
-        throw new Error('Selected state not found');
-      }
+    // Store in authStore onboarding data
+    const { setOnboardingData } = useAuthStore.getState();
+    setOnboardingData({ state_id: matchedState.backendId });
 
-      // Save state preference to backend
-      await usersApi.savePreferences({
-        state_id: matchedState.backendId,
+    // Check if district/city selection is needed
+    // Only Telugu users need district/city for AP/TS
+    const needsDistrictCity = shouldShowDistrictCity(
+      userLanguage,
+      matchedState.id === 'ap' ? 1 : matchedState.id === 'ts' ? 2 : null
+    );
+
+    if (needsDistrictCity) {
+      // Telugu + AP/TS → go to districts
+      router.push({
+        pathname: '/(onboarding)/districts',
+        params: { state: selectedState },
       });
-
-      // Check if district/city selection is needed
-      // Only Telugu + AP/TS requires district/city
-      const needsDistrictCity = shouldShowDistrictCity(
-        userLanguage,
-        matchedState.id === 'ap' ? 1 : matchedState.id === 'ts' ? 2 : undefined
-      );
-
-      if (needsDistrictCity) {
-        // Navigate to districts screen
-        router.push({
-          pathname: '/(onboarding)/districts',
-          params: { state: selectedState },
-        });
-      } else {
-        // Skip to interests
-        router.push('/(onboarding)/interests');
-      }
-    } catch (error: any) {
-      console.error('[LocationScreen] Failed to save state:', error);
-      Alert.alert(
-        'Save Failed',
-        error.message || 'Failed to save state preference. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsSaving(false);
+    } else {
+      // English/Hindi → set district/city to null and skip to interests
+      setOnboardingData({ district_id: null, city_id: null });
+      router.push('/(onboarding)/interests');
     }
   };
 

@@ -20,6 +20,7 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useCitiesList } from '@/hooks/useApi';
 import { usersApi } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAuthStore } from '@/store/authStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -143,7 +144,7 @@ export default function CitiesScreen() {
 
     // ─── API & State ───────────────────────────────────────────────────────────
 
-    const { data: cities = [], isLoading } = useCitiesList(district);
+    const { data: cities = [], isLoading } = useCitiesList(district ?? null);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
@@ -203,32 +204,25 @@ export default function CitiesScreen() {
 
     // ─── Continue Handler ──────────────────────────────────────────────────────
 
-    const handleContinue = async () => {
+    // FIXED: Store data locally, no API call
+    const handleContinue = () => {
         if (!selectedCity) {
             Alert.alert('City Required', 'Please select your city to continue.');
             return;
         }
 
-        setIsSaving(true);
-
-        try {
-            const matchedCity = cities.find((city) => city.id === selectedCity);
-            if (!matchedCity) {
-                throw new Error('Selected city not found');
-            }
-
-            await usersApi.savePreferences({
-                city_id: matchedCity.backendId,
-            });
-
-            // Navigate to interests
-            router.push('/(onboarding)/interests');
-        } catch (error: any) {
-            console.error('[CitiesScreen] Navigation error:', error);
-            Alert.alert('Error', 'Failed to continue. Please try again.');
-        } finally {
-            setIsSaving(false);
+        const matchedCity = cities.find((city) => city.id === selectedCity);
+        if (!matchedCity) {
+            Alert.alert('Error', 'Selected city not found');
+            return;
         }
+
+        // Store in authStore onboarding data
+        const { setOnboardingData } = useAuthStore.getState();
+        setOnboardingData({ city_id: matchedCity.backendId });
+
+        // Navigate to interests
+        router.push('/(onboarding)/interests');
     };
 
     // ─── Filtered Cities ───────────────────────────────────────────────────────

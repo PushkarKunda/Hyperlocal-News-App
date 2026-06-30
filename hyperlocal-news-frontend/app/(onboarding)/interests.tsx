@@ -12,14 +12,15 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname } from 'expo-router'; // ✅ Added usePathname
+import { useRouter, usePathname } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCategoriesAll } from '@/hooks/useApi';
-import { usersApi } from '@/services/api'; // ✅ Added
+import { usersApi } from '@/services/api';
+import { useAuthStore } from '@/store/authStore'; // ✅ Added
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'; // ✅ Added
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -37,7 +38,6 @@ const TOPIC_STYLES: Record<string, {
   selectedBg: string;
   span?: boolean;
 }> = {
-  // By slug or lowercase name
   technology: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
   tech: { iconName: 'monitor', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
   sports: { iconName: 'basketball-outline', iconType: 'ionicons', iconColor: '#4648d4', iconBg: 'rgba(70,72,212,0.06)', selectedBg: '#D8D9F7' },
@@ -53,7 +53,6 @@ const TOPIC_STYLES: Record<string, {
   entertainment: { iconName: 'film', iconType: 'feather', iconColor: '#6063ee', iconBg: 'rgba(96,99,238,0.06)', selectedBg: '#DDDEFC' },
 };
 
-// Default fallback
 const DEFAULT_STYLE = {
   iconName: 'star-outline' as const,
   iconType: 'ionicons' as const,
@@ -61,8 +60,6 @@ const DEFAULT_STYLE = {
   iconBg: 'rgba(70,72,212,0.06)',
   selectedBg: '#D8D9F7',
 };
-
-// ─── Resolve Style ─────────────────────────────────────────────────────────
 
 const resolveTopicStyle = (slug: string, name: string) => {
   return (
@@ -79,12 +76,11 @@ const resolveTopicStyle = (slug: string, name: string) => {
 
 export default function InterestsScreen() {
   const router = useRouter();
-  const pathname = usePathname(); // ✅ Added
+  const pathname = usePathname();
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
 
-  // ✅ Detect edit mode
   const isEditMode = pathname.includes('edit-profile');
 
   // ─── API Data ──────────────────────────────────────────────────────────────
@@ -93,9 +89,8 @@ export default function InterestsScreen() {
 
   // ─── State ─────────────────────────────────────────────────────────────────
 
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]); // ✅ Empty by default
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true); // ✅ Added
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const cardScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
@@ -106,6 +101,7 @@ export default function InterestsScreen() {
     const style = resolveTopicStyle(category.slug, category.name);
     return {
       id: String(category.id),
+      backendId: category.id, // ✅ NEW: Store backend ID
       slug: category.slug,
       name: category.name,
       description: category.description,
@@ -116,13 +112,11 @@ export default function InterestsScreen() {
   // ─── Load Saved Preferences (Edit mode only) ──────────────────────────────
 
   useEffect(() => {
-    // ✅ New user → start fresh, no API call
     if (!isEditMode) {
       setIsLoadingPrefs(false);
       return;
     }
 
-    // ✅ Edit mode → fetch saved interests
     const loadPreferences = async () => {
       try {
         const prefs = await usersApi.getPreferences();
@@ -168,11 +162,11 @@ export default function InterestsScreen() {
 
   // ─── Toggle Topic ──────────────────────────────────────────────────────────
 
-  const toggleTopic = (categoryName: string) => {
+  const toggleTopic = (topicId: string) => {
     setSelectedTopics((prev) =>
-      prev.includes(categoryName)
-        ? prev.filter((n) => n !== categoryName)
-        : [...prev, categoryName]
+      prev.includes(topicId)
+        ? prev.filter((id) => id !== topicId)
+        : [...prev, topicId]
     );
   };
 
@@ -188,34 +182,41 @@ export default function InterestsScreen() {
   };
 
   // ─── Continue Handler ──────────────────────────────────────────────────────
+  // ✅ FIXED: Store locally only, no API call
 
-  const handleContinue = async () => {
-    if (selectedTopics.length < MIN_SELECTIONS) return;
-
-    setIsSaving(true);
-
-    try {
-      // ✅ Save interests to backend
-      await usersApi.savePreferences({
-        category_ids: selectedTopics.map(Number),
-      });
-
-      router.push('/(onboarding)/setup-feed');
-    } catch (error: any) {
-      console.error('[InterestsScreen] Failed to save interests:', error);
+  const handleContinue = () => {
+    if (selectedTopics.length < MIN_SELECTIONS) {
       Alert.alert(
-        'Save Failed',
-        error.message || 'Failed to save your interests. Please try again.',
-        [{ text: 'OK' }]
+        'Selection Required',
+        `Please select at least ${MIN_SELECTIONS} interests to continue.`
       );
-    } finally {
-      setIsSaving(false);
+      return;
     }
+
+    // ✅ Convert selected topic IDs (strings) to backend IDs (numbers)
+    const selectedBackendIds = selectedTopics
+      .map((topicId) => {
+        const topic = mappedTopics.find((t) => t.id === topicId);
+        return topic?.backendId;
+      })
+      .filter((id): id is number => id !== undefined);
+
+    if (selectedBackendIds.length === 0) {
+      Alert.alert('Error', 'No valid categories selected');
+      return;
+    }
+
+    // ✅ Store in authStore onboarding data
+    const { setOnboardingData } = useAuthStore.getState();
+    setOnboardingData({ category_ids: selectedBackendIds });
+
+    // ✅ Navigate to setup feed (which calls completeOnboarding)
+    router.push('/(onboarding)/setup-feed');
   };
 
   // ─── Derived State ─────────────────────────────────────────────────────────
 
-  const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS || isSaving;
+  const isButtonDisabled = selectedTopics.length < MIN_SELECTIONS;
 
   // ─── Loading ───────────────────────────────────────────────────────────────
 
@@ -311,7 +312,7 @@ export default function InterestsScreen() {
         {/* Bento Grid */}
         <View style={styles.bentoGrid}>
           {mappedTopics.map((topic) => {
-            const isSelected = selectedTopics.includes(topic.name);
+            const isSelected = selectedTopics.includes(topic.id);
             const scale = getOrCreateAnim(topic.id);
             const isSpan = !!topic.span;
             const marginRight = isSpan
@@ -325,7 +326,7 @@ export default function InterestsScreen() {
                 key={topic.id}
                 onPressIn={() => handleCardPressIn(topic.id)}
                 onPressOut={() => handleCardPressOut(topic.id)}
-                onPress={() => toggleTopic(topic.name)}
+                onPress={() => toggleTopic(topic.id)}
                 style={[
                   isSpan ? styles.bentoCardSpan : styles.bentoCardSingle,
                   { width: isSpan ? '100%' : '47%', marginRight, marginBottom: 16 },
@@ -354,7 +355,6 @@ export default function InterestsScreen() {
                   ]}
                 >
                   {isSpan ? (
-                    // ── Span Layout ────────────────────────────────────────────
                     <View style={styles.spanRow}>
                       <View
                         style={[
@@ -405,7 +405,6 @@ export default function InterestsScreen() {
                       </View>
                     </View>
                   ) : (
-                    // ── Single Card Layout ─────────────────────────────────────
                     <View style={styles.singleLayout}>
                       <View style={styles.singleTopRow}>
                         <View
@@ -506,23 +505,17 @@ export default function InterestsScreen() {
             onPress={handleContinue}
             disabled={isButtonDisabled}
           >
-            {isSaving ? (
-              <LoadingSpinner size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.continueButtonText}>
-                  {selectedTopics.length < MIN_SELECTIONS
-                    ? `Select ${MIN_SELECTIONS - selectedTopics.length} more`
-                    : 'Continue'}
-                </Text>
-                <Feather
-                  name="chevron-right"
-                  size={16}
-                  color="#FFF"
-                  style={styles.btnChevron}
-                />
-              </>
-            )}
+            <Text style={styles.continueButtonText}>
+              {selectedTopics.length < MIN_SELECTIONS
+                ? `Select ${MIN_SELECTIONS - selectedTopics.length} more`
+                : 'Continue'}
+            </Text>
+            <Feather
+              name="chevron-right"
+              size={16}
+              color="#FFF"
+              style={styles.btnChevron}
+            />
           </Pressable>
         </Animated.View>
       </View>
@@ -531,7 +524,7 @@ export default function InterestsScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// STYLES
+// STYLES (unchanged)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({

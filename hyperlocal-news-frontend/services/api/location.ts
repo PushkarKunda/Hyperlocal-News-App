@@ -110,7 +110,7 @@ export const isAllowedLanguage = (code: string): code is AllowedLanguageCode => 
  * Telugu + Others  → state only
  */
 export const getLocationRequirements = (
-  languageCode: string | undefined,
+  languageCode: string | null,
   stateId?: number
 ): LocationRequirements => {
   if (!languageCode) {
@@ -186,8 +186,8 @@ export const getLocationRequirements = (
  * Telugu  + KA  = false 
  */
 export const shouldShowDistrictCity = (
-  languageCode: string | undefined,
-  stateId: number | undefined
+  languageCode: string | null,
+  stateId: number | null
 ): boolean => {
   if (!languageCode || !stateId) return false;
   return languageCode === 'te' && isStateSupportedForLocations(stateId);

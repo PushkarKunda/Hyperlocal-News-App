@@ -46,7 +46,7 @@ export function Input({
     return colors.border;
   };
 
-  const isPassword = secureTextEntry !== undefined;
+  const isPassword = secureTextEntry !== null;
 
   return (
     <View style={[styles.container, containerStyle]}>

@@ -25,7 +25,7 @@ export interface CategorySummary {
   slug?: string | null;
 }
 
-export interface CurrentUserProfile extends User {
+export interface CurrentUserProfile extends Omit<User, 'language_id' | 'state_id' | 'district_id' | 'city_id'> {
   language_id?: number | null;
   state_id?: number | null;
   district_id?: number | null;
@@ -35,7 +35,7 @@ export interface CurrentUserProfile extends User {
   district_name?: string | null;
   city_name?: string | null;
   categories?: CategorySummary[];
-  category_ids?: number[];
+  category_ids?: number[] | null; // ✅ FIXED: Added null
 }
 
 export interface UpdatePreferencesPayload {
@@ -69,12 +69,51 @@ export interface SuspensionStatus {
   suspended_until?: string;
 }
 
-export interface UserDashboard {
-  total_news: number;
-  total_views: number;
+export interface UserDashboardStats {
+  total_posts: number;
   total_likes: number;
   total_comments: number;
-  total_shares: number;
+  level: number;
+  level_name?: string;
+  coins: number;
+  points: number;
+  current_streak?: number;
+  longest_streak?: number;
+}
+
+export interface UserDashboard {
+  user?: {
+    user_uid?: string;
+    user_name?: string | null;
+    name?: string | null;
+    profile_picture?: string | null;
+    location?: string | null;
+    joined_date?: string | null;
+    followers_count?: number;
+    following_count?: number;
+    role?: number;
+    role_name?: string;
+    is_publisher?: boolean;
+    is_verified?: boolean;
+    profile_completion?: number;
+  };
+  stats?: UserDashboardStats;
+  recent_posts?: {
+    items?: any[];
+    total?: number;
+    has_more?: boolean;
+  };
+  quick_actions?: any[];
+  publisher_cta?: any;
+  detailed_posts?: {
+    items?: any[];
+    pagination?: any;
+  };
+  total_news?: number;
+  total_views?: number;
+  total_likes?: number;
+  total_comments?: number;
+  total_shares?: number;
   recent_news?: any[];
 }
 
@@ -106,12 +145,12 @@ export const usersApi = {
   /**
    * PATCH /user/user/users/me
    * Update user profile
-   * Strips undefined but KEEPS null (null clears field on backend)
+   * Strips null but KEEPS null (null clears field on backend)
    */
   updateMe: async (payload: UpdateMePayload): Promise<User> => {
     const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([, v]) => v !== undefined)
-    );
+      Object.entries(payload).filter(([, v]) => v !== null)
+    ) as UpdateMePayload;
 
     return await request<User>({
       url: API_ROUTES.user.me,
@@ -128,8 +167,8 @@ export const usersApi = {
     payload: UpdatePreferencesPayload
   ): Promise<UserPreferences> => {
     const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([, v]) => v !== undefined)
-    );
+      Object.entries(payload).filter(([, v]) => v !== null)
+    ) as UpdatePreferencesPayload;
 
     return await request<UserPreferences>({
       url: API_ROUTES.user.preferences,
@@ -146,8 +185,8 @@ export const usersApi = {
     payload: UpdatePreferencesPayload
   ): Promise<UserPreferences> => {
     const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([, v]) => v !== undefined)
-    );
+      Object.entries(payload).filter(([, v]) => v !== null)
+    ) as UpdatePreferencesPayload;
 
     return await request<UserPreferences>({
       url: API_ROUTES.user.preferences,

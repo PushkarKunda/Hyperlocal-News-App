@@ -54,8 +54,8 @@ export default function ProfileCompletionScreen() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [gender, setGender] = useState(user?.gender ?? '');
   const [dob, setDob] = useState(user?.date_of_birth ?? '');
-  const [selectedAvatar, setSelectedAvatar] = useState<string | undefined>(
-    user?.profile_picture ?? user?.avatar ?? undefined
+  const [selectedAvatar, setSelectedAvatar] = useState<string | ''>(
+    user?.profile_picture ?? user?.avatar ?? ''
   );
 
   const [isFocused, setIsFocused] = useState(false);
@@ -109,7 +109,7 @@ export default function ProfileCompletionScreen() {
         setEmail(userProfile.email ?? '');
         setGender(userProfile.gender ?? '');
         setDob(userProfile.date_of_birth ?? '');
-        setSelectedAvatar(userProfile.profile_picture ?? userProfile.avatar ?? undefined);
+        setSelectedAvatar(userProfile.profile_picture ?? userProfile.avatar ?? '');
       } catch (error: any) {
         console.error('[edit-profile] Failed to load preferences:', error);
       } finally {
@@ -128,7 +128,7 @@ export default function ProfileCompletionScreen() {
 
       // ✅ Trust backend's email_verified, don't infer from email existence
       updateProfile({
-        email: updatedUser.email ?? undefined,
+        email: updatedUser.email ?? null,
         email_verified: updatedUser.email_verified,
       });
       setEmail(updatedUser.email ?? '');
@@ -375,7 +375,7 @@ export default function ProfileCompletionScreen() {
     setIsSaving(true);
 
     try {
-      let uploadedAvatarUrl: string | undefined = selectedAvatar;
+      let uploadedAvatarUrl: string | null = selectedAvatar;
 
       const isLocalFile =
         selectedAvatar &&
@@ -400,7 +400,7 @@ export default function ProfileCompletionScreen() {
             'Could not upload photo, but saving other details.',
             'warning'
           );
-          uploadedAvatarUrl = undefined;
+          uploadedAvatarUrl = null;
         }
       }
 
@@ -408,6 +408,8 @@ export default function ProfileCompletionScreen() {
         // ─── Edit Profile Flow ─────────────────────────────────────────────
         await usersApi.updateMe({
           name: name.trim(),
+          phone: phoneNumber.trim() || null,
+          email: email.trim() || null,
           profile_picture: uploadedAvatarUrl ?? null,
           gender: gender || null,
           date_of_birth: dob || null,
@@ -415,10 +417,13 @@ export default function ProfileCompletionScreen() {
 
         updateProfile({
           name: name.trim(),
+          phone: phoneNumber.trim() || null,
+          phoneNumber: phoneNumber.trim() || null,
+          email: email.trim() || null,
           avatar: uploadedAvatarUrl,
           profile_picture: uploadedAvatarUrl,
-          gender: gender || undefined,
-          date_of_birth: dob || undefined,
+          gender: gender || null,
+          date_of_birth: dob || null,
         });
 
         showCustomAlert('Saved', 'Your profile has been updated successfully!', 'success');
@@ -432,8 +437,8 @@ export default function ProfileCompletionScreen() {
           name: name.trim(),
           avatar: uploadedAvatarUrl ?? selectedAvatar,
           profile_picture: uploadedAvatarUrl ?? selectedAvatar,
-          gender: gender || undefined,
-          date_of_birth: dob || undefined,
+          gender: gender || null,
+          date_of_birth: dob || null,
         });
 
         router.push('/(onboarding)/setup-feed' as any);

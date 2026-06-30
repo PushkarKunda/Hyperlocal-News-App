@@ -48,33 +48,6 @@ export default function MoreScreen() {
       title: 'Quick Services',
       items: [
         {
-          id: 'events',
-          label: 'Local Events',
-          sub: 'Explore or host nearby activities',
-          icon: 'calendar-outline',
-          color: colors.primary,
-          bgColor: 'rgba(70, 72, 212, 0.1)',
-          route: '/(tabs)/events',
-        },
-        {
-          id: 'articles',
-          label: 'Community Articles',
-          sub: 'Read stories written by residents',
-          icon: 'newspaper-outline',
-          color: '#10B981',
-          bgColor: 'rgba(16, 185, 129, 0.1)',
-          route: '/(tabs)/articles',
-        },
-        {
-          id: 'polls',
-          label: 'Public Polls',
-          sub: 'Participate in local consensus voting',
-          icon: 'bar-chart-outline',
-          color: '#F59E0B',
-          bgColor: 'rgba(245, 158, 11, 0.1)',
-          route: '/(tabs)/polls',
-        },
-        {
           id: 'bookmarks',
           label: 'Bookmarks & Saves',
           sub: 'View all bookmarked stories',

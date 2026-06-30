@@ -20,6 +20,7 @@ import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useDistrictsList } from '@/hooks/useApi';
 import { usersApi } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAuthStore } from '@/store/authStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -142,7 +143,7 @@ export default function DistrictsScreen() {
 
   // ─── API & State ───────────────────────────────────────────────────────────
 
-  const { data: districts = [], isLoading } = useDistrictsList(state);
+  const { data: districts = [], isLoading } = useDistrictsList(state ?? null);
 
   const isAP = state === 'ap';
   const stateLabel = isAP ? 'Andhra Pradesh' : 'Telangana';
@@ -228,43 +229,31 @@ export default function DistrictsScreen() {
 
   // ─── Continue Handler ──────────────────────────────────────────────────────
 
-  const handleContinue = async () => {
+  // FIXED: Store data locally, no API call
+  const handleContinue = () => {
     if (!selectedDistrict) {
       Alert.alert('District Required', 'Please select your district to continue.');
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      const matchedDistrict = districts.find((d) => d.id === selectedDistrict);
-      if (!matchedDistrict) {
-        throw new Error('Selected district not found');
-      }
-
-      // Save district preference to backend
-      await usersApi.savePreferences({
-        district_id: matchedDistrict.backendId,
-      });
-
-      // Navigate to cities screen
-      router.push({
-        pathname: '/(onboarding)/cities',
-        params: {
-          state,
-          district: selectedDistrict,
-        },
-      });
-    } catch (error: any) {
-      console.error('[DistrictsScreen] Failed to save district:', error);
-      Alert.alert(
-        'Save Failed',
-        error.message || 'Failed to save district preference. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsSaving(false);
+    const matchedDistrict = districts.find((d) => d.id === selectedDistrict);
+    if (!matchedDistrict) {
+      Alert.alert('Error', 'Selected district not found');
+      return;
     }
+
+    // Store in authStore onboarding data
+    const { setOnboardingData } = useAuthStore.getState();
+    setOnboardingData({ district_id: matchedDistrict.backendId });
+
+    // Navigate to cities
+    router.push({
+      pathname: '/(onboarding)/cities',
+      params: {
+        state,
+        district: selectedDistrict,
+      },
+    });
   };
 
   // ─── Filtered Districts ────────────────────────────────────────────────────

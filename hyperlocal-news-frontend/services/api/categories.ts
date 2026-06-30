@@ -46,9 +46,9 @@ export const categoriesApi = {
     return response.map((cat) => ({
       ...cat,
       slug: toSlug(cat.name),
-      image_url: cat.image_url || undefined,
-      color: cat.color || undefined,
-      description: cat.description || undefined,
+      image_url: cat.image_url ?? undefined,
+      color: cat.color ?? undefined,
+      description: cat.description ?? undefined,
     }));
   },
 
@@ -65,9 +65,9 @@ export const categoriesApi = {
     return response.map((cat) => ({
       ...cat,
       slug: toSlug(cat.name),
-      image_url: cat.image_url || undefined,
-      color: cat.color || undefined,
-      description: cat.description || undefined,
+      image_url: cat.image_url ?? undefined,
+      color: cat.color ?? undefined,
+      description: cat.description ?? undefined,
     }));
   },
 
@@ -85,8 +85,8 @@ export const categoriesApi = {
       id: cat.id,
       name: cat.name,
       slug: toSlug(cat.name),
-      icon: cat.image_url || undefined,
-      color: cat.color || undefined,
+      icon: cat.image_url ?? undefined,
+      color: cat.color ?? undefined,
       is_active: cat.is_active,
     }));
   },

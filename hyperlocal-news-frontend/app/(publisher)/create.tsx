@@ -195,7 +195,7 @@
 //         author: {
 //           id: user?.user_uid || '',
 //           name: user?.name ?? 'Publisher',
-//           avatar: user?.avatar ?? undefined,
+//           avatar: user?.avatar ?? null,
 //           isVerified: user?.isPublisher || false,
 //         },
 //         location: {
@@ -274,7 +274,7 @@
 //     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
 //       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
 //       <KeyboardAvoidingView
-//         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+//         behavior={Platform.OS === 'ios' ? 'padding' : null}
 //         style={{ flex: 1 }}
 //       >
 //         {/* ── Header ── */}
@@ -341,7 +341,7 @@
 
 //           {renderInput('City / Locality', city, setCity, 'e.g. Kukatpally', errors.city)}
 
-//           {renderInput('Tags', tags, setTags, 'technology, local, breaking', undefined, {
+//           {renderInput('Tags', tags, setTags, 'technology, local, breaking', null, {
 //             hint: 'Comma-separated tags (optional)',
 //           })}
 

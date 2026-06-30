@@ -67,9 +67,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 const opt = options as any;
 
                 const label =
-                    options.tabBarLabel !== undefined
+                    options.tabBarLabel !== null
                         ? options.tabBarLabel
-                        : options.title !== undefined
+                        : options.title !== null
                             ? options.title
                             : route.name;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import { useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useEngagement';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { usersApi } from '@/services/api';
-import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -39,15 +38,6 @@ export default function ProfileScreen() {
   const { user, logout, updateProfile, updateProfileLocal, checkPublisherEligibility, switchToPublisher } = useAuthStore();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  const { signInWithGoogle, isGoogleLoading } = useGoogleFirebaseAuth({
-    onSuccess: (res) => {
-      Alert.alert('Success 🎉', 'Google account linked and email verified successfully!');
-    },
-    onError: (err) => {
-      Alert.alert('Link Failed', err.message || 'Failed to link Google account.');
-    },
-  });
 
   // API Mutations
   const { mutate: createArticleMutate } = useCreateArticle();
@@ -75,6 +65,14 @@ export default function ProfileScreen() {
   // The Create functions will push to the server via APIs.
   const [posts, setPosts] = useState<any[]>([]);
   const [newsList, setNewsList] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    total_news: 0,
+    total_views: 0,
+    total_likes: 0,
+    total_comments: 0,
+    total_shares: 0,
+  });
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // Verification Form State
   const [fullName, setFullName] = useState(user?.name || '');
@@ -88,24 +86,60 @@ export default function ProfileScreen() {
 
   // Auto-generate username handle dynamically based on user name
   const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = user?.district ? `${user.district}, ${user.state || ''}` : 'Set Location';
+  const userLocation = [user?.city_name || user?.district_name || user?.district, user?.state_name || user?.state]
+    .filter(Boolean)
+    .join(', ') || 'Set Location';
 
-  // Dynamic Stats placeholder (No dummy data)
-  const stats = isPublisher ? {
-    posts: '0',
-    likes: '0',
-    comments: '0',
-    level: 'Level 1',
-    coins: '0',
-    points: '0',
-  } : {
-    posts: '0',
-    likes: '0',
-    comments: '0',
+  const stats = {
+    posts: String(dashboardStats.total_news ?? 0),
+    likes: String(dashboardStats.total_likes ?? 0),
+    comments: String(dashboardStats.total_comments ?? 0),
     level: 'Level 1',
     coins: '0',
     points: '0',
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfileData = async () => {
+      setIsLoadingProfile(true);
+      try {
+        const [profileResponse, dashboardResponse] = await Promise.all([
+          usersApi.me(),
+          usersApi.dashboard({ detailed: true, page: 1, limit: 20, recent_limit: 5 }),
+        ]);
+
+        if (!isMounted) return;
+
+        updateProfileLocal({
+          ...profileResponse,
+          avatar: profileResponse.profile_picture ?? profileResponse.avatar ?? null,
+          profile_picture: profileResponse.profile_picture ?? profileResponse.avatar ?? null,
+        });
+
+        setDashboardStats({
+          total_news: dashboardResponse.stats?.total_posts ?? dashboardResponse.total_news ?? 0,
+          total_views: dashboardResponse.total_views ?? 0,
+          total_likes: dashboardResponse.stats?.total_likes ?? dashboardResponse.total_likes ?? 0,
+          total_comments: dashboardResponse.stats?.total_comments ?? dashboardResponse.total_comments ?? 0,
+          total_shares: dashboardResponse.total_shares ?? 0,
+        });
+      } catch (error: any) {
+        console.error('[profile] Failed to load profile data:', error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingProfile(false);
+        }
+      }
+    };
+
+    loadProfileData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [updateProfileLocal]);
 
   const requestImagePermissions = async () => {
     if (Platform.OS !== 'web') {
@@ -133,8 +167,8 @@ export default function ProfileScreen() {
       });
 
       updateProfileLocal({
-        avatar: serverUrl,
-        profile_picture: serverUrl,
+        avatar: serverUrl ?? null,
+        profile_picture: serverUrl ?? null,
       });
 
       Alert.alert('Success', 'Profile picture updated successfully!');
@@ -213,8 +247,8 @@ export default function ProfileScreen() {
     createArticleMutate({
       title: data.headline,
       summary: data.summary || '',
-      category_id: parseInt(data.category, 10) || undefined,
-      image_url: data.imageUrl || undefined,
+      category_id: parseInt(data.category, 10) ?? '',
+      image_url: data.imageUrl || '',
     }, {
       onSuccess: () => {
         Alert.alert('Submitted!', 'Your news article has been submitted for review.');
@@ -384,60 +418,26 @@ export default function ProfileScreen() {
           </LinearGradient>
         </View>
 
-        {/* Want to Publish news banner? (Only if not verified publisher) */}
+        {/* Profile update banner */}
         {!isPublisher && (
           <View style={styles.verifyBannerWrapper}>
-            {!user?.email_verified ? (
-              <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#2D1F1F' : '#FFF0F0', borderColor: '#FFCDD2' }]}>
-                <View style={[styles.verifyBannerIconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
-                  <Ionicons name="logo-google" size={24} color="#4648D4" />
-                </View>
-                <View style={styles.verifyBannerContent}>
-                  <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Verify Your Email Address</Text>
-                  <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
-                    Link your Google account to automatically verify your email and unlock publisher options.
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                  onPress={signInWithGoogle}
-                  disabled={isGoogleLoading}
-                >
-                  <Text style={styles.verifyBannerButtonText}>
-                    {isGoogleLoading ? 'Linking...' : 'Link Google'}
-                  </Text>
-                </TouchableOpacity>
+            <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#1C1C35' : '#F0F5FF', borderColor: colors.border }]}>
+              <View style={styles.verifyBannerIconContainer}>
+                <Ionicons name="person-circle-outline" size={24} color={colors.primary} />
               </View>
-            ) : (
-              <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#1C1C35' : '#F0F5FF', borderColor: colors.border }]}>
-                <View style={styles.verifyBannerIconContainer}>
-                  <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
-                </View>
-                <View style={styles.verifyBannerContent}>
-                  <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Want to Publish News?</Text>
-                  <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
-                    Get verified as a Publisher to write and publish news for your city.
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveTab('verify')}
-                >
-                  <Text style={styles.verifyBannerButtonText}>Apply Now</Text>
-                </TouchableOpacity>
+              <View style={styles.verifyBannerContent}>
+                <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Keep your profile up to date</Text>
+                <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
+                  Update your name, photo, and location anytime from the profile editor.
+                </Text>
               </View>
-            )}
-
-            <View style={styles.infoRow}>
-              <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
-              <Text style={[styles.infoRowText, { color: colors.textSecondary }]}>
-                {!user?.email_verified
-                  ? 'Email verification is required before applying for publisher verification.'
-                  : 'News Publishing is available only for verified publishers.'
-                }
-              </Text>
+              <TouchableOpacity
+                style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
+                activeOpacity={0.8}
+                onPress={() => router.push('/(onboarding)/edit-profile')}
+              >
+                <Text style={styles.verifyBannerButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}

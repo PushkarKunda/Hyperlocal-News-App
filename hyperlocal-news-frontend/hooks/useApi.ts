@@ -21,13 +21,13 @@ const queryKeys = {
     list: ['states', 'list'] as const,
   },
   districts: {
-    byState: (stateId: string | undefined) => ['districts', 'by-state', stateId] as const,
+    byState: (stateId: string | null) => ['districts', 'by-state', stateId] as const,
   },
   cities: {
-    byDistrict: (districtId: string | undefined) => ['cities', 'by-district', districtId] as const,
+    byDistrict: (districtId: string | null) => ['cities', 'by-district', districtId] as const,
   },
   location: {
-    hierarchy: (stateId: number | undefined) => ['location', 'hierarchy', stateId] as const,
+    hierarchy: (stateId: number | null) => ['location', 'hierarchy', stateId] as const,
     search: (params: any) => ['location', 'search', params] as const,
   },
 };
@@ -201,7 +201,7 @@ export function useStatesList() {
  * 
  * @param stateId - Frontend state ID ('ap', 'ts', or numeric string)
  */
-export function useDistrictsList(stateId: string | undefined) {
+export function useDistrictsList(stateId: string | null) {
   return useQuery({
     queryKey: queryKeys.districts.byState(stateId),
     queryFn: async () => {
@@ -231,7 +231,7 @@ export function useDistrictsList(stateId: string | undefined) {
  * 
  * @param districtId - Frontend district ID (string or 'hyderabad', 'visakhapatnam')
  */
-export function useCitiesList(districtId: string | undefined) {
+export function useCitiesList(districtId: string | null) {
   return useQuery({
     queryKey: queryKeys.cities.byDistrict(districtId),
     queryFn: async () => {
@@ -280,7 +280,7 @@ export function useCitiesList(districtId: string | undefined) {
  * 
  * @param stateId - Backend state ID (1 for AP, 2 for Telangana)
  */
-export function useStateHierarchy(stateId: number | undefined) {
+export function useStateHierarchy(stateId: number | null) {
   return useQuery({
     queryKey: queryKeys.location.hierarchy(stateId),
     queryFn: () => {

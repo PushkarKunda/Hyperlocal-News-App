@@ -28,7 +28,7 @@ export default function CompleteScreen() {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  // ✅ Block hardware back
+  // Block hardware back
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
       BackHandler.exitApp();
@@ -37,7 +37,7 @@ export default function CompleteScreen() {
     return () => handler.remove();
   }, []);
 
-  // ✅ Entry animations
+  // Entry animations
   useEffect(() => {
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
@@ -48,7 +48,7 @@ export default function CompleteScreen() {
     ]).start();
   }, []);
 
-  // ✅ Navigate to main app - reset navigation stack
+  // Navigate to main app - reset navigation stack
   const handleStartReading = () => {
     if (isNavigating) return;
     setIsNavigating(true);
@@ -59,7 +59,7 @@ export default function CompleteScreen() {
     }
   };
 
-  // ✅ Summary built from authStore user (already populated during onboarding)
+  // Summary built from authStore user (already populated during onboarding)
   const summaryItems = [
     {
       icon: 'language' as const,

@@ -113,7 +113,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
     }
 
     setValidationError('');
-    
+
     onSubmit({
       headline,
       summary,
@@ -122,7 +122,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
       readingTime: readingTime.trim() || '3 min read',
       imageUrl: coverImage,
     });
-    
+
     handleClose();
   };
 
@@ -141,7 +141,7 @@ export function CreateArticleModal({ isVisible, onClose, onSubmit }: CreateArtic
         >
           {/* Main Container */}
           <View style={[styles.mainContainer, { backgroundColor: colors.background, height: screenHeight * 0.9 }]}>
-            
+
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(12, insets.top) }]}>
               <TouchableOpacity

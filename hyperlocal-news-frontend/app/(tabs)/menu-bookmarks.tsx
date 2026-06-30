@@ -23,7 +23,7 @@ interface MenuBookmarkItem {
   category: string;
   title: string;
   description: string;
-  imageUrl: string | undefined;
+  imageUrl: string | null;
   timeAgo: string;
   reads: string;
 }

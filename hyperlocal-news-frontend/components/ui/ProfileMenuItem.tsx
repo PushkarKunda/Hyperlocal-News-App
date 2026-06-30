@@ -48,7 +48,7 @@ export function ProfileMenuItem({
             <Text style={styles.badgeText}>{badgeCount}</Text>
           </View>
         )}
-        
+
         {trailingText && (
           <Text style={[styles.trailingText, { color: colors.textSecondary }]}>{trailingText}</Text>
         )}

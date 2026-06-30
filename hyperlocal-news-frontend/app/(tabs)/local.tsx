@@ -28,8 +28,8 @@ export default function LocalScreen() {
 
   // Fetch live local news
   const { data: rawNews = [], isLoading: isLoadingNews } = useLocationNews({
-    state: user?.state || undefined,
-    district: user?.district || undefined,
+    state: user?.state || '',
+    district: user?.district || '',
   });
 
   // Filtered lists based on activeFilter

@@ -17,7 +17,7 @@ export const validateResponse = <T>(schema: ZodSchema<T>, data: unknown): { data
       error: {
         code: 'VALIDATION_ERROR',
         message: err?.message || 'Response validation failed',
-        details: err?.errors ? { zod: err.errors } : undefined,
+        details: err?.errors ? { zod: err.errors } : null,
       },
     };
   }

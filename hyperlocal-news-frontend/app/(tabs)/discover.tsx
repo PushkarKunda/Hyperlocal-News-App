@@ -52,7 +52,7 @@ export default function DiscoverScreen() {
   const { data: trendingNews = [], isLoading: isLoadingTrending } = useTrendingNews();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesAll();
   const { data: popularNews = [], isLoading: isLoadingPopular } = usePopularNews();
-  const { data: districts = [], isLoading: isLoadingDistricts } = useDistrictsList(user?.state);
+  const { data: districts = [], isLoading: isLoadingDistricts } = useDistrictsList(user?.state ?? null);
 
   const isLoading = isLoadingTrending || isLoadingCategories || isLoadingPopular || isLoadingDistricts;
 

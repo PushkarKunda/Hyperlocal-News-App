@@ -10,9 +10,9 @@ import type { CreateCommentPayload } from '@/services/api/engagement';
 const queryKeys = {
   bookmarks: ['engagement', 'bookmarks'] as const,
   checkBookmark: (uid: string) => ['engagement', 'check-bookmark', uid] as const,
-  stats: (uid: string | undefined) => ['engagement', 'stats', uid] as const,
-  summary: (uid: string | undefined) => ['engagement', 'summary', uid] as const,
-  comments: (uid: string | undefined) => ['engagement', 'comments', uid] as const,
+  stats: (uid: string | null) => ['engagement', 'stats', uid] as const,
+  summary: (uid: string | null) => ['engagement', 'summary', uid] as const,
+  comments: (uid: string | null) => ['engagement', 'comments', uid] as const,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -239,7 +239,7 @@ export function useRecordShare() {
  * getComments
  * GET /news/v1/news/:uid/comments
  */
-export function useComments(contentUid: string | undefined) {
+export function useComments(contentUid: string | null) {
   return useQuery({
     queryKey: queryKeys.comments(contentUid),
     queryFn: () => {
@@ -306,7 +306,7 @@ export function useDeleteComment() {
  * getStats
  * GET /news/v1/news/:uid/engagement
  */
-export function useEngagementStats(contentUid: string | undefined) {
+export function useEngagementStats(contentUid: string | null) {
   return useQuery({
     queryKey: queryKeys.stats(contentUid),
     queryFn: () => {
@@ -322,7 +322,7 @@ export function useEngagementStats(contentUid: string | undefined) {
  * getSummary
  * GET /engagement/summary/:uid
  */
-export function useEngagementSummary(contentUid: string | undefined) {
+export function useEngagementSummary(contentUid: string | null) {
   return useQuery({
     queryKey: queryKeys.summary(contentUid),
     queryFn: () => {

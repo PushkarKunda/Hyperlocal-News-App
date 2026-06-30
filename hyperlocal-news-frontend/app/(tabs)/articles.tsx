@@ -397,7 +397,7 @@
 //                     source: <Text style={{ fontWeight: '700' }}>{sourceName}</Text>
 //                   </Text>
 //                   <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-//                     {item.stats?.views !== undefined ? `${item.stats.views} views` : '0 views'}
+//                     {item.stats?.views !== null ? `${item.stats.views} views` : '0 views'}
 //                   </Text>
 //                 </View>
 
