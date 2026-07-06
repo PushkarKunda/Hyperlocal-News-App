@@ -24,7 +24,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  
+
   const { user, logout, updateTheme } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const darkModeEnabled = colorScheme === 'dark';
@@ -52,8 +52,8 @@ export default function SettingsScreen() {
 
 
 
-   const displayName = user?.name || 'Complete Profile';
-   const displayPhone = user?.phoneNumber || user?.phone || 'Setup Phone';
+  const displayName = user?.name || 'Complete Profile';
+  const displayPhone = user?.phoneNumber || user?.phone || 'Setup Phone';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -78,12 +78,12 @@ export default function SettingsScreen() {
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        
+
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -108,7 +108,7 @@ export default function SettingsScreen() {
                     )}
                   </View>
                 </LinearGradient>
-                
+
                 {/* Verified Check Badge */}
                 {user?.isPublisher && (
                   <View style={[styles.verifiedBadge, { borderColor: colors.card }]}>
@@ -120,30 +120,30 @@ export default function SettingsScreen() {
               <View style={styles.profileDetails}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
                 <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>{displayPhone}</Text>
-                 {user?.email ? (
-                   <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
-                 ) : null}
-                
-                  <View style={styles.premiumBadgeContainer}>
-                   {user?.isPublisher ? (
-                     <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
-                       <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                       <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
-                     </View>
-                   ) : (
-                       <TouchableOpacity
-                         style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
-                         onPress={() => router.push('/(onboarding)/edit-profile')}
-                         activeOpacity={0.8}
-                       >
-                         <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
-                         <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
-                       </TouchableOpacity>
-                     )}
-                 </View>
+                {user?.email ? (
+                  <Text style={[styles.profilePhone, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>{user.email}</Text>
+                ) : null}
+
+                <View style={styles.premiumBadgeContainer}>
+                  {user?.isPublisher ? (
+                    <View style={[styles.publisherBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 4 }]}>
+                      <Ionicons name="shield-checkmark" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.publisherBadgeText, { color: colors.primary, fontSize: 10, fontWeight: '800' }]}>Publisher</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.publisherVerifyButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4 }]}
+                      onPress={() => router.push('/(onboarding)/edit-profile')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.publisherVerifyButtonText, { color: colors.primary, fontWeight: '700', fontSize: 9 }]}>Get Verified to Publish</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.editProfileButton, { backgroundColor: colors.primaryLight }]}
                 activeOpacity={0.7}
                 onPress={() => router.push('/(onboarding)/edit-profile')}
@@ -158,9 +158,10 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>PREFERENCES</Text>
           <View style={[styles.bentoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             {/* Language */}
-            <TouchableOpacity 
-              style={styles.settingItem} 
+            <TouchableOpacity
+              style={styles.settingItem}
               activeOpacity={0.7}
               onPress={() => router.push('/(tabs)/settings-language' as any)}
             >
@@ -171,7 +172,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Language</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.language || 'English'}</Text>
+                {/* <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.language_name}</Text> */}
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
@@ -179,8 +180,8 @@ export default function SettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
             {/* Location */}
-            <TouchableOpacity 
-              style={styles.settingItem} 
+            <TouchableOpacity
+              style={styles.settingItem}
               activeOpacity={0.7}
               onPress={() => router.push('/(tabs)/settings-location' as any)}
             >
@@ -191,30 +192,33 @@ export default function SettingsScreen() {
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Location</Text>
               </View>
               <View style={styles.settingValueContainer}>
-                <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.state || 'Telangana'}</Text>
+                {/* <Text style={[styles.settingValue, { color: colors.primary }]}>{user?.state_name}</Text> */}
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-
-
-            {/* Notifications Switch */}
-            <View style={styles.settingItem}>
+            {/* Interests */}
+            <TouchableOpacity
+              style={styles.settingItem}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/settings-interests' as any)}
+            >
               <View style={styles.settingLabelContainer}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
-                  <Ionicons name="notifications-outline" size={20} color="#4648D4" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+                  <Ionicons name="heart-outline" size={20} color="#F59E0B" />
                 </View>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Notifications</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Interests</Text>
               </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={notificationsEnabled ? colors.primary : '#F1F5F9'}
-              />
-            </View>
+              <View style={styles.settingValueContainer}>
+                {/* <Text style={[styles.settingValue, { color: colors.primary }]}>
+                  {user?.category_ids?.length} topics
+                </Text> */}
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
           </View>
         </View>
 

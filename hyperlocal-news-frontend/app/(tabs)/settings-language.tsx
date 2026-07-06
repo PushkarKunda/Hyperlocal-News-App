@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,100 +9,122 @@ import {
   Animated,
   Alert,
   useWindowDimensions,
-  DimensionValue,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '@/store/authStore';
 import { useLanguagesList } from '@/hooks/useApi';
+import { usersApi } from '@/services/api/users';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useAuthStore } from '@/store/authStore';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HORIZONTAL_PADDING = 20;
+const CARD_GAP = 12;
+const CARD_HEIGHT = 130;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LANGUAGE CARD
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface LanguageCardProps {
   name: string;
   glyph: string;
   isSelected: boolean;
   onPress: () => void;
-  width?: DimensionValue;
-  marginRight?: DimensionValue;
-  marginBottom?: DimensionValue;
+  cardWidth: number;
 }
 
-function LanguageCard({ name, glyph, isSelected, onPress, width, marginRight, marginBottom }: LanguageCardProps) {
+function LanguageCard({
+  name,
+  glyph,
+  isSelected,
+  onPress,
+  cardWidth,
+}: LanguageCardProps) {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const scale = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.94,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
   return (
     <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPressIn={() =>
+        Animated.spring(scale, {
+          toValue: 0.94,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 12,
+        }).start()
+      }
+      onPressOut={() =>
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 12,
+        }).start()
+      }
       onPress={onPress}
-      style={[styles.cardContainer, { width, marginRight, marginBottom }]}
+      style={{ width: cardWidth, height: CARD_HEIGHT }}
     >
       <Animated.View
         style={[
-          styles.languageCard,
-          isSelected ? styles.languageCardSelected : styles.languageCardUnselected,
+          styles.card,
           {
             backgroundColor: isSelected
-              ? isDark ? '#2A2A4D' : '#E6E7FB'
+              ? isDark
+                ? '#2A2A4D'
+                : '#E6E7FB'
               : colors.card,
             borderColor: isSelected ? colors.primary : colors.border,
+            shadowOpacity: isSelected ? 0.15 : 0.06,
+            elevation: isSelected ? 3 : 2,
+            transform: [{ scale }],
           },
-          { transform: [{ scale }] },
         ]}
       >
-        {/* Selection Indicator */}
         {isSelected && (
           <View style={styles.checkBadge}>
             <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
           </View>
         )}
-
-        {/* Script Preview Circle */}
         <View
           style={[
             styles.glyphCircle,
             {
-              backgroundColor: isSelected ? colors.primary : isDark ? '#2A2A3C' : '#F1F5F9',
+              backgroundColor: isSelected
+                ? colors.primary
+                : isDark
+                  ? '#2A2A3C'
+                  : '#F1F5F9',
               borderColor: isSelected ? colors.primary : colors.border,
             },
           ]}
         >
-          <Text style={[styles.glyphText, { color: isSelected ? '#FFFFFF' : colors.primary }]}>
+          <Text
+            style={[
+              styles.glyphText,
+              { color: isSelected ? '#FFFFFF' : colors.primary },
+            ]}
+          >
             {glyph}
           </Text>
         </View>
-
-        {/* Language Name */}
         <Text
           style={[
-            styles.languageName,
-            { color: isSelected ? colors.primary : colors.text },
-            isSelected && styles.languageNameSelected,
+            styles.cardName,
+            {
+              color: isSelected ? colors.primary : colors.text,
+              fontFamily: isSelected ? 'Poppins_700Bold' : 'Poppins_500Medium',
+              fontWeight: isSelected ? '700' : '500',
+            },
           ]}
           numberOfLines={1}
         >
@@ -113,63 +135,175 @@ function LanguageCard({ name, glyph, isSelected, onPress, width, marginRight, ma
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+
 export default function SettingsLanguageScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
-  const { data: languagesList = [], isLoading } = useLanguagesList();
-  const { user, updateLanguage } = useAuthStore();
+  const { fetchPreferences, updateCachedPreferences, cachedPreferences } =
+    useAuthStore();
 
-  // Find the current language id from the user's stored language name
-  const currentLangId = languagesList.find(l => l.name === user?.language)?.id ?? 'en';
-  const [selectedLanguage, setSelectedLanguage] = useState(currentLangId);
+  const { data: languagesList = [], isLoading: isLoadingLanguages } =
+    useLanguagesList();
+
+  const [selectedLanguageId, setSelectedLanguageId] = useState<number | null>(
+    null
+  );
+  const [initialLanguageId, setInitialLanguageId] = useState<number | null>(
+    null
+  );
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const saveScale = useRef(new Animated.Value(1)).current;
 
-  const handleSavePressIn = () => {
-    Animated.spring(saveScale, { toValue: 0.95, useNativeDriver: true, tension: 180, friction: 12 }).start();
-  };
+  // ✅ Calculate exact pixel card width
+  const cardWidth = (screenWidth - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
-  const handleSavePressOut = () => {
-    Animated.spring(saveScale, { toValue: 1, useNativeDriver: true, tension: 180, friction: 12 }).start();
-  };
+  // ─── Load Preferences ──────────────────────────────────────────────────
 
-  const handleSave = () => {
-    const matched = languagesList.find(l => l.id === selectedLanguage);
-    if (matched) {
-      updateLanguage(matched.name);
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const prefs = cachedPreferences ?? (await fetchPreferences());
+        console.log('[SettingsLanguage] prefs:', prefs);
+        console.log('[SettingsLanguage] languagesList:', languagesList);
+        const langId = prefs.language_id ?? null;
+        setSelectedLanguageId(langId);
+        setInitialLanguageId(langId);
+      } catch (error) {
+        console.error('[SettingsLanguage] Failed to load preferences:', error);
+        Alert.alert('Error', 'Failed to load preferences. Please try again.');
+      } finally {
+        setIsLoadingPreferences(false);
+      }
+    };
+
+    // ✅ Wait for languagesList to be loaded before setting preferences
+    // so that the selected card renders correctly
+    if (!isLoadingLanguages) {
+      loadPreferences();
     }
-    router.replace('/(tabs)');
+  }, [isLoadingLanguages]);
+
+  // ─── Save Handler ──────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (selectedLanguageId === initialLanguageId) {
+      router.back();
+      return;
+    }
+
+    if (selectedLanguageId === null) {
+      Alert.alert('Error', 'Please select a language');
+      return;
+    }
+
+    const prefs = cachedPreferences;
+    if (!prefs) {
+      Alert.alert('Error', 'Preferences not loaded. Please try again.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      await usersApi.updatePreferences({
+        language_id: selectedLanguageId,
+        state_id: prefs.state_id ?? null,
+        district_id: prefs.district_id ?? null,
+        city_id: prefs.city_id ?? null,
+        category_ids: prefs.category_ids ?? null,
+      });
+
+      updateCachedPreferences({ language_id: selectedLanguageId });
+
+      Alert.alert('Success', 'Language updated successfully!', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to update language');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (isLoading) {
+  // ─── Loading ───────────────────────────────────────────────────────────
+
+  if (isLoadingLanguages || isLoadingPreferences) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <LoadingSpinner fullScreen text="Loading languages..." colorScheme={colorScheme ?? 'light'} />
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <LoadingSpinner
+          fullScreen
+          text="Loading languages..."
+          colorScheme={colorScheme ?? 'light'}
+        />
       </View>
     );
   }
 
+  // ─── Render ────────────────────────────────────────────────────────────
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: insets.top },
+      ]}
+    >
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-      {/* Background Blurs */}
-      <View style={[styles.purpleBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(70, 72, 212, 0.12)' : 'rgba(70, 72, 212, 0.04)' }]} />
-      <View style={[styles.tealBlur, { backgroundColor: colorScheme === 'dark' ? 'rgba(0, 106, 97, 0.12)' : 'rgba(0, 106, 97, 0.04)' }]} />
+      <View
+        style={[
+          styles.purpleBlur,
+          {
+            backgroundColor:
+              colorScheme === 'dark'
+                ? 'rgba(70, 72, 212, 0.12)'
+                : 'rgba(70, 72, 212, 0.04)',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.tealBlur,
+          {
+            backgroundColor:
+              colorScheme === 'dark'
+                ? 'rgba(0, 106, 97, 0.12)'
+                : 'rgba(0, 106, 97, 0.04)',
+          },
+        ]}
+      />
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.headerLeftButton, { backgroundColor: colors.card }]}
+          style={[
+            styles.headerLeftButton,
+            { backgroundColor: 'rgba(70, 72, 212, 0.05)' },
+          ]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Language</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Language
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -180,45 +314,98 @@ export default function SettingsLanguageScreen() {
         </Text>
       </View>
 
-      {/* Language Grid */}
+      {/* Grid */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.gridContainer}>
-          {(() => {
-            let singleCount = 0;
-            return languagesList.map((language) => {
-              const marginRight = singleCount++ % 2 === 0 ? '6%' : '0%';
-              return (
-                <LanguageCard
-                  key={language.id}
-                  name={language.name}
-                  glyph={language.glyph ?? ''}
-                  isSelected={selectedLanguage === language.id}
-                  onPress={() => setSelectedLanguage(language.id)}
-                  width="47%"
-                  marginRight={marginRight}
-                  marginBottom={16}
-                />
-              );
-            });
-          })()}
+        {/* ✅ Section Header */}
+        <View style={[styles.sectionHeaderRow, { borderColor: colors.border }]}>
+          <View style={[styles.sectionLine, { backgroundColor: colors.border }]} />
+          <Text style={[styles.sectionHeaderText, { color: colors.textSecondary }]}>
+            AVAILABLE LANGUAGES
+          </Text>
+          <View style={[styles.sectionLine, { backgroundColor: colors.border }]} />
         </View>
+
+        {/* ✅ Grid rows - guaranteed 2 per row */}
+        {Array.from(
+          { length: Math.ceil(languagesList.length / 2) },
+          (_, rowIndex) => {
+            const leftItem = languagesList[rowIndex * 2];
+            const rightItem = languagesList[rowIndex * 2 + 1];
+            return (
+              <View key={`row-${rowIndex}`} style={styles.gridRow}>
+                <LanguageCard
+                  name={leftItem.name}
+                  glyph={leftItem.glyph ?? ''}
+                  isSelected={selectedLanguageId === leftItem.backendId}
+                  onPress={() => setSelectedLanguageId(leftItem.backendId)}
+                  cardWidth={cardWidth}
+                />
+                {rightItem ? (
+                  <LanguageCard
+                    name={rightItem.name}
+                    glyph={rightItem.glyph ?? ''}
+                    isSelected={selectedLanguageId === rightItem.backendId}
+                    onPress={() => setSelectedLanguageId(rightItem.backendId)}
+                    cardWidth={cardWidth}
+                  />
+                ) : (
+                  <View style={{ width: cardWidth }} />
+                )}
+              </View>
+            );
+          }
+        )}
       </ScrollView>
 
-      {/* Save Footer */}
-      <View style={[styles.footer, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+      {/* Footer */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.background,
+            paddingBottom: insets.bottom + 24,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
         <Animated.View style={{ transform: [{ scale: saveScale }] }}>
           <Pressable
-            style={styles.saveButton}
+            style={[styles.saveButton, isSaving && { opacity: 0.6 }]}
             onPress={handleSave}
-            onPressIn={handleSavePressIn}
-            onPressOut={handleSavePressOut}
+            onPressIn={() =>
+              Animated.spring(saveScale, {
+                toValue: 0.95,
+                useNativeDriver: true,
+                tension: 180,
+                friction: 12,
+              }).start()
+            }
+            onPressOut={() =>
+              Animated.spring(saveScale, {
+                toValue: 1,
+                useNativeDriver: true,
+                tension: 180,
+                friction: 12,
+              }).start()
+            }
+            disabled={isSaving}
           >
-            <Ionicons name="checkmark" size={20} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Ionicons
+              name="checkmark"
+              size={20}
+              color="#FFF"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.saveButtonText}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -226,10 +413,12 @@ export default function SettingsLanguageScreen() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   purpleBlur: {
     position: 'absolute',
     right: -39,
@@ -265,7 +454,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(70, 72, 212, 0.05)',
   },
   headerTitle: {
     fontSize: 20,
@@ -273,13 +461,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
   },
-  headerSpacer: {
-    width: 40,
-  },
+  headerSpacer: { width: 40 },
   subtitleSection: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 4,
+    paddingTop: 16,
+    paddingBottom: 8,
     alignItems: 'center',
   },
   subtitle: {
@@ -289,20 +475,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 16,
   },
-  gridContainer: {
+  // ✅ Section divider with text
+  sectionHeaderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+  },
+  sectionHeaderText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 1.4,
+  },
+  // ✅ Row-based grid
+  gridRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: CARD_GAP,
   },
-  cardContainer: {
-    width: '47.5%',
-    height: 130,
-  },
-  languageCard: {
+  card: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -311,59 +510,38 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     shadowColor: '#4648D4',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
     shadowRadius: 16,
-    elevation: 2,
-  },
-  languageCardSelected: {
-    borderColor: '#4648D4',
-    shadowOpacity: 0.15,
-    elevation: 3,
-  },
-  languageCardUnselected: {
-    borderColor: 'rgba(199, 196, 215, 0.3)',
   },
   checkBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    borderRadius: 12,
     zIndex: 1,
   },
   glyphCircle: {
     width: 52,
     height: 52,
-    borderRadius: 40,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
     borderWidth: 2,
+    overflow: 'hidden',
   },
   glyphText: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  languageName: {
+  cardName: {
     fontSize: 13,
-    fontWeight: '500',
-    fontFamily: 'Poppins_500Medium',
     letterSpacing: 0.4,
     textAlign: 'center',
-  },
-  languageNameSelected: {
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
   },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
+    borderTopWidth: 1,
   },
   saveButton: {
     height: 56,

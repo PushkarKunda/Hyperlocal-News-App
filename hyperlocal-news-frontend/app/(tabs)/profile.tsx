@@ -11,6 +11,7 @@ import {
   TextInput,
   Platform,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -23,8 +24,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useEngagement';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { usersApi } from '@/services/api';
+import { usersApi, type DashboardResponse } from '@/services/api';
+import { compressImage } from '@/services/image';
+import { uploadImageToSupabase } from '@/services/supabase';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -35,98 +37,113 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { user, logout, updateProfile, updateProfileLocal, checkPublisherEligibility, switchToPublisher } = useAuthStore();
+  const { user, logout, updateProfile, updateProfileLocal, switchToPublisher } = useAuthStore();
+
+  // ─── Dashboard Data ──────────────────────────────────────────────────────
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // ─── UI State ────────────────────────────────────────────────────────────
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
-  // API Mutations
+  // ─── API Mutations ───────────────────────────────────────────────────────
   const { mutate: createArticleMutate } = useCreateArticle();
   const { mutate: deleteArticleMutate } = useDeleteArticle();
   const { data: bookmarks = [] } = useBookmarks();
 
-  // Profile Active Tab State
-  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'verify'>('posts');
-  // News Filter Pill State
+  // ─── Tab State ───────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'publisher'>('posts');
   const [newsFilter, setNewsFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
-  // Sorting Mode State
   const [newsSort, setNewsSort] = useState<'date' | 'views' | 'likes'>('date');
   const [showSortModal, setShowSortModal] = useState(false);
 
-  // Floating Actions / Create Modals
+  // ─── FAB / Modal State ───────────────────────────────────────────────────
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showCreateArticleModal, setShowCreateArticleModal] = useState(false);
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
 
-  // Post Modal Form State
+  // ─── Post State ──────────────────────────────────────────────────────────
   const [postCaption, setPostCaption] = useState('');
   const [postCoverImage, setPostCoverImage] = useState('');
-
-  // Since there is no specific "My Articles" or "My Posts" endpoint provided, we initialize empty.
-  // The Create functions will push to the server via APIs.
   const [posts, setPosts] = useState<any[]>([]);
-  const [newsList, setNewsList] = useState<any[]>([]);
-  const [dashboardStats, setDashboardStats] = useState({
-    total_news: 0,
-    total_views: 0,
-    total_likes: 0,
-    total_comments: 0,
-    total_shares: 0,
-  });
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-  // Verification Form State
-  const [fullName, setFullName] = useState(user?.name || '');
-  const [city, setCity] = useState(user?.district || '');
-  const [bio, setBio] = useState('');
-  const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
+  // ─── Publisher Application State ─────────────────────────────────────────
+  const [isApplyingPublisher, setIsApplyingPublisher] = useState(false);
 
-  const isPublisher = user?.isPublisher || false;
+  // ─── Derived from Dashboard ───────────────────────────────────────────────
 
-  const displayName = user?.name || 'User';
+  const displayName = dashboardData?.user.name || user?.name || 'User';
+  const userHandle = '@' + (dashboardData?.user.user_name || user?.user_name || 'user');
+  const userLocation = dashboardData?.user.location || 'Set Location';
+  const followersCount = dashboardData?.user.followers_count ?? 0;
+  const followingCount = dashboardData?.user.following_count ?? 0;
+  const profileCompletion = dashboardData?.user.profile_completion ?? 0;
+  const unreadNotifications = dashboardData?.user.unread_notifications ?? 0;
+  const joinedDate = dashboardData?.user.joined_date ?? (
+    user?.created_at
+      ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      : 'Recently'
+  );
 
-  // Auto-generate username handle dynamically based on user name
-  const userHandle = '@' + displayName.toLowerCase().trim().replace(/\s+/g, '_');
-  const userLocation = [user?.city_name || user?.district_name || user?.district, user?.state_name || user?.state]
-    .filter(Boolean)
-    .join(', ') || 'Set Location';
+  // ─── Publisher / CTA ──────────────────────────────────────────────────────
+
+  const isPublisher = dashboardData?.user.is_publisher ?? user?.isPublisher ?? false;
+  const canApplyForPublisher = dashboardData?.publisher_cta?.can_apply ?? false;
+  const publisherMessage = dashboardData?.publisher_cta?.message ?? 'Get verified as a Publisher to write and publish news for your city.';
+  const missingRequirements = dashboardData?.publisher_cta?.missing_requirements ?? [];
+
+  // ─── Stats ────────────────────────────────────────────────────────────────
 
   const stats = {
-    posts: String(dashboardStats.total_news ?? 0),
-    likes: String(dashboardStats.total_likes ?? 0),
-    comments: String(dashboardStats.total_comments ?? 0),
-    level: 'Level 1',
-    coins: '0',
-    points: '0',
+    posts: String(dashboardData?.stats?.total_posts ?? 0),
+    likes: String(dashboardData?.stats?.total_likes ?? 0),
+    comments: String(dashboardData?.stats?.total_comments ?? 0),
+    level: dashboardData?.stats?.level_name || 'Contributor',
+    coins: String(dashboardData?.stats?.coins ?? 0),
+    points: String(dashboardData?.stats?.points ?? 0),
   };
+
+  // ─── Avatar ───────────────────────────────────────────────────────────────
+
+  const avatarUri =
+    dashboardData?.user.profile_picture ||
+    user?.profile_picture ||
+    user?.avatar ||
+    'https://placehold.co/200x200/E2E8F0/E2E8F0?text=U';
+
+  // ─── Load Dashboard ───────────────────────────────────────────────────────
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadProfileData = async () => {
+    const loadDashboard = async () => {
       setIsLoadingProfile(true);
       try {
-        const [profileResponse, dashboardResponse] = await Promise.all([
-          usersApi.me(),
-          usersApi.dashboard({ detailed: true, page: 1, limit: 20, recent_limit: 5 }),
-        ]);
+        const dashboardResponse = await usersApi.dashboard({
+          detailed: true,
+          page: 1,
+          limit: 20,
+          recent_limit: 5,
+        });
 
         if (!isMounted) return;
 
+        setDashboardData(dashboardResponse);
+
+        // ✅ Sync auth store with latest profile from dashboard
         updateProfileLocal({
-          ...profileResponse,
-          avatar: profileResponse.profile_picture ?? profileResponse.avatar ?? null,
-          profile_picture: profileResponse.profile_picture ?? profileResponse.avatar ?? null,
+          name: dashboardResponse.user.name,
+          user_name: dashboardResponse.user.user_name,
+          avatar: dashboardResponse.user.profile_picture,
+          profile_picture: dashboardResponse.user.profile_picture,
+          isPublisher: dashboardResponse.user.is_publisher,
+          role: dashboardResponse.user.role,
         });
 
-        setDashboardStats({
-          total_news: dashboardResponse.stats?.total_posts ?? dashboardResponse.total_news ?? 0,
-          total_views: dashboardResponse.total_views ?? 0,
-          total_likes: dashboardResponse.stats?.total_likes ?? dashboardResponse.total_likes ?? 0,
-          total_comments: dashboardResponse.stats?.total_comments ?? dashboardResponse.total_comments ?? 0,
-          total_shares: dashboardResponse.total_shares ?? 0,
-        });
       } catch (error: any) {
-        console.error('[profile] Failed to load profile data:', error);
+        console.error('[profile] Failed to load dashboard:', error);
+        // ✅ Silently fail — fallback to store data
       } finally {
         if (isMounted) {
           setIsLoadingProfile(false);
@@ -134,12 +151,14 @@ export default function ProfileScreen() {
       }
     };
 
-    loadProfileData();
+    loadDashboard();
 
     return () => {
       isMounted = false;
     };
-  }, [updateProfileLocal]);
+  }, []);
+
+  // ─── Avatar Upload ────────────────────────────────────────────────────────
 
   const requestImagePermissions = async () => {
     if (Platform.OS !== 'web') {
@@ -157,24 +176,51 @@ export default function ProfileScreen() {
   const uploadAndSaveAvatar = async (localUri: string) => {
     setIsUploadingAvatar(true);
     try {
-      const { compressImage } = require('@/services/image');
-      const compressed = await compressImage(localUri);
-      const { uploadImageToSupabase } = require('@/services/supabase');
+      // ✅ Compress image
+      const compressed = await compressImage(localUri, {
+        width: 512,
+        height: 512,
+        compress: 0.8,
+      });
+
+      // ✅ Upload to Supabase (avatars folder)
       const serverUrl = await uploadImageToSupabase(compressed.uri);
 
+      if (!serverUrl) {
+        throw new Error('Failed to get upload URL from Supabase.');
+      }
+
+      // ✅ PATCH /user/user/users/me
       await usersApi.updateMe({
         profile_picture: serverUrl,
       });
 
+      // ✅ Update local store
       updateProfileLocal({
-        avatar: serverUrl ?? null,
-        profile_picture: serverUrl ?? null,
+        avatar: serverUrl,
+        profile_picture: serverUrl,
       });
+
+      // ✅ Update dashboard data locally for instant UI update
+      setDashboardData((prev) =>
+        prev
+          ? {
+            ...prev,
+            user: {
+              ...prev.user,
+              profile_picture: serverUrl,
+            },
+          }
+          : prev
+      );
 
       Alert.alert('Success', 'Profile picture updated successfully!');
     } catch (error: any) {
-      console.error('Failed to update profile picture:', error);
-      Alert.alert('Error', error.message || 'Failed to upload profile picture. Please try again.');
+      console.error('[profile] Avatar upload failed:', error);
+      Alert.alert(
+        'Upload Failed',
+        error.message || 'Failed to upload profile picture. Please try again.'
+      );
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -194,7 +240,7 @@ export default function ProfileScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         await uploadAndSaveAvatar(result.assets[0].uri);
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Could not open camera.');
     }
   };
@@ -213,7 +259,7 @@ export default function ProfileScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         await uploadAndSaveAvatar(result.assets[0].uri);
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Could not open gallery.');
     }
   };
@@ -225,38 +271,71 @@ export default function ProfileScreen() {
       [
         { text: 'Take Photo', onPress: handleTakePhoto },
         { text: 'Choose from Gallery', onPress: handlePickLibrary },
-        { text: 'Cancel', style: 'cancel' }
+        { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
 
-  const handleApplyVerification = async () => {
-    setIsSubmittingVerify(true);
+  // ─── Publisher Application ────────────────────────────────────────────────
+
+  const handleApplyForPublisher = async () => {
+    // ✅ Check eligibility
+    if (!canApplyForPublisher) {
+      Alert.alert(
+        'Requirements Not Met',
+        `Please complete the following to apply:\n\n${missingRequirements
+          .map((r) => `• ${r.replace(/_/g, ' ')}`)
+          .join('\n')}`,
+        [
+          {
+            text: 'Update Profile',
+            onPress: () => router.push('/(onboarding)/edit-profile'),
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    setIsApplyingPublisher(true);
     try {
       await switchToPublisher();
+
+      // ✅ Reload dashboard to get updated publisher status
+      const freshDashboard = await usersApi.dashboard({ detailed: true });
+      setDashboardData(freshDashboard);
+
       Alert.alert('Congratulations!', 'You are now a Verified Publisher!');
       setActiveTab('posts');
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.message || 'Could not switch to publisher. Make sure your email and phone are verified.');
+      Alert.alert(
+        'Application Failed',
+        error.message || 'Could not apply for publisher. Please try again.'
+      );
     } finally {
-      setIsSubmittingVerify(false);
+      setIsApplyingPublisher(false);
     }
   };
 
+  // ─── Article / Post Handlers ──────────────────────────────────────────────
+
   const handleCreateNewsArticle = (data: any) => {
-    createArticleMutate({
-      title: data.headline,
-      summary: data.summary || '',
-      category_id: parseInt(data.category, 10) ?? '',
-      image_url: data.imageUrl || '',
-    }, {
-      onSuccess: () => {
-        Alert.alert('Submitted!', 'Your news article has been submitted for review.');
+    createArticleMutate(
+      {
+        title: data.headline,
+        summary: data.summary || '',
+        category_id: parseInt(data.category, 10),
+        image_url: data.imageUrl || '',
       },
-      onError: (err: any) => {
-        Alert.alert('Error', err.message || 'Failed to publish article.');
+      {
+        onSuccess: () => {
+          Alert.alert('Submitted!', 'Your news article has been submitted for review.');
+        },
+        onError: (err: any) => {
+          Alert.alert('Error', err.message || 'Failed to publish article.');
+        },
       }
-    });
+    );
   };
 
   const handlePickPostImage = async () => {
@@ -280,7 +359,6 @@ export default function ProfileScreen() {
       return;
     }
 
-    // Append to local state for immediate visibility, actual upload would need a postsApi
     const newPost = {
       id: 'p_' + Date.now(),
       imageUrl: postCoverImage,
@@ -310,10 +388,12 @@ export default function ProfileScreen() {
     ]);
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
 
-      {/* Symmetrical Svelte Header */}
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.headerIconButton}
@@ -332,54 +412,95 @@ export default function ProfileScreen() {
         >
           <View>
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>0</Text>
-            </View>
+            {unreadNotifications > 0 && (
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </Text>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Loading Overlay */}
+      {isLoadingProfile && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading profile...
+          </Text>
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
-
-        {/* Profile Card Block with City background gradient */}
+        {/* Profile Card */}
         <View style={styles.profileSection}>
           <LinearGradient
             colors={isDark ? ['#1e1e38', '#12122b'] : ['#e0ebff', '#ffffff']}
             style={styles.profileCardBg}
           >
-            {/* User Info Container */}
             <View style={styles.profileInfoContainer}>
+              {/* Avatar */}
               <View style={styles.avatarWrapper}>
-                <Image
-                  source={{ uri: user?.avatar || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=U' }}
-                  style={styles.avatarImage}
-                />
-                <TouchableOpacity style={styles.avatarEditBadge} activeOpacity={0.8} onPress={handleAvatarPress}>
+                {isUploadingAvatar ? (
+                  <View style={[styles.avatarImage, styles.avatarLoadingContainer]}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={styles.avatarImage}
+                  />
+                )}
+                <TouchableOpacity
+                  style={styles.avatarEditBadge}
+                  activeOpacity={0.8}
+                  onPress={handleAvatarPress}
+                  disabled={isUploadingAvatar}
+                >
                   <Ionicons name="camera" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
 
+              {/* Profile Details */}
               <View style={styles.profileDetails}>
                 <View style={styles.nameRow}>
-                  <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
+                  <Text style={[styles.profileName, { color: colors.text }]}>
+                    {displayName}
+                  </Text>
                   {isPublisher && (
-                    <Ionicons name="checkmark-circle" size={18} color="#1E88E5" style={{ marginLeft: 6 }} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color="#1E88E5"
+                      style={{ marginLeft: 6 }}
+                    />
                   )}
                 </View>
 
                 <View style={styles.handleRow}>
-                  <Text style={[styles.profileHandle, { color: colors.textSecondary }]}>{userHandle}</Text>
+                  <Text style={[styles.profileHandle, { color: colors.textSecondary }]}>
+                    {userHandle}
+                  </Text>
                   {isPublisher ? (
                     <View style={styles.verifiedBadgeBadge}>
-                      <Ionicons name="shield-checkmark" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
+                      <Ionicons
+                        name="shield-checkmark"
+                        size={10}
+                        color="#FFFFFF"
+                        style={{ marginRight: 2 }}
+                      />
                       <Text style={styles.verifiedBadgeBadgeText}>Publisher</Text>
                     </View>
                   ) : (
                     <View style={[styles.userBadge, { borderColor: colors.primary }]}>
-                      <Text style={[styles.userBadgeText, { color: colors.primary }]}>User</Text>
+                      <Text style={[styles.userBadgeText, { color: colors.primary }]}>
+                        User
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -388,61 +509,153 @@ export default function ProfileScreen() {
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
                     <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{userLocation}</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      {userLocation}
+                    </Text>
                   </View>
                   <View style={[styles.metaItem, { marginLeft: 12 }]}>
                     <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}</Text>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      Joined {joinedDate}
+                    </Text>
                   </View>
                 </View>
 
                 {/* Followers */}
                 <Text style={[styles.followersText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: '700', color: colors.text }}>0</Text> Followers   |   <Text style={{ fontWeight: '700', color: colors.text }}>0</Text> Following
+                  <Text style={{ fontWeight: '700', color: colors.text }}>
+                    {followersCount}
+                  </Text>{' '}
+                  Followers{'   '}|{'   '}
+                  <Text style={{ fontWeight: '700', color: colors.text }}>
+                    {followingCount}
+                  </Text>{' '}
+                  Following
                 </Text>
               </View>
             </View>
 
-            {/* Profile Action Buttons */}
+            {/* Profile Completion Bar */}
+            {profileCompletion < 100 && (
+              <View style={styles.completionContainer}>
+                <View style={styles.completionHeader}>
+                  <Text style={[styles.completionLabel, { color: colors.textSecondary }]}>
+                    Profile Completion
+                  </Text>
+                  <Text style={[styles.completionPercent, { color: colors.primary }]}>
+                    {profileCompletion}%
+                  </Text>
+                </View>
+                <View style={[styles.completionBar, { backgroundColor: isDark ? '#2A2A3C' : '#E2E8F0' }]}>
+                  <View
+                    style={[
+                      styles.completionFill,
+                      {
+                        backgroundColor: colors.primary,
+                        width: `${profileCompletion}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Action Buttons */}
             <View style={styles.profileActionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(onboarding)/edit-profile')}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { borderColor: colors.border }]}
+                activeOpacity={0.7}
+                onPress={() => router.push('/(onboarding)/edit-profile')}
+              >
                 <Ionicons name="pencil" size={14} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit Profile</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/settings')}>
-                <Ionicons name="settings-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Settings</Text>
+              <TouchableOpacity
+                style={[styles.actionBtn, { borderColor: colors.border }]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (isPublisher) {
+                    router.push('/(tabs)/settings');
+                  } else {
+                    setActiveTab('publisher');
+                  }
+                }}
+              >
+                {isPublisher ? (
+                  <>
+                    <Ionicons
+                      name="settings-outline"
+                      size={14}
+                      color={colors.textSecondary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Settings</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={14}
+                      color={colors.primary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.actionBtnText, { color: colors.primary }]}>Publisher</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
 
-        {/* Profile update banner */}
-        {!isPublisher && (
+        {/* Publisher CTA Banner */}
+        {!isPublisher && dashboardData?.publisher_cta?.show_cta && (
           <View style={styles.verifyBannerWrapper}>
-            <View style={[styles.verifyBanner, { backgroundColor: isDark ? '#1C1C35' : '#F0F5FF', borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.verifyBanner,
+                {
+                  backgroundColor: isDark ? '#1C1C35' : '#F0F5FF',
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <View style={styles.verifyBannerIconContainer}>
-                <Ionicons name="person-circle-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name={canApplyForPublisher ? 'shield-checkmark-outline' : 'person-circle-outline'}
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <View style={styles.verifyBannerContent}>
-                <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>Keep your profile up to date</Text>
+                <Text style={[styles.verifyBannerTitle, { color: colors.text }]}>
+                  {canApplyForPublisher ? 'Become a Publisher!' : 'Complete Your Profile'}
+                </Text>
                 <Text style={[styles.verifyBannerSubtitle, { color: colors.textSecondary }]}>
-                  Update your name, photo, and location anytime from the profile editor.
+                  {publisherMessage}
                 </Text>
               </View>
               <TouchableOpacity
-                style={[styles.verifyBannerButton, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.verifyBannerButton,
+                  { backgroundColor: canApplyForPublisher ? colors.primary : colors.border },
+                ]}
                 activeOpacity={0.8}
-                onPress={() => router.push('/(onboarding)/edit-profile')}
+                onPress={() =>
+                  canApplyForPublisher
+                    ? setActiveTab('publisher')
+                    : router.push('/(onboarding)/edit-profile')
+                }
               >
-                <Text style={styles.verifyBannerButtonText}>Edit Profile</Text>
+                <Text style={styles.verifyBannerButtonText}>
+                  {canApplyForPublisher ? 'Apply Now' : 'Complete'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* My Stats Bento Grid */}
+        {/* Stats Section */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>My Stats</Text>
         </View>
@@ -484,7 +697,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statContent}>
               <Text style={[styles.statValue, { color: colors.text }]}>{stats.level}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Contributor</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Level</Text>
             </View>
           </View>
 
@@ -509,30 +722,43 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Navigation Tabs Header */}
+        {/* Tabs */}
         <View style={[styles.tabsHeader, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]} onPress={() => setActiveTab('posts')}>
-            <Ionicons name="document-text" size={16} color={activeTab === 'posts' ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.tabLabel, { color: activeTab === 'posts' ? colors.primary : colors.textSecondary }]}>Posts</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.tabButton, activeTab === 'news' && styles.tabButtonActive]} onPress={() => setActiveTab('news')}>
-            <Ionicons name="newspaper" size={16} color={activeTab === 'news' ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.tabLabel, { color: activeTab === 'news' ? colors.primary : colors.textSecondary }]}>News</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.tabButton, activeTab === 'saved' && styles.tabButtonActive]} onPress={() => setActiveTab('saved')}>
-            <Ionicons name="bookmark" size={16} color={activeTab === 'saved' ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.tabLabel, { color: activeTab === 'saved' ? colors.primary : colors.textSecondary }]}>Saved</Text>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'posts' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('posts')}
+          >
+            <Ionicons
+              name="document-text"
+              size={16}
+              color={activeTab === 'posts' ? colors.primary : colors.textSecondary}
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'posts' ? colors.primary : colors.textSecondary }]}>
+              Posts
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'verify' && styles.tabButtonActive]}
+            style={[styles.tabButton, activeTab === 'news' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('news')}
+          >
+            <Ionicons
+              name="newspaper"
+              size={16}
+              color={activeTab === 'news' ? colors.primary : colors.textSecondary}
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'news' ? colors.primary : colors.textSecondary }]}>
+              News
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'publisher' && styles.tabButtonActive]}
             onPress={() => {
               if (isPublisher) {
                 setShowCreatePostModal(true);
               } else {
-                setActiveTab('verify');
+                setActiveTab('publisher');
               }
             }}
           >
@@ -542,21 +768,39 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <>
-                <Ionicons name="shield-checkmark" size={16} color={activeTab === 'verify' ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.tabLabel, { color: activeTab === 'verify' ? colors.primary : colors.textSecondary }]}>Verify</Text>
+                <Ionicons
+                  name="shield-checkmark"
+                  size={16}
+                  color={activeTab === 'publisher' ? colors.primary : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    { color: activeTab === 'publisher' ? colors.primary : colors.textSecondary },
+                  ]}
+                >
+                  Publisher
+                </Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Tab Contents */}
+        {/* Tab: Posts */}
         {activeTab === 'posts' && (
           <View style={styles.postsGrid}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>My Posts</Text>
             {posts.length === 0 ? (
               <View style={styles.emptyTabContent}>
-                <Ionicons name="document-text-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No posts yet. Create your first post!</Text>
+                <Ionicons
+                  name="document-text-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                  style={{ marginBottom: 12 }}
+                />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                  No posts yet. Create your first post!
+                </Text>
               </View>
             ) : (
               <View style={styles.postsWrapper}>
@@ -583,130 +827,226 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Tab: News */}
         {activeTab === 'news' && (
           <View style={styles.newsSection}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>News Overview</Text>
-
             {!isPublisher ? (
-              <View style={[styles.unverifiedNewsPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Ionicons name="shield-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.promptTitle, { color: colors.text }]}>Publisher Verification Required</Text>
+              <View
+                style={[
+                  styles.unverifiedNewsPrompt,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="shield-outline"
+                  size={32}
+                  color={colors.textSecondary}
+                  style={{ marginBottom: 8 }}
+                />
+                <Text style={[styles.promptTitle, { color: colors.text }]}>
+                  Publisher Verification Required
+                </Text>
                 <Text style={[styles.promptSubtitle, { color: colors.textSecondary }]}>
                   You need to be verified as a publisher to view news insights and manage news articles.
                 </Text>
-                <TouchableOpacity style={[styles.promptButton, { backgroundColor: colors.primary }]} activeOpacity={0.8} onPress={() => setActiveTab('verify')}>
-                  <Text style={styles.promptButtonText}>Get Verified</Text>
+                <TouchableOpacity
+                  style={[styles.promptButton, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.8}
+                  onPress={() => setActiveTab('publisher')}
+                >
+                  <Text style={styles.promptButtonText}>View Publisher Status</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.emptyTabContent}>
-                <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>Your published articles will appear here.</Text>
+                <Ionicons
+                  name="newspaper-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                  style={{ marginBottom: 12 }}
+                />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                  Your published articles will appear here.
+                </Text>
               </View>
             )}
           </View>
         )}
 
+        {/* Tab: Saved */}
         {activeTab === 'saved' && (
           <View style={styles.postsGrid}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>Saved Articles</Text>
             {bookmarks.length === 0 ? (
               <View style={styles.emptyTabContent}>
-                <Ionicons name="bookmark-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No saved bookmarks found.</Text>
+                <Ionicons
+                  name="bookmark-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                  style={{ marginBottom: 12 }}
+                />
+                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                  No saved bookmarks found.
+                </Text>
               </View>
             ) : (
               <View style={styles.postsWrapper}>
-                {bookmarks.filter(b => b.news).map((b) => (
-                  <View key={b.news_uid} style={styles.postCard}>
-                    <Image source={{ uri: b.news?.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=N' }} style={styles.postImage} />
-                    <View style={styles.postOverlay}>
-                      <View style={styles.overlayStat}>
-                        <Ionicons name="heart" size={12} color="#FFFFFF" />
-                        <Text style={styles.overlayStatText}>{b.news?.likes || 0}</Text>
-                      </View>
-                      <View style={[styles.overlayStat, { marginLeft: 8 }]}>
-                        <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
-                        <Text style={styles.overlayStatText}>{b.news?.comments || 0}</Text>
+                {bookmarks
+                  .filter((b) => b.news)
+                  .map((b) => (
+                    <View key={b.news_uid} style={styles.postCard}>
+                      <Image
+                        source={{
+                          uri: b.news?.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=N',
+                        }}
+                        style={styles.postImage}
+                      />
+                      <View style={styles.postOverlay}>
+                        <View style={styles.overlayStat}>
+                          <Ionicons name="heart" size={12} color="#FFFFFF" />
+                          <Text style={styles.overlayStatText}>{b.news?.likes || 0}</Text>
+                        </View>
+                        <View style={[styles.overlayStat, { marginLeft: 8 }]}>
+                          <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
+                          <Text style={styles.overlayStatText}>{b.news?.comments || 0}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  ))}
               </View>
             )}
           </View>
         )}
 
-        {activeTab === 'verify' && (
-          <View style={styles.verifySection}>
-            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Apply for Publisher Verification</Text>
+        {/* Tab: Publisher */}
+        {activeTab === 'publisher' && (
+          <View style={styles.publisherSection}>
+            <Text style={[styles.tabContentTitle, { color: colors.text }]}>
+              Publisher Status
+            </Text>
 
-            <View style={[styles.verifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.verifyStepHeader}>
-                <Ionicons name="ribbon-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
-                <Text style={[styles.verifyStepTitle, { color: colors.text }]}>Join the HyperLocal Publisher Program</Text>
-                <Text style={[styles.verifyStepSubtitle, { color: colors.textSecondary }]}>
-                  Publish local reports directly to your community feed, gain followers, and earn badges.
+            {/* Eligibility Status Card */}
+            <View
+              style={[
+                styles.publisherCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.publisherHeader}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={32}
+                  color={canApplyForPublisher ? colors.primary : colors.textSecondary}
+                  style={{ marginBottom: 8 }}
+                />
+                <Text style={[styles.publisherTitle, { color: colors.text }]}>
+                  {canApplyForPublisher
+                    ? 'You are Ready to Apply!'
+                    : 'Complete Requirements to Apply'}
+                </Text>
+                <Text style={[styles.publisherSubtitle, { color: colors.textSecondary }]}>
+                  {publisherMessage}
                 </Text>
               </View>
 
-              <View style={styles.formWrapper}>
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Full Name / Publisher Brand Name</Text>
-                  <TextInput
-                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Enter full name or news brand"
-                    placeholderTextColor={colors.textTertiary}
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Target Reporting City / District</Text>
-                  <TextInput
-                    style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. Visakhapatnam, AP"
-                    placeholderTextColor={colors.textTertiary}
-                    value={city}
-                    onChangeText={setCity}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Brief Bio / Credentials</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Describe your background or brand value proposition..."
-                    placeholderTextColor={colors.textTertiary}
-                    multiline
-                    numberOfLines={3}
-                    value={bio}
-                    onChangeText={setBio}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitVerifyBtn, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                  onPress={handleApplyVerification}
-                  disabled={isSubmittingVerify}
-                >
-                  <Text style={styles.submitVerifyBtnText}>
-                    {isSubmittingVerify ? 'Submitting Request...' : 'Submit Application'}
+              {/* Requirements List */}
+              {missingRequirements.length > 0 && (
+                <View style={styles.requirementsList}>
+                  <Text style={[styles.requirementsTitle, { color: colors.text }]}>
+                    Missing Requirements:
                   </Text>
-                </TouchableOpacity>
+                  {missingRequirements.map((req) => (
+                    <View key={req} style={styles.requirementItem}>
+                      <Ionicons name="close-circle" size={18} color="#EF4444" />
+                      <Text style={[styles.requirementText, { color: colors.textSecondary }]}>
+                        {req
+                          .replace(/_/g, ' ')
+                          .split(' ')
+                          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                          .join(' ')}
+                      </Text>
+                    </View>
+                  ))}
+
+                  <TouchableOpacity
+                    style={[styles.completeButton, { backgroundColor: colors.primary }]}
+                    onPress={() => router.push('/(onboarding)/edit-profile')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="pencil" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.completeButtonText}>Complete Profile</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* All Requirements Met */}
+              {missingRequirements.length === 0 && canApplyForPublisher && (
+                <View style={styles.readySection}>
+                  <View style={styles.checkmarkContainer}>
+                    <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                  </View>
+                  <Text style={[styles.readyText, { color: colors.text }]}>
+                    All requirements completed!
+                  </Text>
+                  <Text style={[styles.readySubtext, { color: colors.textSecondary }]}>
+                    You're now eligible to become a verified publisher and start publishing news
+                    articles for your community.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.applyButton, { backgroundColor: colors.primary }]}
+                    onPress={handleApplyForPublisher}
+                    disabled={isApplyingPublisher}
+                    activeOpacity={0.8}
+                  >
+                    {isApplyingPublisher ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={18}
+                          color="#FFFFFF"
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.applyButtonText}>Apply as Publisher</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Info Box */}
+              <View
+                style={[
+                  styles.infoBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(70, 72, 212, 0.05)',
+                    borderColor: colors.primary,
+                  },
+                ]}
+              >
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                  Publishers can write and publish news articles, earn badges, and gain followers in
+                  their local community.
+                </Text>
               </View>
             </View>
           </View>
         )}
-
       </ScrollView>
 
-      {/* Floating Action Button (FAB) */}
+      {/* FAB */}
       <View style={styles.fabContainer}>
         {showFabMenu && (
-          <View style={[styles.fabMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.fabMenu,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <TouchableOpacity
               style={styles.fabMenuItem}
               activeOpacity={0.7}
@@ -715,7 +1055,12 @@ export default function ProfileScreen() {
                 setShowCreatePostModal(true);
               }}
             >
-              <Ionicons name="create-outline" size={16} color={colors.text} style={{ marginRight: 10 }} />
+              <Ionicons
+                name="create-outline"
+                size={16}
+                color={colors.text}
+                style={{ marginRight: 10 }}
+              />
               <Text style={[styles.fabMenuText, { color: colors.text }]}>Create Post</Text>
             </TouchableOpacity>
 
@@ -729,14 +1074,23 @@ export default function ProfileScreen() {
                 if (isPublisher) {
                   setShowCreateArticleModal(true);
                 } else {
-                  Alert.alert('Access Denied', 'Write News is only available for verified publishers. Please verify first.', [
-                    { text: 'Apply Now', onPress: () => setActiveTab('verify') },
-                    { text: 'Cancel', style: 'cancel' }
-                  ]);
+                  Alert.alert(
+                    'Access Denied',
+                    'Write News is only available for verified publishers.',
+                    [
+                      { text: 'View Status', onPress: () => setActiveTab('publisher') },
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  );
                 }
               }}
             >
-              <Ionicons name="document-text-outline" size={16} color={colors.text} style={{ marginRight: 10 }} />
+              <Ionicons
+                name="document-text-outline"
+                size={16}
+                color={colors.text}
+                style={{ marginRight: 10 }}
+              />
               <Text style={[styles.fabMenuText, { color: colors.text }]}>Write News</Text>
             </TouchableOpacity>
           </View>
@@ -767,19 +1121,32 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity onPress={() => setShowCreatePostModal(false)} style={styles.modalCloseBtn}>
+              <TouchableOpacity
+                onPress={() => setShowCreatePostModal(false)}
+                style={styles.modalCloseBtn}
+              >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Create New Post</Text>
               <View style={{ width: 24 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-
+            <ScrollView
+              contentContainerStyle={styles.modalFormContent}
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.text }]}>Caption</Text>
                 <TextInput
-                  style={[styles.modalTextInput, styles.modalTextArea, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                  style={[
+                    styles.modalTextInput,
+                    styles.modalTextArea,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   placeholder="Share a story or what's on your mind..."
                   placeholderTextColor={colors.textTertiary}
                   multiline
@@ -794,17 +1161,30 @@ export default function ProfileScreen() {
                 {postCoverImage ? (
                   <View style={styles.postCoverContainer}>
                     <Image source={{ uri: postCoverImage }} style={styles.postCoverImg} />
-                    <TouchableOpacity style={styles.postCoverRemoveBtn} onPress={() => setPostCoverImage('')}>
+                    <TouchableOpacity
+                      style={styles.postCoverRemoveBtn}
+                      onPress={() => setPostCoverImage('')}
+                    >
                       <Ionicons name="close" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.textInput, { alignItems: 'center', justifyContent: 'center', height: 100 }]}
+                    style={[
+                      styles.textInput,
+                      { alignItems: 'center', justifyContent: 'center', height: 100 },
+                    ]}
                     onPress={handlePickPostImage}
                   >
-                    <Ionicons name="image-outline" size={24} color={colors.textSecondary} style={{ marginBottom: 4 }} />
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Pick from Gallery</Text>
+                    <Ionicons
+                      name="image-outline"
+                      size={24}
+                      color={colors.textSecondary}
+                      style={{ marginBottom: 4 }}
+                    />
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      Pick from Gallery
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -816,12 +1196,10 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.publishPostBtnText}>Publish Post</Text>
               </TouchableOpacity>
-
             </ScrollView>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -866,6 +1244,22 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 64,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+  },
   profileSection: {
     width: '100%',
   },
@@ -892,6 +1286,11 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 3,
     borderColor: '#FFFFFF',
+  },
+  avatarLoadingContainer: {
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarEditBadge: {
     position: 'absolute',
@@ -971,6 +1370,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
+  completionContainer: {
+    marginTop: 16,
+  },
+  completionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  completionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  completionPercent: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  completionBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  completionFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
   profileActionButtons: {
     flexDirection: 'row',
     marginTop: 20,
@@ -1034,15 +1459,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingHorizontal: 4,
-  },
-  infoRowText: {
-    fontSize: 11,
   },
   sectionHeader: {
     paddingHorizontal: 16,
@@ -1225,63 +1641,114 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
-  verifySection: {
+  publisherSection: {
     width: '100%',
   },
-  verifyCard: {
+  publisherCard: {
     marginHorizontal: 16,
     borderRadius: 16,
     borderWidth: 1,
     padding: 24,
   },
-  verifyStepHeader: {
+  publisherHeader: {
     alignItems: 'center',
     marginBottom: 20,
   },
-  verifyStepTitle: {
+  publisherTitle: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
   },
-  verifyStepSubtitle: {
+  publisherSubtitle: {
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
     marginTop: 4,
   },
-  formWrapper: {
-    gap: 16,
+  requirementsList: {
+    gap: 12,
+    marginBottom: 16,
   },
-  inputGroup: {
-    gap: 6,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  textInput: {
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  requirementsTitle: {
     fontSize: 14,
-    borderWidth: 1,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  submitVerifyBtn: {
-    borderRadius: 24,
-    paddingVertical: 14,
+  requirementText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+  },
+  completeButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 4,
   },
-  submitVerifyBtnText: {
+  completeButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  readySection: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  checkmarkContainer: {
+    marginBottom: 12,
+  },
+  readyText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  readySubtext: {
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  applyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 16,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
   },
   fabContainer: {
     position: 'absolute',
@@ -1376,6 +1843,13 @@ const styles = StyleSheet.create({
   modalTextArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  textInput: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    borderWidth: 1,
   },
   postCoverContainer: {
     width: '100%',

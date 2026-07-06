@@ -12,7 +12,7 @@ const supabaseUrl =
 const supabaseAnonKey =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? (extra as any).supabaseAnonKey;
 
-// ✅ FIXED: Must have EXPO_PUBLIC_ prefix to work in Expo
+// FIXED: Must have EXPO_PUBLIC_ prefix to work in Expo
 const supabaseBucket =
   process.env.EXPO_PUBLIC_SUPABASE_BUCKET ?? 'news-images';
 
@@ -113,3 +113,6 @@ export const getSupabaseConfigStatus = () => ({
   hasAnonKey: Boolean(supabaseAnonKey),
   bucket: supabaseBucket,
 });
+
+//Just for testing
+console.log(getSupabaseConfigStatus());

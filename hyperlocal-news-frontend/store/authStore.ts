@@ -18,7 +18,7 @@ import {
   PublisherEligibilityResponse,
   usersApi,
 } from '@/services/api';
-import type { UpdateMePayload } from '@/services/api/users';
+import type { UserPreferences } from '@/services/api';
 import { clearTokens } from '@/services/api/token';
 import { compressImage } from '@/services/image';
 import { uploadImageToSupabase } from '@/services/supabase';
@@ -117,6 +117,7 @@ interface AuthState {
   pendingVerificationId: string | null;
   lastOtpSentTime: number | null;
 
+
   // ✅ NEW: Temporary onboarding data collection
   onboardingData: {
     language_id?: number | null;
@@ -125,6 +126,7 @@ interface AuthState {
     city_id?: number | null;
     category_ids?: number[] | null;
   };
+
 
   sendPhoneOTP: (phoneNumber: string) => Promise<void>;
   verifyPhoneOTP: (otp: string) => Promise<BackendLoginResponse>;
@@ -147,6 +149,11 @@ interface AuthState {
   completeOnboarding: () => Promise<void>;
   clearError: () => void;
   isPublisher: () => boolean;
+
+  // ✅ NEW: Cached preferences
+  cachedPreferences: UserPreferences | null;
+  fetchPreferences: () => Promise<UserPreferences>;
+  updateCachedPreferences: (updates: Partial<UserPreferences>) => void;
 }
 
 // ─── Error Handler ────────────────────────────────────────────────────────────
@@ -238,6 +245,30 @@ export const useAuthStore = create<AuthState>()(
 
       // ✅ NEW: Initialize empty onboarding data
       onboardingData: {},
+
+      // ✅ NEW: Initialize
+      cachedPreferences: null,
+
+      // ✅ NEW: Fetch and cache preferences
+      fetchPreferences: async () => {
+        try {
+          const prefs = await usersApi.getPreferences();
+          set({ cachedPreferences: prefs });
+          return prefs;
+        } catch (error) {
+          console.error('[authStore] fetchPreferences failed:', error);
+          throw error;
+        }
+      },
+
+      // ✅ NEW: Update cached preferences locally
+      updateCachedPreferences: (updates: Partial<UserPreferences>) => {
+        set((state) => ({
+          cachedPreferences: state.cachedPreferences
+            ? { ...state.cachedPreferences, ...updates }
+            : null,
+        }));
+      },
 
       // ─── Send Phone OTP ────────────────────────────────────────────────────
 
@@ -441,6 +472,7 @@ export const useAuthStore = create<AuthState>()(
             pendingVerificationId: null,
             lastOtpSentTime: null,
             onboardingData: {}, // ✅ Clear onboarding data
+            cachedPreferences: null, // ✅ Clear cache on logout
           });
         }
       },
@@ -536,12 +568,12 @@ export const useAuthStore = create<AuthState>()(
           }
 
           // ✅ Update basic profile (name, avatar, gender, DOB)
-          await usersApi.updateMe({
-            name: user.name ?? undefined,
-            profile_picture: uploadedAvatarUrl ?? null,
-            gender: user.gender ?? null,
-            date_of_birth: user.date_of_birth ?? null,
-          });
+          // await usersApi.updateMe({
+          //   name: user.name ?? undefined,
+          //   profile_picture: uploadedAvatarUrl ?? null,
+          //   gender: user.gender ?? null,
+          //   date_of_birth: user.date_of_birth ?? null,
+          // });
 
           // ✅ Save ALL preferences in ONE POST request
           await usersApi.savePreferences({

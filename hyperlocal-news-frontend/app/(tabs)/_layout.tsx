@@ -161,7 +161,7 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' },
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="profile-interests"
         options={{
           href: null,
@@ -174,7 +174,7 @@ export default function TabLayout() {
           href: null,
           tabBarStyle: { display: 'none' },
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="help"
         options={{

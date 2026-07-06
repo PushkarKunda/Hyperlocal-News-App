@@ -1,3 +1,4 @@
+// app/(onboarding)/edit-profile.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -27,9 +28,26 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 import { statusCodes } from '@react-native-google-signin/google-signin';
-import { usersApi } from '@/services/api';
+import { usersApi, type UserMeResponse, type UpdateMePayload } from '@/services/api';
 import { compressImage } from '@/services/image';
 import { uploadImageToSupabase } from '@/services/supabase';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+type DialogType = 'success' | 'info' | 'error' | 'warning';
+
+interface DialogConfig {
+  visible: boolean;
+  title: string;
+  message: string;
+  type: DialogType;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function ProfileCompletionScreen() {
   const router = useRouter();
@@ -45,108 +63,47 @@ export default function ProfileCompletionScreen() {
     sendPhoneOTP,
     linkPhone,
     isLoading,
+    updateProfileLocal,
   } = useAuthStore();
 
-  // ─── State ────────────────────────────────────────────────────────────────
+  // ─── Form State ─────────────────────────────────────────────────────────
 
-  const [name, setName] = useState(user?.name ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? user?.phone ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [gender, setGender] = useState(user?.gender ?? '');
-  const [dob, setDob] = useState(user?.date_of_birth ?? '');
-  const [selectedAvatar, setSelectedAvatar] = useState<string | ''>(
-    user?.profile_picture ?? user?.avatar ?? ''
-  );
+  const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [gender, setGender] = useState('');
+  const [dob, setDob] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState('');
+
+  // ─── UI State ───────────────────────────────────────────────────────────
 
   const [isFocused, setIsFocused] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
-  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
-
-  // ✅ FIX #2: Track the formatted phone number sent to Firebase
   const [formattedPhone, setFormattedPhone] = useState('');
 
-  // ─── Dialog State ─────────────────────────────────────────────────────────
+  // ─── Dialog ─────────────────────────────────────────────────────────────
 
-  const [dialogConfig, setDialogConfig] = useState<{
-    visible: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'info' | 'error' | 'warning';
-  }>({
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig>({
     visible: false,
     title: '',
     message: '',
     type: 'info',
   });
 
-  const showCustomAlert = (
+  const showDialog = (
     title: string,
     message: string,
-    type: 'success' | 'info' | 'error' | 'warning' = 'info'
-  ) => {
-    setDialogConfig({ visible: true, title, message, type });
-  };
+    type: DialogType = 'info'
+  ) => setDialogConfig({ visible: true, title, message, type });
 
-  const closeCustomAlert = () => {
+  const closeDialog = () =>
     setDialogConfig((prev) => ({ ...prev, visible: false }));
-  };
 
-  // ─── Load Saved Data on Mount (Edit Mode Only) ────────────────────────────
-
-  useEffect(() => {
-    if (!isOnboarded) return;
-
-    const loadSavedData = async () => {
-      setIsLoadingPreferences(true);
-      try {
-        const userProfile = await usersApi.me();
-
-        setName(userProfile.name ?? '');
-        setPhoneNumber(userProfile.phone ?? userProfile.phoneNumber ?? '');
-        setEmail(userProfile.email ?? '');
-        setGender(userProfile.gender ?? '');
-        setDob(userProfile.date_of_birth ?? '');
-        setSelectedAvatar(userProfile.profile_picture ?? userProfile.avatar ?? '');
-      } catch (error: any) {
-        console.error('[edit-profile] Failed to load preferences:', error);
-      } finally {
-        setIsLoadingPreferences(false);
-      }
-    };
-
-    loadSavedData();
-  }, [isOnboarded]);
-
-  // ─── Google Sign-In ───────────────────────────────────────────────────────
-
-  const { signInWithGoogle, isGoogleLoading, isGoogleReady } = useGoogleFirebaseAuth({
-    onSuccess: (response) => {
-      const updatedUser = response.user;
-
-      // ✅ Trust backend's email_verified, don't infer from email existence
-      updateProfile({
-        email: updatedUser.email ?? null,
-        email_verified: updatedUser.email_verified,
-      });
-      setEmail(updatedUser.email ?? '');
-      showCustomAlert('Success', 'Google account linked successfully!', 'success');
-    },
-    onError: (error: any) => {
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
-        return;
-      }
-      showCustomAlert(
-        'Error',
-        error?.message ?? 'Failed to link Google account. Please try again.',
-        'error'
-      );
-    },
-  });
-
-  // ─── Animations ───────────────────────────────────────────────────────────
+  // ─── Animations ─────────────────────────────────────────────────────────
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const avatarScale = useRef(new Animated.Value(1)).current;
@@ -154,13 +111,16 @@ export default function ProfileCompletionScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
+  const avatarSize = Math.min(Math.max(width * 0.28, 88), 130);
+
+  // ─── Back Handler (block back during onboarding) ─────────────────────────
+
   useEffect(() => {
     const onBackPress = () => {
       if (!isOnboarded) return true;
       return false;
     };
-
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -175,14 +135,126 @@ export default function ProfileCompletionScreen() {
       }),
     ]).start();
 
-    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
   }, [isOnboarded]);
 
-  // ─── Phone Verification ───────────────────────────────────────────────────
+  // ─── Load Profile on Mount ───────────────────────────────────────────────
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      // ✅ For onboarding: use user from store (already set)
+      if (!isOnboarded) {
+        setName(user?.name ?? '');
+        setPhoneNumber(user?.phoneNumber ?? user?.phone ?? '');
+        setEmail(user?.email ?? '');
+        setGender(user?.gender ?? '');
+        setDob(user?.date_of_birth ?? '');
+        setSelectedAvatar(user?.profile_picture ?? user?.avatar ?? '');
+        return;
+      }
+
+      // ✅ For edit mode: fetch fresh from API
+      setIsLoadingProfile(true);
+      try {
+        const freshUser: UserMeResponse = await usersApi.me();
+
+        setName(freshUser.name ?? '');
+        setPhoneNumber(freshUser.phone ?? '');
+        setEmail(freshUser.email ?? '');
+        setGender(freshUser.gender ?? '');
+        setDob(
+          freshUser.date_of_birth
+            ? new Date(freshUser.date_of_birth).toISOString().split('T')[0]
+            : ''
+        );
+        setSelectedAvatar(freshUser.profile_picture ?? '');
+
+        // ✅ Update store with fresh data
+        updateProfileLocal({
+          name: freshUser.name,
+          phone: freshUser.phone,
+          phoneNumber: freshUser.phone,
+          email: freshUser.email,
+          profile_picture: freshUser.profile_picture,
+          avatar: freshUser.profile_picture,
+          gender: freshUser.gender,
+          date_of_birth: freshUser.date_of_birth,
+          email_verified: freshUser.email_verified,
+          mobile_verified: freshUser.mobile_verified,
+        });
+      } catch (error) {
+        console.error('[edit-profile] Failed to load profile:', error);
+        // Fallback to store data
+        setName(user?.name ?? '');
+        setPhoneNumber(user?.phoneNumber ?? user?.phone ?? '');
+        setEmail(user?.email ?? '');
+        setGender(user?.gender ?? '');
+        setDob(user?.date_of_birth ?? '');
+        setSelectedAvatar(user?.profile_picture ?? user?.avatar ?? '');
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [isOnboarded]);
+
+  // ─── Google Sign-In ──────────────────────────────────────────────────────
+
+  const { signInWithGoogle, isGoogleLoading, isGoogleReady } =
+    useGoogleFirebaseAuth({
+      onSuccess: async (response) => {
+        // ✅ CRITICAL FIX: Fetch fresh user data from API after linking
+        try {
+          const freshUser: UserMeResponse = await usersApi.me();
+
+          // ✅ Update store with fresh API data
+          updateProfileLocal({
+            email: freshUser.email,
+            email_verified: freshUser.email_verified,
+            name: freshUser.name,
+            phone: freshUser.phone,
+            phoneNumber: freshUser.phone,
+            profile_picture: freshUser.profile_picture,
+            avatar: freshUser.profile_picture,
+            gender: freshUser.gender,
+            date_of_birth: freshUser.date_of_birth,
+            mobile_verified: freshUser.mobile_verified,
+          });
+
+          // ✅ Update local state
+          setEmail(freshUser.email ?? '');
+
+          showDialog('Success', 'Google account linked successfully!', 'success');
+        } catch (error) {
+          console.error('[edit-profile] Failed to fetch user after Google link:', error);
+
+          // ✅ Fallback to response data
+          const updatedUser = response.user;
+          updateProfile({
+            email: updatedUser.email ?? null,
+            email_verified: updatedUser.email_verified,
+          });
+          setEmail(updatedUser.email ?? '');
+
+          showDialog('Success', 'Google account linked successfully!', 'success');
+        }
+      },
+      onError: (error: any) => {
+        if (error?.code === statusCodes.SIGN_IN_CANCELLED) return;
+        showDialog(
+          'Error',
+          error?.message ?? 'Failed to link Google account.',
+          'error'
+        );
+      },
+    });
+
+  // ─── Phone Verification ──────────────────────────────────────────────────
 
   const handleSendPhoneVerification = async () => {
     if (!phoneNumber.trim()) {
-      showCustomAlert('Phone Required', 'Please enter your phone number first.', 'warning');
+      showDialog('Phone Required', 'Please enter your phone number first.', 'warning');
       return;
     }
 
@@ -190,7 +262,7 @@ export default function ProfileCompletionScreen() {
     if (!phone.startsWith('+')) {
       const clean = phone.replace(/\D/g, '');
       if (clean.length < 10) {
-        showCustomAlert('Invalid Phone', 'Please enter a valid 10-digit phone number.', 'error');
+        showDialog('Invalid Phone', 'Please enter a valid 10-digit number.', 'error');
         return;
       }
       phone = `+91${clean.slice(-10)}`;
@@ -198,22 +270,15 @@ export default function ProfileCompletionScreen() {
 
     try {
       setIsVerifyingPhone(true);
-
-      // ✅ FIX #2: Save formatted phone and update display
       setFormattedPhone(phone);
       setPhoneNumber(phone);
-
       await sendPhoneOTP(phone);
       setShowPhoneVerification(true);
-      showCustomAlert(
-        'Code Sent',
-        `A verification code has been sent to ${phone}.`,
-        'success'
-      );
+      showDialog('Code Sent', `Verification code sent to ${phone}.`, 'success');
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : 'Failed to send verification code.';
-      showCustomAlert('Error', message, 'error');
+        error instanceof Error ? error.message : 'Failed to send code.';
+      showDialog('Error', message, 'error');
     } finally {
       setIsVerifyingPhone(false);
     }
@@ -221,76 +286,54 @@ export default function ProfileCompletionScreen() {
 
   const handleConfirmPhoneOtp = async () => {
     if (otpCode.trim().length !== 6) {
-      showCustomAlert('Invalid Code', 'Please enter the 6-digit code.', 'error');
+      showDialog('Invalid Code', 'Please enter the 6-digit code.', 'error');
       return;
     }
 
     try {
       setIsVerifyingPhone(true);
-
-      // ✅ FIX #3: linkPhone already updates the store from backend response
-      // The _phoneNumber param is ignored by the store — it uses pendingPhone internally
       await linkPhone(formattedPhone || phoneNumber, otpCode);
-
       setOtpCode('');
       setShowPhoneVerification(false);
 
-      // ✅ FIX #4: Refresh user from backend to ensure mobile_verified is correct
-      // The store was already updated by linkPhone, but we double-check
+      // ✅ CRITICAL FIX: Fetch fresh user data after phone verification
       try {
-        const freshUser = await usersApi.me();
-        updateProfile({
-          phone: freshUser.phone ?? formattedPhone,
-          phoneNumber: freshUser.phone ?? formattedPhone,
+        const freshUser: UserMeResponse = await usersApi.me();
+
+        updateProfileLocal({
+          phone: freshUser.phone,
+          phoneNumber: freshUser.phone,
           mobile_verified: freshUser.mobile_verified,
+          email: freshUser.email,
+          email_verified: freshUser.email_verified,
         });
+
         setPhoneNumber(freshUser.phone ?? formattedPhone);
       } catch {
-        // If refresh fails, use formattedPhone as fallback — store was already updated
+        // Fallback
         setPhoneNumber(formattedPhone);
       }
 
-      showCustomAlert(
-        'Verified',
-        'Your phone number has been successfully verified!',
-        'success'
-      );
+      showDialog('Verified', 'Phone number verified successfully!', 'success');
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : 'OTP verification failed. Please try again.';
-      showCustomAlert('Error', message, 'error');
+        error instanceof Error ? error.message : 'OTP verification failed.';
+      showDialog('Error', message, 'error');
     } finally {
       setIsVerifyingPhone(false);
     }
   };
 
-  // ─── Input Handlers ───────────────────────────────────────────────────────
-
-  const handleInputFocus = () => {
-    setIsFocused(true);
-    Animated.timing(inputBorderAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleInputBlur = () => {
-    setIsFocused(false);
-    Animated.timing(inputBorderAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
+  // ─── Image Picker ────────────────────────────────────────────────────────
 
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        showCustomAlert(
+        showDialog(
           'Permission Denied',
-          'Please allow access to your photos to upload a profile picture.',
+          'Please allow access to your photos.',
           'warning'
         );
         return;
@@ -304,8 +347,6 @@ export default function ProfileCompletionScreen() {
       });
 
       if (!result.canceled && result.assets?.length > 0) {
-        const uri = result.assets[0].uri;
-
         Animated.sequence([
           Animated.timing(avatarScale, {
             toValue: 0.88,
@@ -319,63 +360,26 @@ export default function ProfileCompletionScreen() {
             useNativeDriver: true,
           }),
         ]).start();
-
-        setSelectedAvatar(uri);
+        setSelectedAvatar(result.assets[0].uri);
       }
-    } catch (error) {
-      console.error('Image picker error:', error);
-      showCustomAlert('Error', 'Could not select photo. Please try again.', 'error');
+    } catch {
+      showDialog('Error', 'Could not select photo. Please try again.', 'error');
     }
   };
 
-  const handleAvatarPressIn = () => {
-    Animated.spring(avatarScale, {
-      toValue: 0.94,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handleAvatarPressOut = () => {
-    Animated.spring(avatarScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handleButtonPressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.94,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  const handleButtonPressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 180,
-      friction: 12,
-    }).start();
-  };
-
-  // ─── Save Profile ─────────────────────────────────────────────────────────
+  // ─── Save Profile ────────────────────────────────────────────────────────
 
   const handleFinishSetup = async () => {
     if (name.trim().length < 2) {
-      showCustomAlert('Name Required', 'Please enter your full name.', 'warning');
+      showDialog('Name Required', 'Please enter your full name.', 'warning');
       return;
     }
 
     setIsSaving(true);
 
     try {
-      let uploadedAvatarUrl: string | null = selectedAvatar;
+      // ✅ Upload avatar if local file
+      let uploadedAvatarUrl: string | null = selectedAvatar || null;
 
       const isLocalFile =
         selectedAvatar &&
@@ -384,7 +388,7 @@ export default function ProfileCompletionScreen() {
           (!selectedAvatar.startsWith('http://') &&
             !selectedAvatar.startsWith('https://')));
 
-      if (isLocalFile && selectedAvatar) {
+      if (isLocalFile) {
         try {
           const compressed = await compressImage(selectedAvatar, {
             width: 512,
@@ -393,11 +397,15 @@ export default function ProfileCompletionScreen() {
           });
 
           uploadedAvatarUrl = await uploadImageToSupabase(compressed.uri, 'avatars');
+
+          if (!uploadedAvatarUrl) {
+            throw new Error('Failed to get upload URL from Supabase.');
+          }
         } catch (uploadErr) {
-          console.error('[profile] Avatar upload failed:', uploadErr);
-          showCustomAlert(
+          console.error('[edit-profile] Avatar upload failed:', uploadErr);
+          showDialog(
             'Upload Failed',
-            'Could not upload photo, but saving other details.',
+            'Could not upload photo, saving other details.',
             'warning'
           );
           uploadedAvatarUrl = null;
@@ -405,76 +413,81 @@ export default function ProfileCompletionScreen() {
       }
 
       if (isOnboarded) {
-        // ─── Edit Profile Flow ─────────────────────────────────────────────
-        await usersApi.updateMe({
+        // ─── EDIT MODE ────────────────────────────────────────────────────
+        // ✅ Build clean payload
+        const payload: UpdateMePayload = {
           name: name.trim(),
-          phone: phoneNumber.trim() || null,
-          email: email.trim() || null,
-          profile_picture: uploadedAvatarUrl ?? null,
-          gender: gender || null,
-          date_of_birth: dob || null,
-        });
-
-        updateProfile({
-          name: name.trim(),
-          phone: phoneNumber.trim() || null,
-          phoneNumber: phoneNumber.trim() || null,
-          email: email.trim() || null,
-          avatar: uploadedAvatarUrl,
           profile_picture: uploadedAvatarUrl,
-          gender: gender || null,
-          date_of_birth: dob || null,
+          gender: gender ? (gender.toLowerCase() as 'male' | 'female' | 'other') : null,
+          date_of_birth: dob ? new Date(dob).toISOString() : null,
+        };
+
+        // ✅ Call PATCH /users/me
+        const response: UserMeResponse = await usersApi.updateMe(payload);
+
+        // ✅ Update store with API response
+        updateProfile({
+          name: response.name,
+          phone: response.phone,
+          phoneNumber: response.phone,
+          email: response.email,
+          avatar: response.profile_picture,
+          profile_picture: response.profile_picture,
+          gender: response.gender,
+          date_of_birth: response.date_of_birth,
+          email_verified: response.email_verified,
+          mobile_verified: response.mobile_verified,
         });
 
-        showCustomAlert('Saved', 'Your profile has been updated successfully!', 'success');
-
-        setTimeout(() => {
-          router.replace('/(tabs)/profile');
-        }, 1200);
+        showDialog('Saved', 'Profile updated successfully!', 'success');
+        setTimeout(() => router.replace('/(tabs)/profile'), 1200);
       } else {
-        // ─── Onboarding Flow ───────────────────────────────────────────────
+        // ─── ONBOARDING MODE ──────────────────────────────────────────────
+        // ✅ Store locally, completeOnboarding handles API call
         updateProfile({
           name: name.trim(),
           avatar: uploadedAvatarUrl ?? selectedAvatar,
           profile_picture: uploadedAvatarUrl ?? selectedAvatar,
           gender: gender || null,
-          date_of_birth: dob || null,
+          date_of_birth: dob ? new Date(dob).toISOString() : null,
         });
 
-        router.push('/(onboarding)/setup-feed' as any);
+        router.push('/(onboarding)/language');
       }
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
-      console.error('[profile] Save error:', err);
-      showCustomAlert('Error', message, 'error');
+        err instanceof Error
+          ? err.message
+          : 'Failed to save profile. Please try again.';
+      showDialog('Error', message, 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ─── Derived State ────────────────────────────────────────────────────────
+  // ─── Derived ─────────────────────────────────────────────────────────────
 
   const isNameValid = name.trim().length >= 2 && name.trim().length <= 50;
-  const isButtonDisabled = !isNameValid || isSaving || isLoading || isLoadingPreferences;
+  const isButtonDisabled =
+    !isNameValid || isSaving || isLoading || isLoadingProfile;
+
+  const phoneVerified = user?.mobile_verified === true;
+  const emailVerified = user?.email_verified === true;
 
   const borderInterpolation = inputBorderAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [colors.border, colors.primary],
   });
 
-  // ✅ FIX #1: Having an email ≠ verified. Only backend verification counts.
-  const phoneVerified = user?.mobile_verified === true;
-  const emailVerified = user?.email_verified === true;
-
-  const avatarSize = Math.min(Math.max(width * 0.28, 88), 130);
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
+      {/* Background Blurs */}
       <View
         style={[
           styles.topRadial,
@@ -533,8 +546,8 @@ export default function ProfileCompletionScreen() {
         <View style={styles.headerPlaceholder} />
       </View>
 
-      {/* Loading Preferences Overlay */}
-      {isOnboarded && isLoadingPreferences && (
+      {/* Loading Overlay */}
+      {isLoadingProfile && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.text }]}>
@@ -553,29 +566,32 @@ export default function ProfileCompletionScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            scrollEnabled={!isLoadingPreferences}
+            scrollEnabled={!isLoadingProfile}
           >
             <Animated.View
-              style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }}
             >
-              {/* Progress Indicator */}
+              {/* Progress (onboarding only) */}
               {!isOnboarded && (
                 <View style={styles.progressContainer}>
                   <View
                     style={[
-                      styles.stepIndicatorShort,
+                      styles.stepDot,
                       { backgroundColor: colors.primaryLight },
                     ]}
                   />
                   <View
                     style={[
-                      styles.stepIndicatorShort,
+                      styles.stepDot,
                       { backgroundColor: colors.primaryLight },
                     ]}
                   />
                   <View
                     style={[
-                      styles.stepIndicatorLong,
+                      styles.stepActive,
                       { backgroundColor: colors.primary },
                     ]}
                   />
@@ -587,21 +603,37 @@ export default function ProfileCompletionScreen() {
                 <Text style={[styles.mainTitle, { color: colors.text }]}>
                   {isOnboarded ? 'Edit Your Profile' : 'Complete your profile'}
                 </Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
                   {isOnboarded
                     ? 'Update your information anytime'
                     : 'Add a photo and your name so we\ncan personalize your experience.'}
                 </Text>
               </View>
 
-              {/* Avatar Uploader */}
+              {/* Avatar */}
               <View style={styles.uploaderSection}>
                 <Pressable
                   onPress={handlePickFromGallery}
-                  onPressIn={handleAvatarPressIn}
-                  onPressOut={handleAvatarPressOut}
+                  onPressIn={() =>
+                    Animated.spring(avatarScale, {
+                      toValue: 0.94,
+                      useNativeDriver: true,
+                      tension: 180,
+                      friction: 12,
+                    }).start()
+                  }
+                  onPressOut={() =>
+                    Animated.spring(avatarScale, {
+                      toValue: 1,
+                      useNativeDriver: true,
+                      tension: 180,
+                      friction: 12,
+                    }).start()
+                  }
                   style={styles.uploaderTouch}
-                  disabled={isLoadingPreferences}
+                  disabled={isLoadingProfile}
                 >
                   <Animated.View
                     style={[
@@ -612,8 +644,8 @@ export default function ProfileCompletionScreen() {
                         width: avatarSize,
                         height: avatarSize,
                         borderRadius: avatarSize / 2,
+                        transform: [{ scale: avatarScale }],
                       },
-                      { transform: [{ scale: avatarScale }] },
                     ]}
                   >
                     {selectedAvatar ? (
@@ -625,9 +657,7 @@ export default function ProfileCompletionScreen() {
                         ]}
                       />
                     ) : (
-                      <View style={styles.cameraIconContainer}>
-                        <Feather name="camera" size={32} color={colors.primary} />
-                      </View>
+                      <Feather name="camera" size={32} color={colors.primary} />
                     )}
                     <View
                       style={[
@@ -642,20 +672,27 @@ export default function ProfileCompletionScreen() {
                     </View>
                   </Animated.View>
                 </Pressable>
-                <Text style={[styles.uploadPrompt, { color: colors.primary }]}>
+                <Text
+                  style={[styles.uploadPrompt, { color: colors.primary }]}
+                >
                   TAP TO UPLOAD
                 </Text>
               </View>
 
-              {/* Name Input */}
+              {/* ── FULL NAME ── */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
                   FULL NAME
                 </Text>
                 <Animated.View
                   style={[
                     styles.inputWrapper,
-                    { backgroundColor: colors.card, borderColor: borderInterpolation },
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: borderInterpolation,
+                    },
                     isFocused && styles.inputWrapperFocused,
                   ]}
                 >
@@ -663,18 +700,39 @@ export default function ProfileCompletionScreen() {
                     style={[styles.textInput, { color: colors.text }]}
                     placeholder="Enter your name"
                     placeholderTextColor={
-                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.3)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     value={name}
                     onChangeText={setName}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
+                    onFocus={() => {
+                      setIsFocused(true);
+                      Animated.timing(inputBorderAnim, {
+                        toValue: 1,
+                        duration: 200,
+                        useNativeDriver: false,
+                      }).start();
+                    }}
+                    onBlur={() => {
+                      setIsFocused(false);
+                      Animated.timing(inputBorderAnim, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: false,
+                      }).start();
+                    }}
                     autoCapitalize="words"
                     maxLength={50}
-                    editable={!isLoadingPreferences}
+                    editable={!isLoadingProfile}
                   />
                   {name.length > 30 && (
-                    <Text style={[styles.charCountText, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.charCount,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {name.length}/50
                     </Text>
                   )}
@@ -682,16 +740,20 @@ export default function ProfileCompletionScreen() {
                     name="user"
                     size={20}
                     color={
-                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.4)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     style={styles.inputIcon}
                   />
                 </Animated.View>
               </View>
 
-              {/* Phone Number */}
+              {/* ── PHONE NUMBER ── */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
                   PHONE NUMBER
                 </Text>
                 <View
@@ -720,19 +782,25 @@ export default function ProfileCompletionScreen() {
                     ]}
                     placeholder="Enter phone number"
                     placeholderTextColor={
-                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.3)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
                     maxLength={15}
-                    editable={!phoneVerified && !isVerifyingPhone && !isLoadingPreferences}
+                    editable={
+                      !phoneVerified && !isVerifyingPhone && !isLoadingProfile
+                    }
                   />
                   <Feather
                     name="phone"
                     size={20}
                     color={
-                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.4)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     style={styles.inputIcon}
                   />
@@ -741,45 +809,81 @@ export default function ProfileCompletionScreen() {
                 {phoneVerified ? (
                   <View
                     style={[
-                      styles.verifiedBadge,
-                      { backgroundColor: '#10B981', marginTop: 10 },
+                      styles.statusBadge,
+                      { backgroundColor: '#10B981', borderColor: '#10B981', marginTop: 10 },
                     ]}
                   >
-                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                    <Text style={[styles.verifiedBadgeText, { color: '#FFFFFF' }]}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                    <Text style={[styles.statusBadgeText, { color: '#FFFFFF' }]}>
                       Phone Verified
                     </Text>
                   </View>
                 ) : !showPhoneVerification ? (
                   <TouchableOpacity
                     style={[
-                      styles.verifyButton,
-                      { backgroundColor: colors.primaryLight, marginTop: 10 },
+                      styles.actionButton,
+                      {
+                        backgroundColor: colors.primaryLight,
+                        borderColor: 'rgba(70,72,212,0.2)',
+                        marginTop: 10,
+                      },
                     ]}
                     onPress={handleSendPhoneVerification}
-                    disabled={isVerifyingPhone || isLoadingPreferences}
+                    disabled={isVerifyingPhone || isLoadingProfile}
                     activeOpacity={0.7}
                   >
                     {isVerifyingPhone ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.primary}
+                      />
                     ) : (
                       <>
-                        <Ionicons name="send" size={16} color={colors.primary} />
-                        <Text style={[styles.verifyButtonText, { color: colors.primary }]}>
+                        <Ionicons
+                          name="send"
+                          size={16}
+                          color={colors.primary}
+                        />
+                        <Text
+                          style={[
+                            styles.actionButtonText,
+                            { color: colors.primary },
+                          ]}
+                        >
                           Send Verification Code
                         </Text>
                       </>
                     )}
                   </TouchableOpacity>
                 ) : (
-                  <View style={styles.otpSection}>
-                    <Text style={[styles.otpLabel, { color: colors.textSecondary }]}>
+                  <View
+                    style={[
+                      styles.otpBox,
+                      {
+                        borderColor: 'rgba(70,72,212,0.15)',
+                        backgroundColor: 'rgba(70,72,212,0.02)',
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.otpLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       ENTER OTP CODE
                     </Text>
                     <View
                       style={[
                         styles.otpInputWrapper,
-                        { backgroundColor: colors.card, borderColor: colors.border },
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
                       ]}
                     >
                       <TextInput
@@ -787,45 +891,42 @@ export default function ProfileCompletionScreen() {
                         placeholder="Enter 6-digit code"
                         placeholderTextColor={
                           isDark
-                            ? 'rgba(255, 255, 255, 0.3)'
-                            : 'rgba(118, 117, 134, 0.5)'
+                            ? 'rgba(255,255,255,0.3)'
+                            : 'rgba(118,117,134,0.5)'
                         }
                         value={otpCode}
                         onChangeText={setOtpCode}
                         keyboardType="number-pad"
                         maxLength={6}
-                        editable={!isLoadingPreferences}
                       />
                       <Feather
                         name="lock"
                         size={20}
                         color={
                           isDark
-                            ? 'rgba(255, 255, 255, 0.4)'
-                            : 'rgba(118, 117, 134, 0.5)'
+                            ? 'rgba(255,255,255,0.4)'
+                            : 'rgba(118,117,134,0.5)'
                         }
                         style={styles.inputIcon}
                       />
                     </View>
                     <TouchableOpacity
                       style={[
-                        styles.otpConfirmButton,
+                        styles.otpConfirmBtn,
                         { backgroundColor: colors.primary },
-                        (isVerifyingPhone || otpCode.length !== 6 || isLoadingPreferences) && {
+                        (isVerifyingPhone || otpCode.length !== 6) && {
                           opacity: 0.6,
                         },
                       ]}
                       onPress={handleConfirmPhoneOtp}
-                      disabled={
-                        isVerifyingPhone || otpCode.length !== 6 || isLoadingPreferences
-                      }
+                      disabled={isVerifyingPhone || otpCode.length !== 6}
                       activeOpacity={0.8}
                     >
                       {isVerifyingPhone ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.otpConfirmButtonText}>
-                          Confirm Code & Verify Phone
+                        <Text style={styles.otpConfirmBtnText}>
+                          Confirm & Verify Phone
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -833,9 +934,11 @@ export default function ProfileCompletionScreen() {
                 )}
               </View>
 
-              {/* Email Verification */}
+              {/* ── EMAIL VERIFICATION ── */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
                   EMAIL VERIFICATION
                 </Text>
                 {emailVerified ? (
@@ -869,54 +972,72 @@ export default function ProfileCompletionScreen() {
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.googleLinkBtn, { backgroundColor: colors.primary }]}
+                    style={[
+                      styles.googleBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
                     onPress={signInWithGoogle}
-                    disabled={!isGoogleReady || isGoogleLoading || isLoadingPreferences}
+                    disabled={
+                      !isGoogleReady || isGoogleLoading || isLoadingProfile
+                    }
                     activeOpacity={0.8}
                   >
                     {isGoogleLoading ? (
                       <ActivityIndicator color="#FFFFFF" size="small" />
                     ) : (
                       <>
-                        <Ionicons name="logo-google" size={18} color="#FFFFFF" />
-                        <Text style={styles.googleLinkBtnText}>Link Google Account</Text>
+                        <Ionicons
+                          name="logo-google"
+                          size={18}
+                          color="#FFFFFF"
+                        />
+                        <Text style={styles.googleBtnText}>
+                          Link Google Account
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
                 )}
               </View>
 
-              {/* Gender */}
+              {/* ── GENDER ── */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
                   GENDER
                 </Text>
                 <View style={styles.genderRow}>
                   {(['Male', 'Female', 'Other'] as const).map((g) => {
-                    const isActive = gender.toLowerCase() === g.toLowerCase();
+                    const isActive =
+                      gender.toLowerCase() === g.toLowerCase();
                     return (
                       <TouchableOpacity
                         key={g}
                         style={[
-                          styles.genderButton,
+                          styles.genderBtn,
                           {
-                            borderColor: colors.border,
-                            backgroundColor: colors.card,
-                          },
-                          isActive && {
-                            borderColor: colors.primary,
-                            backgroundColor: colors.primaryLight,
+                            borderColor: isActive
+                              ? colors.primary
+                              : colors.border,
+                            backgroundColor: isActive
+                              ? colors.primaryLight
+                              : colors.card,
                           },
                         ]}
                         onPress={() => setGender(g.toLowerCase())}
                         activeOpacity={0.7}
-                        disabled={isLoadingPreferences}
+                        disabled={isLoadingProfile}
                       >
                         <Text
                           style={[
-                            styles.genderButtonText,
-                            { color: colors.textSecondary },
-                            isActive && { color: colors.primary, fontWeight: '600' },
+                            styles.genderBtnText,
+                            {
+                              color: isActive
+                                ? colors.primary
+                                : colors.textSecondary,
+                              fontWeight: isActive ? '600' : '400',
+                            },
                           ]}
                         >
                           {g}
@@ -927,27 +1048,35 @@ export default function ProfileCompletionScreen() {
                 </View>
               </View>
 
-              {/* Date of Birth */}
+              {/* ── DATE OF BIRTH ── */}
               <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
                   DATE OF BIRTH
                 </Text>
                 <View
                   style={[
                     styles.inputWrapper,
-                    { backgroundColor: colors.card, borderColor: colors.border },
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
                   ]}
                 >
                   <TextInput
                     style={[styles.textInput, { color: colors.text }]}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={
-                      isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.3)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     value={dob}
                     onChangeText={(text) => {
                       let cleaned = text.replace(/\D/g, '');
-                      if (cleaned.length > 8) cleaned = cleaned.substring(0, 8);
+                      if (cleaned.length > 8)
+                        cleaned = cleaned.substring(0, 8);
                       let formatted = cleaned;
                       if (cleaned.length > 4) {
                         formatted = `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
@@ -959,29 +1088,34 @@ export default function ProfileCompletionScreen() {
                     }}
                     keyboardType="numeric"
                     maxLength={10}
-                    editable={!isLoadingPreferences}
+                    editable={!isLoadingProfile}
                   />
                   <Feather
                     name="calendar"
                     size={20}
                     color={
-                      isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(118, 117, 134, 0.5)'
+                      isDark
+                        ? 'rgba(255,255,255,0.4)'
+                        : 'rgba(118,117,134,0.5)'
                     }
                     style={styles.inputIcon}
                   />
                 </View>
               </View>
 
-              {/* Info Card */}
+              {/* ── INFO CARD ── */}
               <View
                 style={[
                   styles.infoCard,
-                  { backgroundColor: colors.card, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
                 <View
                   style={[
-                    styles.infoIconContainer,
+                    styles.infoIcon,
                     { backgroundColor: colors.primaryLight },
                   ]}
                 >
@@ -991,13 +1125,18 @@ export default function ProfileCompletionScreen() {
                     color={colors.primary}
                   />
                 </View>
-                <View style={styles.infoTextContainer}>
+                <View style={styles.infoText}>
                   <Text style={[styles.infoTitle, { color: colors.text }]}>
                     Your data is safe
                   </Text>
-                  <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-                    We only use your information to personalize your news and improve
-                    your experience.
+                  <Text
+                    style={[
+                      styles.infoDesc,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    We only use your information to personalize your news and
+                    improve your experience.
                   </Text>
                 </View>
               </View>
@@ -1020,26 +1159,37 @@ export default function ProfileCompletionScreen() {
           style={styles.buttonWrapper}
           disabled={isButtonDisabled}
           onPress={handleFinishSetup}
-          onPressIn={handleButtonPressIn}
-          onPressOut={handleButtonPressOut}
+          onPressIn={() =>
+            Animated.spring(buttonScale, {
+              toValue: 0.94,
+              useNativeDriver: true,
+              tension: 180,
+              friction: 12,
+            }).start()
+          }
+          onPressOut={() =>
+            Animated.spring(buttonScale, {
+              toValue: 1,
+              useNativeDriver: true,
+              tension: 180,
+              friction: 12,
+            }).start()
+          }
         >
           <Animated.View
             style={[
               styles.finishButton,
               isButtonDisabled
-                ? [
-                  styles.finishButtonDisabled,
-                  {
-                    backgroundColor: isDark
-                      ? '#2A2A3C'
-                      : 'rgba(199, 196, 215, 0.4)',
-                  },
-                ]
-                : [styles.finishButtonActive, { backgroundColor: colors.primary }],
+                ? {
+                  backgroundColor: isDark
+                    ? '#2A2A3C'
+                    : 'rgba(199,196,215,0.4)',
+                }
+                : { backgroundColor: colors.primary },
               { transform: [{ scale: buttonScale }] },
             ]}
           >
-            {isSaving || isLoadingPreferences ? (
+            {isSaving || isLoadingProfile ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
@@ -1048,8 +1198,8 @@ export default function ProfileCompletionScreen() {
                     styles.finishButtonText,
                     isButtonDisabled && {
                       color: isDark
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : 'rgba(118, 117, 134, 0.6)',
+                        ? 'rgba(255,255,255,0.2)'
+                        : 'rgba(118,117,134,0.6)',
                     },
                   ]}
                 >
@@ -1062,7 +1212,7 @@ export default function ProfileCompletionScreen() {
                     isButtonDisabled
                       ? isDark
                         ? 'rgba(255,255,255,0.2)'
-                        : 'rgba(118, 117, 134, 0.4)'
+                        : 'rgba(118,117,134,0.4)'
                       : '#FFFFFF'
                   }
                 />
@@ -1072,37 +1222,38 @@ export default function ProfileCompletionScreen() {
         </Pressable>
 
         {!isOnboarded && (
-          <View style={styles.stepTextContainer}>
-            <Text style={[styles.stepText, { color: colors.textSecondary }]}>
-              STEP 3 OF 3
-            </Text>
-          </View>
+          <Text style={[styles.stepText, { color: colors.textSecondary }]}>
+            STEP 1 OF 5
+          </Text>
         )}
       </View>
 
-      {/* Custom Alert Modal */}
+      {/* Custom Alert Dialog */}
       {dialogConfig.visible && (
         <View style={styles.modalBackdrop}>
-          <TouchableWithoutFeedback onPress={closeCustomAlert}>
-            <View style={styles.modalOverlay} />
+          <TouchableWithoutFeedback onPress={closeDialog}>
+            <View style={StyleSheet.absoluteFill} />
           </TouchableWithoutFeedback>
           <View
             style={[
               styles.modalCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
             ]}
           >
             <View
               style={[
                 styles.modalIconContainer,
                 dialogConfig.type === 'success' && {
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  backgroundColor: 'rgba(16,185,129,0.12)',
                 },
                 dialogConfig.type === 'error' && {
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  backgroundColor: 'rgba(239,68,68,0.12)',
                 },
                 dialogConfig.type === 'warning' && {
-                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                  backgroundColor: 'rgba(245,158,11,0.12)',
                 },
                 dialogConfig.type === 'info' && {
                   backgroundColor: colors.primaryLight,
@@ -1110,13 +1261,25 @@ export default function ProfileCompletionScreen() {
               ]}
             >
               {dialogConfig.type === 'success' && (
-                <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={32}
+                  color="#10B981"
+                />
               )}
               {dialogConfig.type === 'error' && (
-                <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={32}
+                  color="#EF4444"
+                />
               )}
               {dialogConfig.type === 'warning' && (
-                <Ionicons name="warning-outline" size={32} color="#F59E0B" />
+                <Ionicons
+                  name="warning-outline"
+                  size={32}
+                  color="#F59E0B"
+                />
               )}
               {dialogConfig.type === 'info' && (
                 <Ionicons
@@ -1126,17 +1289,23 @@ export default function ProfileCompletionScreen() {
                 />
               )}
             </View>
-
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               {dialogConfig.title}
             </Text>
-            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.modalMessage,
+                { color: colors.textSecondary },
+              ]}
+            >
               {dialogConfig.message}
             </Text>
-
             <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: colors.primary }]}
-              onPress={closeCustomAlert}
+              style={[
+                styles.modalButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={closeDialog}
               activeOpacity={0.85}
             >
               <Text style={styles.modalButtonText}>Got it</Text>
@@ -1148,7 +1317,9 @@ export default function ProfileCompletionScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -1184,7 +1355,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(70, 72, 212, 0.05)',
+    backgroundColor: 'rgba(70,72,212,0.05)',
   },
   headerTitle: {
     fontSize: 16,
@@ -1192,6 +1363,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
   },
   headerPlaceholder: { width: 40 },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 64,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+  },
   scrollView: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
@@ -1205,8 +1392,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 32,
   },
-  stepIndicatorShort: { width: 32, height: 6, borderRadius: 3 },
-  stepIndicatorLong: { width: 64, height: 6, borderRadius: 3 },
+  stepDot: { width: 32, height: 6, borderRadius: 3 },
+  stepActive: { width: 64, height: 6, borderRadius: 3 },
   headlineSection: { alignItems: 'center', marginBottom: 36 },
   mainTitle: {
     fontSize: 32,
@@ -1219,26 +1406,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    fontWeight: '400',
     lineHeight: 24,
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 64,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
   },
   uploaderSection: { alignItems: 'center', marginBottom: 32 },
   uploaderTouch: { marginBottom: 12 },
@@ -1258,7 +1428,6 @@ const styles = StyleSheet.create({
     }),
   },
   avatarImage: { width: '100%', height: '100%' },
-  cameraIconContainer: { alignItems: 'center', justifyContent: 'center' },
   plusBadge: {
     position: 'absolute',
     bottom: 0,
@@ -1269,15 +1438,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-      },
-      android: { elevation: 4 },
-    }),
   },
   uploadPrompt: {
     fontSize: 12,
@@ -1320,12 +1480,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
   },
   inputIcon: { marginLeft: 12 },
-  charCountText: {
+  charCount: {
     fontSize: 12,
     fontFamily: 'Poppins_400Regular',
     marginRight: 8,
   },
-  verifyButton: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1334,14 +1494,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(70, 72, 212, 0.2)',
   },
-  verifyButtonText: {
+  statusBadgeText: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  verifiedBadge: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1350,21 +1509,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#10B981',
   },
-  verifiedBadgeText: {
+  actionButtonText: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  otpSection: {
+  otpBox: {
     marginTop: 12,
     gap: 8,
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(70, 72, 212, 0.15)',
-    backgroundColor: 'rgba(70, 72, 212, 0.02)',
   },
   otpLabel: {
     fontSize: 11,
@@ -1384,45 +1540,38 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontFamily: 'Poppins_600SemiBold',
-    fontWeight: '600',
     letterSpacing: 2,
   },
-  otpConfirmButton: {
+  otpConfirmBtn: {
     height: 44,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
   },
-  otpConfirmButtonText: {
+  otpConfirmBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  googleLinkBtn: {
+  googleBtn: {
     height: 48,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    width: '100%',
     gap: 8,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
+    width: '100%',
   },
-  googleLinkBtnText: {
+  googleBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  genderRow: { flexDirection: 'row', gap: 12, width: '100%' },
-  genderButton: {
+  genderRow: { flexDirection: 'row', gap: 12 },
+  genderBtn: {
     flex: 1,
     height: 48,
     borderRadius: 12,
@@ -1430,7 +1579,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  genderButtonText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  genderBtnText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+  },
   infoCard: {
     borderWidth: 1,
     borderRadius: 12,
@@ -1439,17 +1591,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 16,
     marginBottom: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgb(63, 63, 70)',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 3 },
-    }),
   },
-  infoIconContainer: {
+  infoIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -1457,7 +1600,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
   },
-  infoTextContainer: { flex: 1 },
+  infoText: { flex: 1 },
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -1466,7 +1609,6 @@ const styles = StyleSheet.create({
   },
   infoDesc: {
     fontSize: 14,
-    fontWeight: '400',
     lineHeight: 20,
     fontFamily: 'Poppins_400Regular',
   },
@@ -1487,9 +1629,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     width: '100%',
-  },
-  finishButtonDisabled: {},
-  finishButtonActive: {
     ...Platform.select({
       ios: {
         shadowColor: '#4648D4',
@@ -1506,7 +1645,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
   },
-  stepTextContainer: { marginTop: 4 },
   stepText: {
     fontSize: 11,
     fontWeight: '600',
@@ -1515,12 +1653,11 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(15,23,42,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
   },
-  modalOverlay: { ...StyleSheet.absoluteFillObject },
   modalCard: {
     maxWidth: 340,
     width: '90%',
@@ -1552,7 +1689,6 @@ const styles = StyleSheet.create({
   modalMessage: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '400',
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     marginBottom: 20,
@@ -1563,11 +1699,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#4648D4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   modalButtonText: {
     color: '#FFFFFF',

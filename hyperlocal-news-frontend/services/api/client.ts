@@ -117,6 +117,8 @@ apiClient.interceptors.response.use(
 
         const { access_token, refresh_token } = response.data;
         await saveTokens(access_token, refresh_token);
+        //Just for testings
+        console.log('auth/refresh-token url is used, now access-token is:', access_token);
 
         processQueue(null, access_token);
 
