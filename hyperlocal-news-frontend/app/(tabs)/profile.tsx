@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
-import { useDeleteArticle, useCreateArticle } from '@/hooks/useNews';
+import { useCreateNews, useDeleteNews } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useEngagement';
 import { usersApi, type DashboardResponse } from '@/services/api';
 import { compressImage } from '@/services/image';
@@ -48,8 +48,8 @@ export default function ProfileScreen() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // ─── API Mutations ───────────────────────────────────────────────────────
-  const { mutate: createArticleMutate } = useCreateArticle();
-  const { mutate: deleteArticleMutate } = useDeleteArticle();
+  const { mutate: createArticleMutate } = useCreateNews();
+  const { mutate: deleteArticleMutate } = useDeleteNews();
   const { data: bookmarks = [] } = useBookmarks();
 
   // ─── Tab State ───────────────────────────────────────────────────────────
@@ -301,7 +301,7 @@ export default function ProfileScreen() {
     try {
       await switchToPublisher();
 
-      // ✅ Reload dashboard to get updated publisher status
+      // Reload dashboard to get updated publisher status
       const freshDashboard = await usersApi.dashboard({ detailed: true });
       setDashboardData(freshDashboard);
 
@@ -324,7 +324,7 @@ export default function ProfileScreen() {
       {
         title: data.headline,
         summary: data.summary || '',
-        category_id: parseInt(data.category, 10),
+        category_ids: [parseInt(data.category, 10)],
         image_url: data.imageUrl || '',
       },
       {
@@ -895,7 +895,7 @@ export default function ProfileScreen() {
                 {bookmarks
                   .filter((b) => b.news)
                   .map((b) => (
-                    <View key={b.news_uid} style={styles.postCard}>
+                    <View key={b.content_id} style={styles.postCard}>
                       <Image
                         source={{
                           uri: b.news?.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=N',

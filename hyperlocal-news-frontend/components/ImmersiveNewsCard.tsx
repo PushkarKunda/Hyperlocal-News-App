@@ -1,155 +1,532 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Share,
+  Alert,
+} from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import { NewsArticle } from '@/services/api/news';
-import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  NewsArticle,
+  FeedItem,
+} from '@/services/api/news';
+import { Advertisement, SponsoredPost } from '@/services/api/content';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { useLikeArticle, useUnlikeArticle, useRecordShare } from '@/hooks/useNews';
-import { useAddBookmark, useRemoveBookmark } from '@/hooks/useEngagement';
+import {
+  useLike,
+  useUnlike,
+  useRecordShare,
+  useAddBookmark,
+  useRemoveBookmark,
+} from '@/hooks/useEngagement';
+import { useAuthStore } from '@/store/authStore';
 import { formatTimeAgo } from '@/utils/formatters';
+import { useRouter } from 'expo-router';
 
-interface ImmersiveNewsCardProps {
-  item: NewsArticle;
+// ═══════════════════════════════════════════════════════════════════════════
+// PROPS
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ImmersiveFeedCardProps {
+  item: FeedItem;
   containerHeight: number;
-  isBookmarked?: boolean; // Added prop to receive server-synced bookmark state
+  // Set of bookmarked news_uids - update to content_id set once
+  // numeric ID is confirmed from GET /news/v1/news/:uid
+  bookmarkedNewsUids: Set<string>;
 }
 
-export const ImmersiveNewsCard = React.memo(({ item, containerHeight, isBookmarked = false }: ImmersiveNewsCardProps) => {
-  const colorScheme = useAppColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const isDark = colorScheme === 'dark';
-  const { width: screenWidth } = useWindowDimensions();
+// ═══════════════════════════════════════════════════════════════════════════
+// AD CARD
+// ═══════════════════════════════════════════════════════════════════════════
 
-  // Server-synced Engagement Mutations
-  const { mutate: likeArticle } = useLikeArticle();
-  const { mutate: unlikeArticle } = useUnlikeArticle();
-  const { mutate: addBookmark } = useAddBookmark();
-  const { mutate: removeBookmark } = useRemoveBookmark();
-  const { mutate: recordShare } = useRecordShare();
+const AdCard = React.memo(
+  ({
+    item,
+    containerHeight,
+    colors,
+    isDark,
+  }: {
+    item: Advertisement;
+    containerHeight: number;
+    colors: any;
+    isDark: boolean;
+  }) => {
+    const handleAdClick = () => {
+      if (item.redirect_url) {
+        WebBrowser.openBrowserAsync(item.redirect_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      }
+    };
 
-  // Icon mapping based on server state prop
-  const likeIconName = 'heart-outline'; // Default to outline, toggle handled by mutation invalidation
-  const likeIconColor = isDark ? '#94A3B8' : '#464554';
-
-  const saveIconName = isBookmarked ? 'bookmark' : 'bookmark-outline';
-  const saveIconColor = isBookmarked ? '#FFAC33' : (isDark ? '#94A3B8' : '#464554');
-
-  const actionIconColor = isDark ? '#94A3B8' : '#464554';
-
-  const handleToggleLike = () => {
-    unlikeArticle(item.news_uid); // Simplified toggle logic for feed card
-  };
-
-  const handleToggleBookmark = () => {
-    if (isBookmarked) {
-      removeBookmark(item.news_uid);
-    } else {
-      addBookmark(item.news_uid);
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      recordShare({ uid: item.news_uid, platform: 'general' });
-      await Share.share({
-        message: `Check out this article: ${item.title}\n\n${item.summary}\n\nShared via HyperLocal News App.`,
-        title: item.title,
-      });
-    } catch (error) {
-      // share dismissed or failed silently
-    }
-  };
-
-  const categoryName = item.category_names?.[0] || 'News';
-
-  return (
-    <View style={[styles.cardContainer, { height: containerHeight, backgroundColor: colors.background }]}>
-      {/* Top 45% Image Section */}
-      <View style={styles.imageContainer}>
+    return (
+      <TouchableOpacity
+        style={[styles.cardContainer, { height: containerHeight }]}
+        activeOpacity={0.95}
+        onPress={handleAdClick}
+      >
         <Image
-          source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800' }}
-          style={styles.image}
+          source={{ uri: item.image_url }}
+          style={StyleSheet.absoluteFillObject}
           contentFit="cover"
           transition={400}
         />
-        {/* Category Tag */}
-        <View style={[styles.categoryTag, { backgroundColor: colors.primary }]}>
-          <Text style={styles.categoryText}>{categoryName}</Text>
+
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.9)']}
+          style={styles.adGradient}
+        >
+          <View style={styles.adBadge}>
+            <Text style={styles.adBadgeText}>AD</Text>
+          </View>
+
+          <Text style={styles.adTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.adCtaButton,
+              {
+                backgroundColor:
+                  item.priority === 'premium' ? '#F59E0B' : '#6366F1',
+              },
+            ]}
+            onPress={handleAdClick}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.adCtaText}>{item.cta_text}</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </TouchableOpacity>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPONSORED CARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SponsoredCard = React.memo(
+  ({
+    item,
+    containerHeight,
+    colors,
+    isDark,
+  }: {
+    item: SponsoredPost;
+    containerHeight: number;
+    colors: any;
+    isDark: boolean;
+  }) => {
+    const handleSponsoredClick = () => {
+      if (item.cta_url) {
+        WebBrowser.openBrowserAsync(item.cta_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      }
+    };
+
+    return (
+      <View
+        style={[
+          styles.cardContainer,
+          { height: containerHeight, backgroundColor: colors.background },
+        ]}
+      >
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: item.image_url }}
+            style={styles.image}
+            contentFit="cover"
+            transition={400}
+          />
+          <View style={styles.sponsoredBadge}>
+            <MaterialIcons name="campaign" size={12} color="#fff" />
+            <Text style={styles.sponsoredBadgeText}>Sponsored</Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.contentContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View style={styles.textWrapper}>
+            <Text style={[styles.sponsorName, { color: colors.primary }]}>
+              {item.sponsor_name || 'Sponsored'}
+            </Text>
+            <Text
+              style={[styles.headline, { color: colors.text }]}
+              numberOfLines={3}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.summaryText, { color: colors.textSecondary }]}
+              numberOfLines={5}
+            >
+              {item.content}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.sponsoredCtaButton,
+              { backgroundColor: colors.primary },
+            ]}
+            onPress={handleSponsoredClick}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.sponsoredCtaText}>{item.cta_text}</Text>
+            <Ionicons name="open-outline" size={16} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
+    );
+  }
+);
 
-      {/* Bottom 55% Content Section */}
-      <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
-        <View style={styles.textWrapper}>
-          {/* Headline */}
-          <Text style={[styles.headline, { color: colors.text }]}>{item.title}</Text>
+// ═══════════════════════════════════════════════════════════════════════════
+// NEWS CARD
+// ═══════════════════════════════════════════════════════════════════════════
 
-          {/* News Summary Paragraph */}
-          <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-            {item.summary}
-          </Text>
+const NewsCard = React.memo(
+  ({
+    item,
+    containerHeight,
+    isBookmarked,
+    colors,
+    isDark,
+  }: {
+    item: NewsArticle;
+    containerHeight: number;
+    isBookmarked: boolean;
+    colors: any;
+    isDark: boolean;
+  }) => {
+    const router = useRouter();
+    const { user } = useAuthStore();
+
+    const { mutate: like } = useLike();
+    const { mutate: unlike } = useUnlike();
+    const { mutate: addBookmark } = useAddBookmark();
+    const { mutate: removeBookmark } = useRemoveBookmark();
+    const { mutate: recordShare } = useRecordShare();
+
+    // Local optimistic like state
+    const [liked, setLiked] = React.useState(false);
+    const [likeCount, setLikeCount] = React.useState(item.likes ?? 0);
+
+    const handleToggleLike = () => {
+      if (liked) {
+        setLiked(false);
+        setLikeCount((c) => Math.max(0, c - 1));
+        unlike(item.news_uid);
+      } else {
+        setLiked(true);
+        setLikeCount((c) => c + 1);
+        like(item.news_uid);
+      }
+    };
+
+    const handleToggleBookmark = () => {
+      if (isBookmarked) {
+        removeBookmark(item.news_uid);
+      } else {
+        addBookmark(item.news_uid);
+      }
+    };
+
+    const handleShare = async () => {
+      try {
+        recordShare({ newsUid: item.news_uid, platform: 'general' });
+        await Share.share({
+          message: `${item.title}\n\n${item.summary}\n\nShared via HyperLocal`,
+          title: item.title,
+        });
+      } catch (_) { }
+    };
+
+    const categoryName = item.category_names?.[0] || 'News';
+    const hasSourceLink = Boolean(item.source_url);
+    const actionIconColor = isDark ? '#94A3B8' : '#464554';
+    const actionBg = isDark ? '#262636' : '#E5EEFF';
+
+    // Source link: show if there's a source URL or at least a source name (use Google search as fallback)
+    const hasSource = Boolean(item.source_url || item.source_name || item.source);
+    const handleOpenSource = () => {
+      if (item.source_url) {
+        WebBrowser.openBrowserAsync(item.source_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      } else {
+        // Fallback: search Google for source + title
+        const query = encodeURIComponent(`${item.source_name || item.source || ''} ${item.title}`);
+        WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${query}`, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      }
+    };
+
+    const handleMoreOptions = () => {
+      const options = [];
+      if (hasSource) {
+        options.push({
+          text: 'Open Source Website',
+          onPress: handleOpenSource,
+        });
+      }
+      options.push({
+        text: 'Share Article',
+        onPress: handleShare,
+      });
+      options.push({
+        text: 'Cancel',
+        style: 'cancel' as const,
+      });
+      Alert.alert(
+        item.title || 'Options',
+        'Choose an action',
+        options
+      );
+    };
+
+    return (
+      <View
+        style={[
+          styles.cardContainer,
+          { height: containerHeight, backgroundColor: colors.background },
+        ]}
+      >
+        {/* Top 45% Image — plain View, NOT tappable to avoid unintended navigation */}
+        <View style={styles.imageContainer}>
+          <Image
+            source={{
+              uri:
+                item.image_url ||
+                'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800',
+            }}
+            style={styles.image}
+            contentFit="cover"
+            transition={400}
+          />
+
+          {/* Category tag */}
+          <View style={[styles.categoryTag, { backgroundColor: colors.primary }]}>
+            <Text style={styles.categoryText}>{categoryName}</Text>
+          </View>
+
+          {/* Breaking badge */}
+          {item.is_breaking && (
+            <View style={styles.breakingBadge}>
+              <View style={styles.breakingDot} />
+              <Text style={styles.breakingText}>BREAKING</Text>
+            </View>
+          )}
         </View>
 
-        {/* Footer Area */}
-        <View style={styles.footerWrapper}>
-          {/* Divider */}
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+        {/* Bottom 55% Content */}
+        <View
+          style={[
+            styles.contentContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          {/* Headline + summary — plain View, no navigation */}
+          <View style={styles.textWrapper}>
+            <Text
+              style={[styles.headline, { color: colors.text }]}
+              numberOfLines={3}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.summaryText, { color: colors.textSecondary }]}
+              numberOfLines={4}
+            >
+              {item.summary}
+            </Text>
+          </View>
 
-          <View style={styles.footerRow}>
-            {/* Source & Time */}
-            <View style={styles.readTimeContainer}>
-              <Ionicons name="globe-outline" size={14} color={colors.textTertiary} />
-              <Text style={[styles.sourceText, { color: colors.textSecondary }]}>{item.source || 'HyperLocal'}</Text>
-              <Text style={[styles.dotSep, { color: colors.textTertiary }]}>·</Text>
-              <Text style={[styles.readTimeText, { color: colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
-            </View>
+          {/* Footer — no navigation, only source link + action buttons */}
+          <View style={styles.footerWrapper}>
 
-            {/* Action Buttons Stack */}
-            <View style={styles.actionsContainer}>
+            {/* Source link — always visible if article has a source */}
+            {hasSource && (
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
-                activeOpacity={0.65}
-                onPress={handleToggleLike}
+                style={[
+                  styles.sourceLink,
+                  {
+                    backgroundColor: isDark ? '#1E1E2E' : '#F1F5F9',
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={handleOpenSource}
+                activeOpacity={0.8}
               >
-                <Ionicons name={likeIconName} size={16} color={likeIconColor} />
+                <Ionicons name="link-outline" size={13} color={colors.primary} />
+                <Text
+                  style={[styles.sourceLinkText, { color: colors.primary }]}
+                  numberOfLines={1}
+                >
+                  {item.source_name || item.source || item.source_url}
+                </Text>
+                <Ionicons
+                  name="open-outline"
+                  size={13}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
-                activeOpacity={0.65}
-                onPress={handleShare}
-              >
-                <Ionicons name="share-social-outline" size={16} color={actionIconColor} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
-                activeOpacity={0.65}
-                onPress={handleToggleBookmark}
-              >
-                <Ionicons name={saveIconName} size={16} color={saveIconColor} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: isDark ? '#262636' : '#E5EEFF' }]}
-                activeOpacity={0.65}
-              >
-                <Feather name="more-vertical" size={16} color={actionIconColor} />
-              </TouchableOpacity>
+            )}
+
+            <View
+              style={[styles.divider, { backgroundColor: colors.divider }]}
+            />
+
+            <View style={styles.footerRow}>
+              {/* Source & time */}
+              <View style={styles.metaContainer}>
+                <Ionicons
+                  name="globe-outline"
+                  size={14}
+                  color={colors.textTertiary}
+                />
+                <Text
+                  style={[styles.sourceText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {item.source_name || item.source || 'HyperLocal'}
+                </Text>
+                <Text style={[styles.dotSep, { color: colors.textTertiary }]}>
+                  ·
+                </Text>
+                <Text
+                  style={[styles.timeText, { color: colors.textTertiary }]}
+                >
+                  {formatTimeAgo(item.created_at)}
+                </Text>
+              </View>
+
+              {/* Actions */}
+              <View style={styles.actionsRow}>
+                {/* Like */}
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  onPress={handleToggleLike}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={liked ? 'heart' : 'heart-outline'}
+                    size={16}
+                    color={liked ? '#EF4444' : actionIconColor}
+                  />
+                </TouchableOpacity>
+
+                {/* Share */}
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  onPress={handleShare}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="share-social-outline"
+                    size={16}
+                    color={actionIconColor}
+                  />
+                </TouchableOpacity>
+
+                {/* Bookmark */}
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  onPress={handleToggleBookmark}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    size={16}
+                    color={isBookmarked ? '#FFAC33' : actionIconColor}
+                  />
+                </TouchableOpacity>
+
+                {/* More — opens options */}
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  activeOpacity={0.7}
+                  onPress={handleMoreOptions}
+                >
+                  <Feather name="more-vertical" size={16} color={actionIconColor} />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
       </View>
-    </View>
-  );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.containerHeight === nextProps.containerHeight &&
-    prevProps.item.news_uid === nextProps.item.news_uid &&
-    prevProps.item.title === nextProps.item.title &&
-    prevProps.item.image_url === nextProps.item.image_url &&
-    prevProps.isBookmarked === nextProps.isBookmarked
-  );
-});
+    );
+  },
+  (prev, next) =>
+    prev.containerHeight === next.containerHeight &&
+    prev.item.news_uid === next.item.news_uid &&
+    prev.isBookmarked === next.isBookmarked &&
+    prev.isDark === next.isDark
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN EXPORT - Routes to correct card based on type
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ImmersiveFeedCard = React.memo(
+  ({ item, containerHeight, bookmarkedNewsUids }: ImmersiveFeedCardProps) => {
+    const colorScheme = useAppColorScheme();
+    const colors = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+
+    if (item.type === 'ad') {
+      return (
+        <AdCard
+          item={item.data as Advertisement}
+          containerHeight={containerHeight}
+          colors={colors}
+          isDark={isDark}
+        />
+      );
+    }
+
+    if (item.type === 'sponsored') {
+      return (
+        <SponsoredCard
+          item={item.data as SponsoredPost}
+          containerHeight={containerHeight}
+          colors={colors}
+          isDark={isDark}
+        />
+      );
+    }
+
+    const newsItem = item.data as NewsArticle;
+    return (
+      <NewsCard
+        item={newsItem}
+        containerHeight={containerHeight}
+        isBookmarked={bookmarkedNewsUids.has(newsItem.news_uid)}
+        colors={colors}
+        isDark={isDark}
+      />
+    );
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -164,24 +541,136 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+
+  // ── Ad ──────────────────────────────────────────────────────────────────
+  adGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '75%',
+    justifyContent: 'flex-end',
+    padding: 24,
+    gap: 12,
+  },
+  adBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  adBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: 1.5,
+  },
+  adTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: 'Poppins_700Bold',
+    lineHeight: 30,
+  },
+  adCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  adCtaText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  // ── Sponsored ───────────────────────────────────────────────────────────
+  sponsoredBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  sponsoredBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  sponsorName: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  sponsoredCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  sponsoredCtaText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  // ── News ────────────────────────────────────────────────────────────────
   categoryTag: {
     position: 'absolute',
-    bottom: Spacing.md,
-    left: Spacing.lg,
+    bottom: 12,
+    left: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: BorderRadius.md,
+    borderRadius: 8,
   },
   categoryText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    color: '#fff',
+    fontSize: 12,
     fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.5,
+  },
+  breakingBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  breakingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  breakingText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: 'Poppins_700Bold',
+    letterSpacing: 1,
   },
   contentContainer: {
     height: '55%',
-    padding: Spacing.lg,
+    padding: 20,
     justifyContent: 'space-between',
   },
   textWrapper: {
@@ -189,10 +678,9 @@ const styles = StyleSheet.create({
   },
   headline: {
     fontSize: 22,
-    fontWeight: '800',
     fontFamily: 'Poppins_700Bold',
-    marginBottom: Spacing.lg,
-    lineHeight: 24,
+    marginBottom: 10,
+    lineHeight: 28,
   },
   summaryText: {
     fontSize: 15,
@@ -202,18 +690,32 @@ const styles = StyleSheet.create({
   footerWrapper: {
     marginTop: 'auto',
   },
+  sourceLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  sourceLinkText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
   divider: {
     height: 1,
-    width: '100%',
-    marginBottom: Spacing.md,
+    marginBottom: 10,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: Spacing.sm,
+    paddingBottom: 4,
   },
-  readTimeContainer: {
+  metaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -222,20 +724,21 @@ const styles = StyleSheet.create({
   sourceText: {
     fontSize: 12,
     fontFamily: 'Poppins_500Medium',
+    maxWidth: 100,
   },
   dotSep: {
     fontSize: 12,
   },
-  readTimeText: {
+  timeText: {
     fontSize: 12,
     fontFamily: 'Poppins_400Regular',
   },
-  actionsContainer: {
+  actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
-  actionButton: {
+  actionBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,

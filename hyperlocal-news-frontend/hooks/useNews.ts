@@ -1,416 +1,164 @@
-// hooks/useNews.ts
-import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useStore } from '@/store/useStore';
-import { newsApi } from '@/services/api';
-import type { NewsArticle, NewsFilters, CreateNewsPayload, UpdateNewsPayload, SearchNewsParams } from '@/services/api/news';
-import { useCategoriesList } from './useApi';
+import { newsApi } from '@/services/api/news';
+import type {
+  NewsFilters,
+  LocationNewsParams,
+  CreateNewsPayload,
+  UpdateNewsPayload,
+} from '@/services/api/news';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const queryKeys = {
-  news: {
-    all: ['news'] as const,
-    feed: (filters?: NewsFilters) => ['news', 'feed', filters] as const,
-    byCategory: (categorySlug: string | undefined, categoryId: number | undefined) =>
-      ['news', 'by-category', categorySlug, categoryId] as const,
-    byId: (uid: string | undefined) => ['news', 'article', uid] as const,
-    byLocation: (location: any) => ['news', 'by-location', location] as const,
-    breaking: ['news', 'breaking'] as const,
-    trending: ['news', 'trending'] as const,
-    popular: ['news', 'popular'] as const,
-    shorts: ['news', 'shorts'] as const,
-    related: (uid: string | undefined) => ['news', 'related', uid] as const,
-    search: (params: SearchNewsParams) => ['news', 'search', params] as const,
-    engagement: (uid: string | undefined) => ['news', 'engagement', uid] as const,
-    comments: (uid: string | undefined) => ['news', 'comments', uid] as const,
-  },
+export const newsKeys = {
+  all: ['news'] as const,
+  feed: (filters?: NewsFilters) => ['news', 'feed', filters] as const,
+  categories: ['news', 'categories'] as const,
+  categoryNews: (id: number) => ['news', 'category', id] as const,
+  locationNews: (params: LocationNewsParams) =>
+    ['news', 'location', params] as const,
+  breaking: ['news', 'breaking'] as const,
+  trending: ['news', 'trending'] as const,
+  popular: ['news', 'popular'] as const,
+  shorts: ['news', 'shorts'] as const,
+  single: (uid: string) => ['news', 'single', uid] as const,
+  engagement: (uid: string) => ['news', 'engagement', uid] as const,
+  comments: (uid: string) => ['news', 'comments', uid] as const,
+  search: (query: string) => ['news', 'search', query] as const,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HELPERS
+// QUERIES - FEED & DISCOVERY
 // ═══════════════════════════════════════════════════════════════════════════
 
-const useMergedNews = (newsArray: NewsArticle[] | undefined): NewsArticle[] => {
-  const bookmarkedArticleIds = useStore((state) => state.bookmarkedArticleIds);
-
-  return useMemo(() => {
-    if (!newsArray) return [];
-    return newsArray.map((article) => ({
-      ...article,
-      isBookmarked: bookmarkedArticleIds.includes(article.news_uid),
-    }));
-  }, [newsArray, bookmarkedArticleIds]);
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getFeed
-// ═══════════════════════════════════════════════════════════════════════════
-
+/**
+ * GET /news/v1/feed
+ * Full mixed feed: news + ads + sponsored
+ */
 export function useNewsFeed(filters?: NewsFilters) {
   return useQuery({
-    queryKey: queryKeys.news.feed(filters),
-    queryFn: () => newsApi.getFeed(filters),
-    staleTime: 1000 * 60 * 3,
-    gcTime: 1000 * 60 * 10,
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getById
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useNewsArticle(uid: string | undefined) {
-  const bookmarkedArticleIds = useStore((state) => state.bookmarkedArticleIds);
-
-  const query = useQuery({
-    queryKey: queryKeys.news.byId(uid),
-    queryFn: async () => {
-      if (!uid) throw new Error('Article UID required');
-      return newsApi.getById(uid);
-    },
-    enabled: Boolean(uid),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const article = useMemo(() => {
-    if (!query.data) return undefined;
-    return {
-      ...query.data,
-      isBookmarked: bookmarkedArticleIds.includes(query.data.news_uid),
-    };
-  }, [query.data, bookmarkedArticleIds]);
-
-  return {
-    ...query,
-    data: article,
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// create
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useCreateArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: CreateNewsPayload) => newsApi.create(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.feed() });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// update
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useUpdateArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ uid, payload }: { uid: string; payload: UpdateNewsPayload }) =>
-      newsApi.update(uid, payload),
-    onSuccess: (_, { uid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.feed() });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// delete
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useDeleteArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (uid: string) => newsApi.delete(uid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.feed() });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getBreaking
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useBreakingNews() {
-  const query = useQuery({
-    queryKey: queryKeys.news.breaking,
-    queryFn: () => newsApi.getBreaking(),
+    queryKey: newsKeys.feed(filters),
+    queryFn: () => newsApi.getFeed({ limit: 20, ...filters }),
     staleTime: 1000 * 60 * 2,
-    refetchInterval: 1000 * 60 * 3,
   });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getPopular
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function usePopularNews() {
-  const query = useQuery({
-    queryKey: queryKeys.news.popular,
-    queryFn: () => newsApi.getPopular(),
-    staleTime: 1000 * 60 * 10,
+/**
+ * GET /categories/all
+ */
+export function useCategories() {
+  return useQuery({
+    queryKey: newsKeys.categories,
+    queryFn: () => newsApi.getAllCategories(),
+    staleTime: 1000 * 60 * 60,
+    select: (data) =>
+      data
+        .filter((cat) => cat.is_active)
+        .sort((a, b) => a.display_order - b.display_order),
   });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getTrending
-// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * GET /categories/:id/news
+ */
+export function useCategoryNews(categoryId: number | null) {
+  return useQuery({
+    queryKey: newsKeys.categoryNews(categoryId!),
+    queryFn: () => newsApi.getNewsByCategory(categoryId!),
+    enabled: categoryId !== null && categoryId > 0,
+    staleTime: 1000 * 60 * 2,
+  });
+}
 
+/**
+ * GET /news/v1/news/location
+ */
+export function useLocationNews(params: LocationNewsParams) {
+  return useQuery({
+    queryKey: newsKeys.locationNews(params),
+    queryFn: () => newsApi.getByLocation(params),
+    enabled: Boolean(params.state || params.district || params.city),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+/**
+ * GET /news/v1/news/breaking
+ */
+export function useBreakingNews() {
+  return useQuery({
+    queryKey: newsKeys.breaking,
+    queryFn: () => newsApi.getBreaking(),
+    staleTime: 1000 * 60,
+    refetchInterval: 1000 * 60 * 2,
+  });
+}
+
+/**
+ * GET /news/v1/news/analytics/trending
+ */
 export function useTrendingNews() {
-  const query = useQuery({
-    queryKey: queryKeys.news.trending,
+  return useQuery({
+    queryKey: newsKeys.trending,
     queryFn: () => newsApi.getTrending(),
     staleTime: 1000 * 60 * 5,
   });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getByLocation
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useLocationNews(location?: {
-  latitude?: number;
-  longitude?: number;
-  radius?: number;
-  city?: string;
-  district?: string;
-  state?: string;
-}) {
-  const query = useQuery({
-    queryKey: queryKeys.news.byLocation(location),
-    queryFn: () => newsApi.getByLocation(location || {}),
-    enabled: Boolean(location && (location.state || location.latitude)),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getByCategory
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useNewsByCategory(categoryId: number) {
-  const query = useQuery({
-    queryKey: queryKeys.news.byCategory(String(categoryId), categoryId),
-    queryFn: () => newsApi.getByCategory(categoryId),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getRelated
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useRelatedNews(uid: string | undefined) {
-  const query = useQuery({
-    queryKey: queryKeys.news.related(uid),
-    queryFn: () => {
-      if (!uid) throw new Error('Article UID required');
-      return newsApi.getRelated(uid);
-    },
-    enabled: Boolean(uid),
-    staleTime: 1000 * 60 * 10,
-  });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// search
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useSearchNews(params: SearchNewsParams) {
-  const query = useQuery({
-    queryKey: queryKeys.news.search(params),
-    queryFn: () => newsApi.search(params),
-    enabled: params.query.length > 2,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getShorts
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useNewsShorts() {
-  const query = useQuery({
-    queryKey: queryKeys.news.shorts,
-    queryFn: () => newsApi.getShorts(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  return {
-    ...query,
-    data: useMergedNews(query.data),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getEngagement
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useNewsEngagement(uid: string | undefined) {
+/**
+ * GET /news/v1/news/popular
+ */
+export function usePopularNews() {
   return useQuery({
-    queryKey: queryKeys.news.engagement(uid),
-    queryFn: () => {
-      if (!uid) throw new Error('Article UID required');
-      return newsApi.getEngagement(uid);
-    },
+    queryKey: newsKeys.popular,
+    queryFn: () => newsApi.getPopular(),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * GET /news/v1/news-shorts
+ */
+export function useNewsShorts() {
+  return useQuery({
+    queryKey: newsKeys.shorts,
+    queryFn: () => newsApi.getShorts(),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+/**
+ * GET /news/v1/news/:uid
+ */
+export function useNewsArticle(uid: string | null) {
+  return useQuery({
+    queryKey: newsKeys.single(uid!),
+    queryFn: () => newsApi.getById(uid!),
+    enabled: Boolean(uid),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * GET /news/v1/news/:uid/engagement
+ */
+export function useNewsEngagement(uid: string | null) {
+  return useQuery({
+    queryKey: newsKeys.engagement(uid!),
+    queryFn: () => newsApi.getEngagement(uid!),
     enabled: Boolean(uid),
     staleTime: 1000 * 60 * 2,
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// like
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useLikeArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (uid: string) => newsApi.like(uid),
-    onMutate: async (uid) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.news.byId(uid) });
-
-      const previousArticle = queryClient.getQueryData(queryKeys.news.byId(uid));
-
-      queryClient.setQueryData(queryKeys.news.byId(uid), (old: any) => {
-        if (!old) return old;
-        return { ...old, likes: old.likes + 1 };
-      });
-
-      return { previousArticle };
-    },
-    onError: (err, uid, context) => {
-      if (context?.previousArticle) {
-        queryClient.setQueryData(queryKeys.news.byId(uid), context.previousArticle);
-      }
-    },
-    onSuccess: (_, uid) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.engagement(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.feed() });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// unlike
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useUnlikeArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (uid: string) => newsApi.unlike(uid),
-    onMutate: async (uid) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.news.byId(uid) });
-
-      const previousArticle = queryClient.getQueryData(queryKeys.news.byId(uid));
-
-      queryClient.setQueryData(queryKeys.news.byId(uid), (old: any) => {
-        if (!old) return old;
-        return { ...old, likes: Math.max(0, old.likes - 1) };
-      });
-
-      return { previousArticle };
-    },
-    onError: (err, uid, context) => {
-      if (context?.previousArticle) {
-        queryClient.setQueryData(queryKeys.news.byId(uid), context.previousArticle);
-      }
-    },
-    onSuccess: (_, uid) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.engagement(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.feed() });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// recordView
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useRecordView() {
-  return useMutation({
-    mutationFn: (uid: string) => newsApi.recordView(uid),
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// recordShare
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useRecordShare() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ uid, platform }: { uid: string; platform?: string }) =>
-      newsApi.recordShare(uid, platform),
-    onSuccess: (_, { uid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.engagement(uid) });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getComments
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useNewsComments(uid: string | undefined) {
+/**
+ * GET /news/v1/news/:uid/comments
+ */
+export function useNewsComments(uid: string | null) {
   return useQuery({
-    queryKey: queryKeys.news.comments(uid),
-    queryFn: () => {
-      if (!uid) throw new Error('Article UID required');
-      return newsApi.getComments(uid);
-    },
+    queryKey: newsKeys.comments(uid!),
+    queryFn: () => newsApi.getComments(uid!),
     enabled: Boolean(uid),
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 45,
@@ -418,27 +166,141 @@ export function useNewsComments(uid: string | undefined) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// addComment
+// MUTATIONS - CREATE/UPDATE/DELETE
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function useAddComment() {
+/**
+ * POST /news/v1/news
+ */
+export function useCreateNews() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ uid, text }: { uid: string; text: string }) =>
-      newsApi.addComment(uid, { comment_text: text }),
+    mutationFn: (payload: CreateNewsPayload) => newsApi.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: newsKeys.all });
+    },
+  });
+}
+
+/**
+ * PUT /news/v1/news/:uid
+ */
+export function useUpdateNews() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uid,
+      payload,
+    }: {
+      uid: string;
+      payload: UpdateNewsPayload;
+    }) => newsApi.update(uid, payload),
     onSuccess: (_, { uid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.comments(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.engagement(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.single(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.all });
+    },
+  });
+}
+
+/**
+ * DELETE /news/v1/user/news/:uid
+ */
+export function useDeleteNews() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (uid: string) => newsApi.delete(uid),
+    onSuccess: (_, uid) => {
+      queryClient.removeQueries({ queryKey: newsKeys.single(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.all });
     },
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// deleteComment
+// MUTATIONS - ENGAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * POST /news/v1/user/news/:uid/like
+ */
+export function useLikeArticle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (uid: string) => newsApi.like(uid),
+    onSuccess: (_, uid) => {
+      queryClient.invalidateQueries({ queryKey: newsKeys.single(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
+    },
+  });
+}
+
+/**
+ * DELETE /news/v1/user/news/:uid/like
+ */
+export function useUnlikeArticle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (uid: string) => newsApi.unlike(uid),
+    onSuccess: (_, uid) => {
+      queryClient.invalidateQueries({ queryKey: newsKeys.single(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
+    },
+  });
+}
+
+/**
+ * POST /news/v1/user/news/:uid/view
+ */
+export function useRecordView() {
+  return useMutation({
+    mutationFn: (uid: string) => newsApi.recordView(uid),
+  });
+}
+
+/**
+ * POST /news/v1/user/news/:uid/share
+ */
+export function useRecordShare() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ uid, platform }: { uid: string; platform?: string }) =>
+      newsApi.recordShare(uid, platform),
+    onSuccess: (_, { uid }) => {
+      queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
+    },
+  });
+}
+
+/**
+ * POST /news/v1/user/news/:uid/comment
+ */
+export function useAddComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uid,
+      comment_text,
+    }: {
+      uid: string;
+      comment_text: string;
+    }) => newsApi.addComment(uid, { comment_text }),
+    onSuccess: (_, { uid }) => {
+      queryClient.invalidateQueries({ queryKey: newsKeys.comments(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
+    },
+  });
+}
+
+/**
+ * DELETE /news/v1/user/news/:uid/comment/:id
+ */
 export function useDeleteComment() {
   const queryClient = useQueryClient();
 
@@ -446,9 +308,8 @@ export function useDeleteComment() {
     mutationFn: ({ uid, commentId }: { uid: string; commentId: number }) =>
       newsApi.deleteComment(uid, commentId),
     onSuccess: (_, { uid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.comments(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.engagement(uid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.news.byId(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.comments(uid) });
+      queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
     },
   });
 }

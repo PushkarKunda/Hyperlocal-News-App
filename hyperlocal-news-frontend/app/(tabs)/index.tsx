@@ -1,35 +1,29 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  useWindowDimensions,
+  Animated,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNewsFeed } from '@/hooks/useNews';
+import { useNewsFeed, useCategories, useCategoryNews } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useEngagement';
-import { NewsArticle } from '@/services/api/news';
-import { ImmersiveNewsCard } from '@/components/ImmersiveNewsCard';
+import { FeedItem, NewsArticle } from '@/services/api/news';
+import { ImmersiveFeedCard } from '@/components/ImmersiveNewsCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 import { useTabBarStore } from '@/store/tabBarStore';
 
-
-const CATEGORIES = [
-  { id: 'for-you', name: 'For You', slug: 'for-you' },
-  { id: 'local', name: 'Local', slug: 'local' },
-  { id: 'politics', name: 'Politics', slug: 'politics' },
-  { id: 'sports', name: 'Sports', slug: 'sports' },
-  { id: 'business', name: 'Business', slug: 'business' },
-  { id: 'technology', name: 'Technology', slug: 'technology' },
-  { id: 'entertainment', name: 'Entertainment', slug: 'entertainment' },
-  { id: 'health', name: 'Health', slug: 'health' },
-  { id: 'education', name: 'Education', slug: 'education' },
-  { id: 'science', name: 'Science', slug: 'science' },
-  { id: 'environment', name: 'Environment', slug: 'environment' },
-  { id: 'world-news', name: 'World News', slug: 'world-news' }
-];
+const FOR_YOU_ID = 'for-you' as const;
+type CategoryId = typeof FOR_YOU_ID | number;
 
 export default function HomeScreen() {
   const colorScheme = useAppColorScheme();
@@ -38,81 +32,91 @@ export default function HomeScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { user } = useAuthStore();
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { newsId } = useLocalSearchParams<{ newsId?: string }>();
+  const setTabBarVisible = useTabBarStore((s) => s.setVisible);
 
-  const setTabBarVisible = useTabBarStore((state) => state.setVisible);
-
-  const categoryFlatListRef = useRef<FlatList>(null);
-  const horizontalFlatListRef = useRef<FlatList>(null);
-  const verticalRefs = useRef<{ [key: string]: FlatList | null }>({});
-  const isProgrammaticScroll = useRef(false);
-
-  // Load news dynamically from our simulated backend using React Query
-  const { data: feedResponse, isLoading } = useNewsFeed();
-
-  // Fetch user's bookmarks from server to pass to cards
-  const { data: rawBookmarks = [] } = useBookmarks();
-
-  // Extract only NewsArticle items from the feed response (filtering out ads/sponsored)
-  const news: NewsArticle[] = useMemo(() => {
-    if (!feedResponse?.items) return [];
-    return feedResponse.items
-      .filter(item => item.type === 'news')
-      .map(item => item.data as NewsArticle);
-  }, [feedResponse]);
-
-  // Create a Set of bookmarked news_uids for quick O(1) lookup
-  const bookmarkedIds = useMemo(() => {
-    return new Set(rawBookmarks.map(b => b.news_uid));
-  }, [rawBookmarks]);
-
+  // ─── State ────────────────────────────────────────────────────────────
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
-  const [activeCategory, setActiveCategory] = useState('for-you');
+  const [activeCategory, setActiveCategory] = useState<CategoryId>(FOR_YOU_ID);
 
-  const renderNewsCard = useCallback(({ item }: { item: NewsArticle }) => (
-    <ImmersiveNewsCard
-      item={item}
-      containerHeight={scrollHeight}
-      isBookmarked={bookmarkedIds.has(item.news_uid)}
-    />
-  ), [scrollHeight, bookmarkedIds]);
-
-  // Reset tab bar visibility and header on focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      setTabBarVisible(true);
-      showHeader();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  // Helper to convert backend category_names to local category slug
-  const getArticleCategorySlug = (article: NewsArticle) => {
-    if (!article.category_names || article.category_names.length === 0) return 'for-you';
-    const firstName = article.category_names[0].toLowerCase().replace(/\s+/g, '-');
-    const match = CATEGORIES.find(c => c.slug === firstName);
-    return match ? match.slug : 'for-you';
-  };
-
-  // Filter news dynamically based on the selected category slug
-  const getFilteredNews = (slug: string) => {
-    if (slug === 'for-you') return news;
-    return news.filter(item => getArticleCategorySlug(item) === slug);
-  };
-
-  // Animation values and state for the header auto-hide/pop feature
+  // ─── Refs ─────────────────────────────────────────────────────────────
+  const categoryTabRef = useRef<FlatList>(null);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const headerAnim = useRef(new Animated.Value(1)).current;
   const isHeaderVisible = useRef(true);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStartPos = useRef({ x: 0, y: 0, time: 0 });
 
-  const headerHeight = insets.top + 72 + 48; // 72 (header) + 48 (categories)
+  // ─── Data ─────────────────────────────────────────────────────────────
+
+  // Dynamic categories from backend - excludes "Local" (has its own tab)
+  const { data: categoriesData = [], isLoading: isLoadingCategories } =
+    useCategories();
+
+  // "For You" = full mixed feed (news + ads + sponsored) as API returns
+  const { data: forYouFeed, isLoading: isLoadingFeed } = useNewsFeed({
+    limit: 20,
+  });
+
+  // Category tab news (pure news only, no ads)
+  const { data: categoryNewsData = [], isLoading: isLoadingCategoryNews } =
+    useCategoryNews(
+      typeof activeCategory === 'number' ? activeCategory : null
+    );
+
+  // Bookmarks - used to show filled/outline bookmark icon
+  // TODO: Update bookmarkedNewsUids to use numeric content_id set
+  // once GET /news/v1/news/:uid confirms the numeric ID field
+  const { data: rawBookmarks = [] } = useBookmarks('news');
+
+  // ─── Derived ──────────────────────────────────────────────────────────
+
+  // "For You" + dynamic categories (no Local)
+  const categoryTabs = useMemo(() => {
+    const tabs: Array<{ id: CategoryId; name: string; color?: string }> = [
+      { id: FOR_YOU_ID, name: 'For You' },
+    ];
+    categoriesData
+      .filter((c) => c.name.toLowerCase() !== 'local')
+      .forEach((c) => tabs.push({ id: c.id, name: c.name, color: c.color }));
+    return tabs;
+  }, [categoriesData]);
+
+  // Bookmarked news_uids for O(1) lookup
+  // TODO: Change to content_id (number) once confirmed
+  const bookmarkedNewsUids = useMemo(
+    () => new Set(rawBookmarks.map((b) => String(b.content_id))),
+    [rawBookmarks]
+  );
+
+  // Feed items to render in the vertical snap list
+  const feedItems = useMemo((): FeedItem[] => {
+    if (activeCategory === FOR_YOU_ID) {
+      // Full mixed feed: news + ads + sponsored exactly as API returns
+      return forYouFeed?.items ?? [];
+    }
+    // Category tabs: wrap news articles into FeedItem shape
+    return categoryNewsData.map(
+      (article, i): FeedItem => ({
+        type: 'news',
+        data: article,
+        position: i,
+      })
+    );
+  }, [activeCategory, forYouFeed, categoryNewsData]);
+
+  const isLoading =
+    isLoadingCategories ||
+    (activeCategory === FOR_YOU_ID
+      ? isLoadingFeed
+      : isLoadingCategoryNews);
+
+  // ─── Header animation ─────────────────────────────────────────────────
+  const headerHeight = insets.top + 72 + 48;
 
   const headerTranslateY = headerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-72, 0], // Translate up only by the top header height (72px)
+    outputRange: [-72, 0],
   });
 
   const headerOpacity = headerAnim.interpolate({
@@ -120,7 +124,7 @@ export default function HomeScreen() {
     outputRange: [0, 1],
   });
 
-  const showHeader = () => {
+  const showHeader = useCallback(() => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
@@ -132,18 +136,13 @@ export default function HomeScreen() {
       duration: 250,
       useNativeDriver: true,
     }).start();
-
-    // Auto-hide after 3 seconds of inactivity, ONLY if news is loaded
     if (!isLoading) {
-      hideTimerRef.current = setTimeout(() => {
-        hideHeader();
-      }, 3000);
+      hideTimerRef.current = setTimeout(() => hideHeader(), 3000);
     }
-  };
+  }, [isLoading]);
 
-  const hideHeader = () => {
-    if (isLoading) return; // Do not hide header while news is still loading!
-
+  const hideHeader = useCallback(() => {
+    if (isLoading) return;
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
@@ -155,179 +154,207 @@ export default function HomeScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start();
+  }, [isLoading]);
+
+  const onTouchStart = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    touchStartRef.current = { x: pageX, y: pageY, time: Date.now() };
   };
 
-  const handleTouchStart = (e: any) => {
+  const onTouchEnd = (e: any) => {
     const { pageX, pageY } = e.nativeEvent;
-    touchStartPos.current = { x: pageX, y: pageY, time: Date.now() };
-  };
-
-  const handleTouchEnd = (e: any) => {
-    const { pageX, pageY } = e.nativeEvent;
-    const dx = Math.abs(pageX - touchStartPos.current.x);
-    const dy = Math.abs(pageY - touchStartPos.current.y);
-    const dt = Date.now() - touchStartPos.current.time;
-
-    // A tap is defined as a short duration touch with very little movement
+    const dx = Math.abs(pageX - touchStartRef.current.x);
+    const dy = Math.abs(pageY - touchStartRef.current.y);
+    const dt = Date.now() - touchStartRef.current.time;
     if (dx < 10 && dy < 10 && dt < 300) {
-      // Ignore taps in the active header/categories area
-      const threshold = isHeaderVisible.current ? (insets.top + 72 + 48) : (insets.top + 48);
-      if (pageY < threshold) return;
-      // Ignore taps in the bottom actions/footer area of the news card
-      if (pageY > screenHeight - 80) return;
-
-      if (!isHeaderVisible.current) {
-        showHeader();
-      } else {
-        hideHeader();
-      }
+      const threshold = isHeaderVisible.current
+        ? headerHeight
+        : insets.top + 48;
+      if (pageY < threshold || pageY > scrollHeight - 80) return;
+      isHeaderVisible.current ? hideHeader() : showHeader();
     }
   };
 
-  // Initial display and auto-hide when the feed finishes loading
+  // Reset on screen focus
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', () => {
+      setTabBarVisible(true);
+      showHeader();
+    });
+    return unsub;
+  }, [navigation, showHeader]);
+
+  // Auto-hide 5s after feed loads
   useEffect(() => {
     if (!isLoading) {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-      }
-      isHeaderVisible.current = true;
-      setTabBarVisible(true);
-      Animated.timing(headerAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-
-      hideTimerRef.current = setTimeout(() => {
-        hideHeader();
-      }, 5000);
+      showHeader();
+      hideTimerRef.current = setTimeout(() => hideHeader(), 5000);
     }
-
     return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-      }
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
   }, [isLoading]);
 
+  // ─── Render helpers ───────────────────────────────────────────────────
 
+  const renderFeedItem = useCallback(
+    ({ item }: { item: FeedItem }) => (
+      <ImmersiveFeedCard
+        item={item}
+        containerHeight={scrollHeight}
+        bookmarkedNewsUids={bookmarkedNewsUids}
+      />
+    ),
+    [scrollHeight, bookmarkedNewsUids]
+  );
 
-  // Sync scroll for deep link newsId
-  useEffect(() => {
-    if (newsId && news.length > 0 && scrollHeight > 0) {
-      const item = news.find(i => i.news_uid === newsId);
-      if (item) {
-        const itemCategory = getArticleCategorySlug(item);
-        const categoryNews = getFilteredNews(itemCategory);
-        const itemIndex = categoryNews.findIndex(i => i.news_uid === newsId);
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: scrollHeight,
+      offset: scrollHeight * index,
+      index,
+    }),
+    [scrollHeight]
+  );
 
-        if (itemIndex !== -1) {
-          // Set active category
-          setActiveCategory(itemCategory);
-          const catIndex = CATEGORIES.findIndex(c => c.slug === itemCategory);
-
-          const timer = setTimeout(() => {
-            horizontalFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true });
-            categoryFlatListRef.current?.scrollToIndex({ index: catIndex, animated: true, viewPosition: 0.5 });
-
-            const verticalTimer = setTimeout(() => {
-              verticalRefs.current[itemCategory]?.scrollToIndex({ index: itemIndex, animated: true });
-            }, 250);
-            return () => clearTimeout(verticalTimer);
-          }, 150);
-
-          return () => clearTimeout(timer);
-        }
-      }
-    }
-  }, [newsId, scrollHeight, news]);
-
-  // Removed early return layout to support rendering header from the start
+  // ─── Render ───────────────────────────────────────────────────────────
 
   return (
     <View
       style={[styles.container, { backgroundColor: colors.background }]}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
-      <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+      <StatusBar
+        style={isDark ? 'light' : 'dark'}
+        translucent
+        backgroundColor="transparent"
+      />
 
-      {/* Absolute pop-style Animated Header Container */}
-      <Animated.View style={[
-        styles.animatedHeaderContainer,
-        {
-          transform: [{ translateY: headerTranslateY }],
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
-          paddingTop: insets.top,
-        }
-      ]}>
-        {/* Styled Symmetrical Theme-Aware Header Section */}
-        <Animated.View style={[styles.header, { borderBottomColor: colors.border, opacity: headerOpacity }]}>
+      {/* ── Animated Header ─────────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          styles.animatedHeader,
+          {
+            transform: [{ translateY: headerTranslateY }],
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
+        {/* Top bar */}
+        <Animated.View
+          style={[
+            styles.topBar,
+            { borderBottomColor: colors.border, opacity: headerOpacity },
+          ]}
+        >
           <View style={{ width: 40 }} />
 
           <View style={styles.headerCenter}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.appName, { color: colors.text }]}>
               <Text style={{ fontFamily: 'Poppins_700Bold' }}>Hyper</Text>
-              <Text style={{ fontFamily: 'Poppins_700Bold', color: isDark ? '#818CF8' : colors.primary }}>Local</Text>
-              <Text style={{ color: isDark ? '#818CF8' : colors.primary, fontFamily: 'Poppins_700Bold' }}>.</Text>
+              <Text
+                style={{
+                  fontFamily: 'Poppins_700Bold',
+                  color: isDark ? '#818CF8' : colors.primary,
+                }}
+              >
+                Local
+              </Text>
+              <Text
+                style={{
+                  color: isDark ? '#818CF8' : colors.primary,
+                  fontFamily: 'Poppins_700Bold',
+                }}
+              >
+                .
+              </Text>
             </Text>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-sharp" size={12} color={isDark ? '#818CF8' : colors.primary} style={styles.locationIcon} />
+            <View style={styles.locationRow}>
+              <Ionicons
+                name="location-sharp"
+                size={12}
+                color={isDark ? '#818CF8' : colors.primary}
+              />
               <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-                {user?.district ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() || ''}` : (user?.state ? user.state.toUpperCase() : 'SELECT LOCATION')}
+                {user?.district
+                  ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() ?? ''}`
+                  : user?.state
+                    ? user.state.toUpperCase()
+                    : 'SELECT LOCATION'}
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.headerRightButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(70, 72, 212, 0.05)' }]}
+            style={[
+              styles.iconBtn,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(70,72,212,0.05)',
+              },
+            ]}
             onPress={() => router.push('/(tabs)/notifications')}
-            activeOpacity={0.7}
           >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            <View style={styles.notificationDot} />
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={colors.text}
+            />
+            <View style={styles.notifDot} />
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Horizontally Scrollable Categories Tab List */}
-        <View style={[styles.categoriesContainer, { borderBottomColor: colors.border }]}>
+        {/* Dynamic category tabs */}
+        <View
+          style={[styles.tabsContainer, { borderBottomColor: colors.border }]}
+        >
           <FlatList
-            ref={categoryFlatListRef}
-            data={CATEGORIES}
+            ref={categoryTabRef}
+            data={categoryTabs}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScrollContent}
-            keyExtractor={(item) => item.id}
-            onScrollToIndexFailed={(info) => {
-              const wait = new Promise(resolve => setTimeout(resolve, 50));
-              wait.then(() => {
-                categoryFlatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
-              });
-            }}
-            renderItem={({ item, index }) => {
-              const isActive = activeCategory === item.slug;
+            contentContainerStyle={styles.tabsContent}
+            keyExtractor={(t) => String(t.id)}
+            onScrollToIndexFailed={() => { }}
+            renderItem={({ item: tab, index }) => {
+              const isActive = activeCategory === tab.id;
+              const activeColor = tab.color || colors.primary;
               return (
                 <TouchableOpacity
-                  style={styles.categoryTab}
+                  style={styles.tab}
                   onPress={() => {
-                    isProgrammaticScroll.current = true;
-                    setActiveCategory(item.slug);
-                    horizontalFlatListRef.current?.scrollToIndex({ index, animated: true });
-                    categoryFlatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+                    setActiveCategory(tab.id);
+                    categoryTabRef.current?.scrollToIndex({
+                      index,
+                      animated: true,
+                      viewPosition: 0.5,
+                    });
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={[
-                    styles.categoryText,
-                    {
-                      color: isActive ? colors.primary : colors.textSecondary,
-                      fontWeight: isActive ? '700' : '500'
-                    }
-                  ]}>
-                    {item.name}
+                  <Text
+                    style={[
+                      styles.tabText,
+                      {
+                        color: isActive ? activeColor : colors.textSecondary,
+                        fontWeight: isActive ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {tab.name}
                   </Text>
-                  {isActive && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
+                  {isActive && (
+                    <View
+                      style={[
+                        styles.tabIndicator,
+                        { backgroundColor: activeColor },
+                      ]}
+                    />
+                  )}
                 </TouchableOpacity>
               );
             }}
@@ -335,151 +362,72 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
-      {/* Main Snap Scrolling Feed Container (Horizontal Pager) */}
+      {/* ── Feed ────────────────────────────────────────────────────── */}
       <View
         style={styles.feedWrapper}
         onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
       >
         {isLoading ? (
-          <View style={[styles.loaderContainer, { backgroundColor: colors.background, paddingTop: headerHeight }]}>
-            <LoadingSpinner text="Curating your local news..." color={colors.primary} colorScheme={colorScheme ?? 'light'} />
+          <View style={[styles.centered, { paddingTop: headerHeight }]}>
+            <LoadingSpinner
+              text="Curating your local news..."
+              color={colors.primary}
+              colorScheme={colorScheme ?? 'light'}
+            />
+          </View>
+        ) : feedItems.length === 0 ? (
+          <View style={[styles.centered, { paddingTop: headerHeight }]}>
+            <Ionicons
+              name="newspaper-outline"
+              size={48}
+              color={colors.textTertiary}
+            />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              No stories yet
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Check back later or explore other categories
+            </Text>
           </View>
         ) : (
           <FlatList
-            ref={horizontalFlatListRef}
-            data={CATEGORIES}
-            keyExtractor={(item) => item.slug}
-            horizontal
+            data={feedItems}
+            keyExtractor={(item) => `${item.type}-${item.position}`}
+            renderItem={renderFeedItem}
             pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={screenWidth}
+            showsVerticalScrollIndicator={false}
+            snapToInterval={scrollHeight}
             snapToAlignment="start"
             decelerationRate="fast"
-            disableIntervalMomentum={true}
+            disableIntervalMomentum
             bounces={false}
-            getItemLayout={(data, index) => ({
-              length: screenWidth,
-              offset: screenWidth * index,
-              index,
-            })}
-            scrollEventThrottle={16}
-            onScroll={(e) => {
-              if (isProgrammaticScroll.current) return;
-              const offsetX = e.nativeEvent.contentOffset.x;
-              const index = Math.round(offsetX / screenWidth);
-              if (index >= 0 && index < CATEGORIES.length) {
-                const nextSlug = CATEGORIES[index].slug;
-                if (activeCategory !== nextSlug) {
-                  setActiveCategory(nextSlug);
-                  categoryFlatListRef.current?.scrollToIndex({
-                    index,
-                    animated: true,
-                    viewPosition: 0.5,
-                  });
-                }
-              }
-            }}
-            onMomentumScrollEnd={(e) => {
-              isProgrammaticScroll.current = false;
-              const offsetX = e.nativeEvent.contentOffset.x;
-              const index = Math.round(offsetX / screenWidth);
-              if (index >= 0 && index < CATEGORIES.length) {
-                const nextSlug = CATEGORIES[index].slug;
-                if (activeCategory !== nextSlug) {
-                  setActiveCategory(nextSlug);
-                  categoryFlatListRef.current?.scrollToIndex({
-                    index,
-                    animated: true,
-                    viewPosition: 0.5,
-                  });
-                }
-              }
-            }}
-            renderItem={({ item: category, index }) => {
-              const categoryNews = getFilteredNews(category.slug);
-              const activeIndex = CATEGORIES.findIndex(c => c.slug === activeCategory);
-              // Pre-load 2 adjacent neighbors for buttery-smooth horizontal swipes
-              const isVisible = Math.abs(index - activeIndex) <= 2;
-
-              if (!isVisible) {
-                return <View style={{ width: screenWidth, height: scrollHeight }} />;
-              }
-
-              if (categoryNews.length === 0) {
-                return (
-                  <View style={[styles.emptyContainer, { width: screenWidth, height: scrollHeight }]}>
-                    <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12 }} />
-                    <Text style={[styles.emptyTitle, { color: colors.text }]}>No stories in this category yet</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Check back later or explore other sections</Text>
-                  </View>
-                );
-              }
-
-              return (
-                <View style={{ width: screenWidth, height: scrollHeight }}>
-                  <FlatList
-                    ref={ref => {
-                      verticalRefs.current[category.slug] = ref;
-                    }}
-                    data={categoryNews}
-                    keyExtractor={(item) => item.news_uid}
-                    renderItem={renderNewsCard}
-                    pagingEnabled
-                    nestedScrollEnabled={true}
-                    showsVerticalScrollIndicator={false}
-                    snapToInterval={scrollHeight}
-                    snapToAlignment="start"
-                    decelerationRate="fast"
-                    disableIntervalMomentum={true}
-                    bounces={false}
-                    getItemLayout={(_, idx) => ({
-                      length: scrollHeight,
-                      offset: scrollHeight * idx,
-                      index: idx,
-                    })}
-                    onScrollToIndexFailed={(info) => {
-                      const wait = new Promise(resolve => setTimeout(resolve, 50));
-                      wait.then(() => {
-                        verticalRefs.current[category.slug]?.scrollToIndex({ index: info.index, animated: true });
-                      });
-                    }}
-                  />
-                </View>
-              );
-            }}
+            getItemLayout={getItemLayout}
           />
         )}
       </View>
-
     </View>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  animatedHeaderContainer: {
+  container: { flex: 1 },
+  animatedHeader: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
     elevation: 5,
-    shadowColor: '#000000',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedWrapper: {
-    flex: 1,
-  },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -487,45 +435,31 @@ const styles = StyleSheet.create({
     height: 72,
     borderBottomWidth: 1,
   },
-  headerLeftButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerRightButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  headerCenter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
+  headerCenter: { alignItems: 'center' },
+  appName: {
     fontSize: 21,
-    fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.4,
   },
-  locationContainer: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 3,
     marginTop: 2,
-  },
-  locationIcon: {
-    marginRight: 2,
   },
   locationText: {
     fontSize: 10,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 1.0,
   },
-  notificationDot: {
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifDot: {
     position: 'absolute',
     top: 10,
     right: 10,
@@ -534,31 +468,28 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
     borderWidth: 1,
-    borderColor: '#FFFFFF',
+    borderColor: '#fff',
   },
-  categoriesContainer: {
-    borderBottomWidth: 1,
-    paddingVertical: 4,
-  },
-  categoriesScrollContent: {
+  tabsContainer: { borderBottomWidth: 1, paddingVertical: 4 },
+  tabsContent: {
     paddingHorizontal: 16,
     alignItems: 'center',
     gap: 20,
     height: 40,
   },
-  categoryTab: {
+  tab: {
     height: '100%',
     justifyContent: 'center',
     position: 'relative',
     paddingHorizontal: 4,
     paddingBottom: 6,
   },
-  categoryText: {
+  tabText: {
     fontSize: 14,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.2,
   },
-  activeIndicator: {
+  tabIndicator: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -567,17 +498,17 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 2,
     borderTopRightRadius: 2,
   },
-  emptyContainer: {
+  feedWrapper: { flex: 1 },
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    gap: 12,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
-    marginBottom: 4,
     textAlign: 'center',
   },
   emptySubtitle: {

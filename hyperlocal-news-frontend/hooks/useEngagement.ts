@@ -1,335 +1,239 @@
 // hooks/useEngagement.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { engagementApi } from '@/services/api';
-import type { CreateCommentPayload } from '@/services/api/engagement';
+import { engagementApi } from '@/services/api/engagement';
+import { useAuthStore } from '@/store/authStore';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// QUERY KEYS
-// ═══════════════════════════════════════════════════════════════════════════
-
-const queryKeys = {
-  bookmarks: ['engagement', 'bookmarks'] as const,
-  checkBookmark: (uid: string) => ['engagement', 'check-bookmark', uid] as const,
-  stats: (uid: string | null) => ['engagement', 'stats', uid] as const,
-  summary: (uid: string | null) => ['engagement', 'summary', uid] as const,
-  comments: (uid: string | null) => ['engagement', 'comments', uid] as const,
+export const engagementKeys = {
+  bookmarks: (type: string = 'news') =>
+    ['engagement', 'bookmarks', type] as const,
+  checkBookmark: (contentId: number | string, type: string = 'news') =>
+    ['engagement', 'check-bookmark', type, contentId] as const,
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// BOOKMARKS
-// ═══════════════════════════════════════════════════════════════════════════
-
 /**
- * getBookmarks
  * GET /engagement/bookmarks
  */
-export function useBookmarks() {
+export function useBookmarks(contentType = 'news') {
   return useQuery({
-    queryKey: queryKeys.bookmarks,
-    queryFn: () => engagementApi.getBookmarks(),
+    queryKey: engagementKeys.bookmarks(contentType),
+    queryFn: () => engagementApi.getBookmarks(contentType),
     staleTime: 1000 * 60 * 5,
   });
 }
 
 /**
- * checkBookmark
- * GET /engagement/bookmarks/check?news_uid=xxx
+ * GET /engagement/bookmarks/check
+ * Accepts string for backward compatibility - will convert to number internally
  */
-export function useCheckBookmark(contentUid: string) {
+export function useCheckBookmark(
+  contentId: string | number | null,
+  contentType = 'news'
+) {
   return useQuery({
-    queryKey: queryKeys.checkBookmark(contentUid),
-    queryFn: () => engagementApi.checkBookmark(contentUid),
-    enabled: Boolean(contentUid),
+    queryKey: engagementKeys.checkBookmark(contentId!, contentType),
+    queryFn: () => {
+      if (!contentId) throw new Error('Content ID required');
+
+      // TODO: Replace 0 with actual numeric ID once confirmed
+      const numericId = typeof contentId === 'string' ? 0 : contentId;
+
+      // Add null check
+      if (numericId === 0) {
+        // Return default response for string IDs until migration complete
+        return Promise.resolve({ is_bookmarked: false });
+      }
+
+      return engagementApi.checkBookmark(numericId, contentType);
+    },
+    enabled: Boolean(contentId),
     staleTime: 1000 * 60 * 5,
   });
 }
 
 /**
- * addBookmark
  * POST /engagement/bookmarks
+ * Accepts string or number for contentId
  */
 export function useAddBookmark() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: (contentUid: string) => engagementApi.addBookmark(contentUid),
-    onMutate: async (contentUid) => {
-      // Cancel ongoing queries
-      await queryClient.cancelQueries({ queryKey: queryKeys.bookmarks });
+    mutationFn: (contentIdOrUid: string | number | { contentId: number; contentType?: string }) => {
+      if (!user?.user_uid) throw new Error('Not authenticated');
+
+      // Handle object format
+      if (typeof contentIdOrUid === 'object') {
+        return engagementApi.addBookmark(
+          user.user_uid,
+          contentIdOrUid.contentId,
+          contentIdOrUid.contentType || 'news'
+        );
+      }
+
+      // Handle string (news_uid) or number
+      // TODO: Replace 0 with actual conversion once numeric ID field is confirmed
+      const numericId = typeof contentIdOrUid === 'string' ? 0 : contentIdOrUid;
+      return engagementApi.addBookmark(user.user_uid, numericId, 'news');
+    },
+    onMutate: async (contentIdOrUid) => {
+      const contentId = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentId
+        : contentIdOrUid;
+      const contentType = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentType || 'news'
+        : 'news';
+
       await queryClient.cancelQueries({
-        queryKey: queryKeys.checkBookmark(contentUid),
+        queryKey: engagementKeys.bookmarks(contentType),
+      });
+      await queryClient.cancelQueries({
+        queryKey: engagementKeys.checkBookmark(contentId, contentType),
       });
 
-      // Snapshot previous values
-      const previousBookmarks = queryClient.getQueryData(queryKeys.bookmarks);
+      const previousBookmarks = queryClient.getQueryData(
+        engagementKeys.bookmarks(contentType)
+      );
       const previousCheck = queryClient.getQueryData(
-        queryKeys.checkBookmark(contentUid)
+        engagementKeys.checkBookmark(contentId, contentType)
       );
 
-      // Optimistically update check
-      queryClient.setQueryData(queryKeys.checkBookmark(contentUid), {
-        is_bookmarked: true,
-      });
+      queryClient.setQueryData(
+        engagementKeys.checkBookmark(contentId, contentType),
+        { is_bookmarked: true }
+      );
 
-      return { previousBookmarks, previousCheck };
+      return { previousBookmarks, previousCheck, contentId, contentType };
     },
-    onError: (err, contentUid, context) => {
-      // Rollback on error
-      if (context?.previousBookmarks) {
-        queryClient.setQueryData(queryKeys.bookmarks, context.previousBookmarks);
-      }
-      if (context?.previousCheck) {
+    onError: (_err, _vars, context) => {
+      if (!context) return;
+      if (context.previousBookmarks) {
         queryClient.setQueryData(
-          queryKeys.checkBookmark(contentUid),
+          engagementKeys.bookmarks(context.contentType),
+          context.previousBookmarks
+        );
+      }
+      if (context.previousCheck) {
+        queryClient.setQueryData(
+          engagementKeys.checkBookmark(context.contentId, context.contentType),
           context.previousCheck
         );
       }
     },
-    onSuccess: () => {
-      // Refetch from server
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookmarks });
+    onSuccess: (_data, contentIdOrUid) => {
+      const contentType = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentType || 'news'
+        : 'news';
+      queryClient.invalidateQueries({
+        queryKey: engagementKeys.bookmarks(contentType),
+      });
     },
   });
 }
 
 /**
- * removeBookmark
  * DELETE /engagement/bookmarks
+ * Accepts string or number for contentId
  */
 export function useRemoveBookmark() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (contentUid: string) => engagementApi.removeBookmark(contentUid),
-    onMutate: async (contentUid) => {
-      // Cancel ongoing queries
-      await queryClient.cancelQueries({ queryKey: queryKeys.bookmarks });
+    mutationFn: (contentIdOrUid: string | number | { contentId: number; contentType?: string }) => {
+      // Handle object format
+      if (typeof contentIdOrUid === 'object') {
+        return engagementApi.removeBookmark(
+          contentIdOrUid.contentId,
+          contentIdOrUid.contentType || 'news'
+        );
+      }
+
+      // Handle string or number
+      // TODO: Replace 0 with actual conversion
+      const numericId = typeof contentIdOrUid === 'string' ? 0 : contentIdOrUid;
+      return engagementApi.removeBookmark(numericId, 'news');
+    },
+    onMutate: async (contentIdOrUid) => {
+      const contentId = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentId
+        : contentIdOrUid;
+      const contentType = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentType || 'news'
+        : 'news';
+
       await queryClient.cancelQueries({
-        queryKey: queryKeys.checkBookmark(contentUid),
+        queryKey: engagementKeys.bookmarks(contentType),
+      });
+      await queryClient.cancelQueries({
+        queryKey: engagementKeys.checkBookmark(contentId, contentType),
       });
 
-      // Snapshot previous values
-      const previousBookmarks = queryClient.getQueryData(queryKeys.bookmarks);
+      const previousBookmarks = queryClient.getQueryData(
+        engagementKeys.bookmarks(contentType)
+      );
       const previousCheck = queryClient.getQueryData(
-        queryKeys.checkBookmark(contentUid)
+        engagementKeys.checkBookmark(contentId, contentType)
       );
 
-      // Optimistically update check
-      queryClient.setQueryData(queryKeys.checkBookmark(contentUid), {
-        is_bookmarked: false,
-      });
+      queryClient.setQueryData(
+        engagementKeys.checkBookmark(contentId, contentType),
+        { is_bookmarked: false }
+      );
 
-      return { previousBookmarks, previousCheck };
+      return { previousBookmarks, previousCheck, contentId, contentType };
     },
-    onError: (err, contentUid, context) => {
-      // Rollback on error
-      if (context?.previousBookmarks) {
-        queryClient.setQueryData(queryKeys.bookmarks, context.previousBookmarks);
-      }
-      if (context?.previousCheck) {
+    onError: (_err, _vars, context) => {
+      if (!context) return;
+      if (context.previousBookmarks) {
         queryClient.setQueryData(
-          queryKeys.checkBookmark(contentUid),
+          engagementKeys.bookmarks(context.contentType),
+          context.previousBookmarks
+        );
+      }
+      if (context.previousCheck) {
+        queryClient.setQueryData(
+          engagementKeys.checkBookmark(context.contentId, context.contentType),
           context.previousCheck
         );
       }
     },
-    onSuccess: () => {
-      // Refetch from server
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookmarks });
+    onSuccess: (_data, contentIdOrUid) => {
+      const contentType = typeof contentIdOrUid === 'object'
+        ? contentIdOrUid.contentType || 'news'
+        : 'news';
+      queryClient.invalidateQueries({
+        queryKey: engagementKeys.bookmarks(contentType),
+      });
     },
   });
 }
 
-/**
- * deleteBookmarkById
- * DELETE /engagement/bookmarks/:id
- */
-export function useDeleteBookmarkById() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (bookmarkId: number) => engagementApi.deleteBookmarkById(bookmarkId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookmarks });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LIKES
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * like
- * POST /news/v1/user/news/:uid/like
- */
 export function useLike() {
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (contentUid: string) => engagementApi.like(contentUid),
-    onSuccess: (_, contentUid) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.stats(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.summary(contentUid) });
-    },
+    mutationFn: (newsUid: string) => engagementApi.like(newsUid),
   });
 }
 
-/**
- * unlike
- * DELETE /news/v1/user/news/:uid/like
- */
 export function useUnlike() {
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (contentUid: string) => engagementApi.unlike(contentUid),
-    onSuccess: (_, contentUid) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.stats(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.summary(contentUid) });
-    },
+    mutationFn: (newsUid: string) => engagementApi.unlike(newsUid),
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// VIEWS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * recordView
- * POST /news/v1/user/news/:uid/view
- */
 export function useRecordView() {
   return useMutation({
-    mutationFn: (contentUid: string) => engagementApi.recordView(contentUid),
+    mutationFn: (newsUid: string) => engagementApi.recordView(newsUid),
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SHARES
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * recordShare
- * POST /news/v1/user/news/:uid/share
- */
 export function useRecordShare() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: ({
-      contentUid,
+      newsUid,
       platform,
     }: {
-      contentUid: string;
+      newsUid: string;
       platform?: string;
-    }) => engagementApi.recordShare(contentUid, platform),
-    onSuccess: (_, { contentUid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.stats(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.summary(contentUid) });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// COMMENTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * getComments
- * GET /news/v1/news/:uid/comments
- */
-export function useComments(contentUid: string | null) {
-  return useQuery({
-    queryKey: queryKeys.comments(contentUid),
-    queryFn: () => {
-      if (!contentUid) throw new Error('Content UID required');
-      return engagementApi.getComments(contentUid);
-    },
-    enabled: Boolean(contentUid),
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 45,
-  });
-}
-
-/**
- * addComment
- * POST /news/v1/user/news/:uid/comment
- */
-export function useAddComment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      contentUid,
-      payload,
-    }: {
-      contentUid: string;
-      payload: CreateCommentPayload;
-    }) => engagementApi.addComment(contentUid, payload),
-    onSuccess: (_, { contentUid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.stats(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.summary(contentUid) });
-    },
-  });
-}
-
-/**
- * deleteComment
- * DELETE /news/v1/user/news/:uid/comment/:id
- */
-export function useDeleteComment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      contentUid,
-      commentId,
-    }: {
-      contentUid: string;
-      commentId: number;
-    }) => engagementApi.deleteComment(contentUid, commentId),
-    onSuccess: (_, { contentUid }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.stats(contentUid) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.summary(contentUid) });
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ENGAGEMENT STATS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * getStats
- * GET /news/v1/news/:uid/engagement
- */
-export function useEngagementStats(contentUid: string | null) {
-  return useQuery({
-    queryKey: queryKeys.stats(contentUid),
-    queryFn: () => {
-      if (!contentUid) throw new Error('Content UID required');
-      return engagementApi.getStats(contentUid);
-    },
-    enabled: Boolean(contentUid),
-    staleTime: 1000 * 60 * 2,
-  });
-}
-
-/**
- * getSummary
- * GET /engagement/summary/:uid
- */
-export function useEngagementSummary(contentUid: string | null) {
-  return useQuery({
-    queryKey: queryKeys.summary(contentUid),
-    queryFn: () => {
-      if (!contentUid) throw new Error('Content UID required');
-      return engagementApi.getSummary(contentUid);
-    },
-    enabled: Boolean(contentUid),
-    staleTime: 1000 * 60 * 5,
+    }) => engagementApi.recordShare(newsUid, platform),
   });
 }

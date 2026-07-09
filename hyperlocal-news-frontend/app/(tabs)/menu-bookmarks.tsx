@@ -19,7 +19,9 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
 
 interface MenuBookmarkItem {
-  id: string;
+  id: number;
+  news_uid: string;
+  contentId: number;
   category: string;
   title: string;
   description: string;
@@ -51,8 +53,9 @@ export default function MenuBookmarksScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Remove individual bookmark
-  const toggleBookmark = (id: string) => {
-    removeBookmarkMutate(id);
+  const toggleBookmark = (bookmarkId: number) => {
+    if (!bookmarkId) return; // Guard against undefined
+    removeBookmarkMutate({ contentId: bookmarkId, contentType: 'news' });
   };
 
   // Map backend articles to local MenuBookmarkItem format
@@ -61,7 +64,9 @@ export default function MenuBookmarksScreen() {
       const article = bookmark.news;
       const categoryName = article?.category_names?.[0] || 'General';
       return {
-        id: bookmark.news_uid, // Use news_uid for toggling and routing
+        id: bookmark.id,
+        news_uid: bookmark.news_uid || String(bookmark.content_id),
+        contentId: bookmark.content_id,
         category: categoryName,
         title: article?.title || 'Untitled',
         description: article?.summary || '',
@@ -71,6 +76,16 @@ export default function MenuBookmarksScreen() {
       };
     }).filter(b => b.title !== 'Untitled'); // Filter out broken bookmarks if any
   }, [rawBookmarks]);
+
+  const bookmarkItems = rawBookmarks.map((bookmark) => ({
+    id: bookmark.id, // Use numeric bookmark.id instead of news_uid
+    news_uid: bookmark.news_uid || String(bookmark.content_id), // Fallback
+    title: bookmark.news?.title || 'Untitled',
+    source: bookmark.news?.source_name || 'HyperLocal',
+    timeAgo: formatTimeAgo(bookmark.created_at),
+    imageUrl: bookmark.news?.image_url,
+    location: bookmark.news?.location,
+  }));
 
   // Filtered bookmark list logic
   const filteredBookmarks = bookmarks.filter((item) => {
@@ -215,10 +230,8 @@ export default function MenuBookmarksScreen() {
               }
 
               return (
-                <TouchableOpacity
+                <View
                   key={item.id}
-                  activeOpacity={0.9}
-                  onPress={() => router.push(`/news/${item.id}` as any)}
                   style={[
                     styles.articleCard,
                     {
@@ -247,7 +260,7 @@ export default function MenuBookmarksScreen() {
 
                       <TouchableOpacity
                         style={styles.bookmarkIconButton}
-                        onPress={() => toggleBookmark(item.id)}
+                        onPress={() => toggleBookmark(item.contentId)}
                         activeOpacity={0.7}
                       >
                         <Ionicons name="bookmark" size={20} color="#4648D4" />
@@ -280,7 +293,7 @@ export default function MenuBookmarksScreen() {
                       </View>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </View>
               );
             })}
           </View>

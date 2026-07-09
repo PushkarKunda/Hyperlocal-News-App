@@ -21,7 +21,9 @@ export interface Advertisement {
     placement: string;
     start_date: string;
     end_date: string;
-    redirect_url: string | null;
+    redirect_url: string;
+    cta_text: string;
+    priority: 'premium' | 'standard';
     state_id: number | null;
     district_id: number | null;
     city_id: number | null;
@@ -29,6 +31,8 @@ export interface Advertisement {
     is_active: boolean;
     targeting: AdvertisementTargeting | null;
 }
+
+
 
 export interface SponsoredPostTargeting {
     languages?: number[] | null;
@@ -53,6 +57,9 @@ export interface SponsoredPost {
     district_id: number | null;
     city_id: number | null;
     language_id: number | null;
+    id: number;
+    sponsor_name: string;
+    source: string;
     targeting: SponsoredPostTargeting | null;
 }
 

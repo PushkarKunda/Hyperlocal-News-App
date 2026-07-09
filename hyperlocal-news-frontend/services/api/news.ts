@@ -1,11 +1,9 @@
-// services/api/news.ts
 import { API_ROUTES } from './routes';
 import { request } from './client';
 
-// Import Advertisement and SponsoredPost from content.ts (don't redefine)
-import type { Advertisement, SponsoredPost } from './content';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
 export interface NewsLocation {
   city?: string;
@@ -13,11 +11,21 @@ export interface NewsLocation {
   state?: string;
 }
 
-export interface NewsStats {
-  views: number;
+export interface NewsEngagementDetail {
+  // API returns these field names
+  total_likes?: number;
+  total_comments?: number;
+  total_shares?: number;
+  total_views?: number;
+  unique_viewers?: number;
+  avg_read_time?: number;
+
+  // Also keep these for backward compatibility
   likes: number;
   comments: number;
   shares: number;
+  views: number;
+  user_liked: boolean;
 }
 
 export interface NewsArticle {
@@ -34,41 +42,25 @@ export interface NewsArticle {
   category_names: string[];
   location: NewsLocation;
   source: string;
+  source_url?: string;
+  source_name?: string;
   position?: number;
   ranking_score?: number;
+  engagement?: NewsEngagementDetail;
 }
 
+import { Advertisement, SponsoredPost } from './content';
 
-export type FeedItemType = 'news' | 'ad' | 'sponsored';
+
+import { Category } from './categories';
+
+export type FeedItemType = 'news' | 'ad' | 'sponsored' | 'event' | 'poll' | 'post';
 
 export interface FeedItem {
   type: FeedItemType;
   data: NewsArticle | Advertisement | SponsoredPost;
   position: number;
   ranking_score?: number;
-}
-
-export interface FeedComposition {
-  news: number;
-  posts: number;
-  ads: number;
-  sponsored: number;
-  events: number;
-  polls: number;
-}
-
-export interface AdMetadata {
-  ads_shown: number;
-  premium_ad_shown: boolean;
-  sponsored_shown: number;
-  events_shown: number;
-  polls_shown: number;
-}
-
-export interface RankingSummary {
-  total_scored: number;
-  top_score: number;
-  avg_score: number;
 }
 
 export interface FeedMetadata {
@@ -78,9 +70,26 @@ export interface FeedMetadata {
   has_more: boolean;
   user_uid: string;
   hashtag_filter: string | null;
-  feed_composition: FeedComposition;
-  ad_metadata: AdMetadata;
-  ranking_summary: RankingSummary;
+  feed_composition: {
+    news: number;
+    posts: number;
+    ads: number;
+    sponsored: number;
+    events: number;
+    polls: number;
+  };
+  ad_metadata: {
+    ads_shown: number;
+    premium_ad_shown: boolean;
+    sponsored_shown: number;
+    events_shown: number;
+    polls_shown: number;
+  };
+  ranking_summary: {
+    total_scored: number;
+    top_score: number;
+    avg_score: number;
+  };
 }
 
 export interface NewsFeedResponse {
@@ -91,46 +100,60 @@ export interface NewsFeedResponse {
 export interface NewsFilters {
   cursor?: string;
   limit?: number;
-  category_id?: number;
-  location?: string;
-  is_breaking?: boolean;
   hashtag?: string;
-  latitude?: number;
-  longitude?: number;
-  radius?: number;
+  session_id?: string;
+  include_ads?: boolean;
+  include_sponsored?: boolean;
+  include_events?: boolean;
+  include_polls?: boolean;
+  include_posts?: boolean;
+  post_limit?: number;
 }
+
+export interface LocationNewsParams {
+  state?: string;
+  district?: string;
+  city?: string;
+  limit?: number;
+}
+
+export interface SearchNewsParams {
+  q?: string;
+  state_id?: number;
+  district_id?: number;
+  city_id?: number;
+  category_id?: number;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// ─── CREATE/UPDATE PAYLOADS ────────────────────────────────────────────────
 
 export interface CreateNewsPayload {
   title: string;
   summary: string;
-  content?: string;
   image_url?: string;
-  category_id?: number;
+  language_id?: number;
+  user_uid?: string; // Optional if auto-filled from auth
   city_id?: number;
-  district_id?: number;
-  state_id?: number;
-  is_breaking?: boolean;
-  tags?: string[];
+  category_ids?: number[];
+  source_url?: string;
+  source_name?: string;
 }
 
 export interface UpdateNewsPayload {
   title?: string;
   summary?: string;
-  content?: string;
   image_url?: string;
-  category_id?: number;
-  is_breaking?: boolean;
-  tags?: string[];
+  city_id?: number;
+  category_ids?: number[];
+  source_url?: string;
+  source_name?: string;
 }
 
-export interface NewsEngagement {
-  total_views: number;
-  total_likes: number;
-  total_comments: number;
-  total_shares: number;
-  unique_viewers: number;
-  avg_read_time?: number;
-}
+// ─── COMMENTS ──────────────────────────────────────────────────────────────
 
 export interface NewsComment {
   id: number;
@@ -147,20 +170,16 @@ export interface CreateCommentPayload {
   comment_text: string;
 }
 
-export interface SearchNewsParams {
-  query: string;
-  limit?: number;
-  offset?: number;
-  category_id?: number;
-  location?: string;
-}
-
-// ─── API ─────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const newsApi = {
+  // ─── FEED & DISCOVERY ──────────────────────────────────────────────────
+
   /**
    * GET /news/v1/feed
-   * Get personalized news feed with ads and sponsored content
+   * Full mixed feed: news + ads + sponsored
    */
   getFeed: async (filters?: NewsFilters): Promise<NewsFeedResponse> => {
     return await request<NewsFeedResponse>({
@@ -172,7 +191,7 @@ export const newsApi = {
 
   /**
    * GET /news/v1/news/:uid
-   * Get single news article by UID
+   * Get single article
    */
   getById: async (uid: string): Promise<NewsArticle> => {
     return await request<NewsArticle>({
@@ -182,45 +201,7 @@ export const newsApi = {
   },
 
   /**
-   * POST /news/v1/news
-   * Create new news article (Publisher only)
-   */
-  create: async (payload: CreateNewsPayload): Promise<NewsArticle> => {
-    return await request<NewsArticle>({
-      url: API_ROUTES.news.create,
-      method: 'POST',
-      data: payload,
-    });
-  },
-
-  /**
-   * PUT /news/v1/news/:uid
-   * Update news article (Publisher only)
-   */
-  update: async (uid: string, payload: UpdateNewsPayload): Promise<NewsArticle> => {
-    return await request<NewsArticle>({
-      url: API_ROUTES.news.byId(uid),
-      method: 'PUT',
-      data: payload,
-    });
-  },
-
-  /**
-   * DELETE /news/v1/user/news/:uid
-   * Delete news article (Publisher only)
-   */
-  delete: async (uid: string): Promise<void> => {
-    await request({
-      url: API_ROUTES.news.deleteNews(uid),
-      method: 'DELETE',
-    });
-  },
-
-  // ─── Discovery ────────────────────────────────────────────────────────────
-
-  /**
    * GET /news/v1/news/breaking
-   * Get breaking news
    */
   getBreaking: async (): Promise<NewsArticle[]> => {
     return await request<NewsArticle[]>({
@@ -230,39 +211,10 @@ export const newsApi = {
   },
 
   /**
-   * GET /news/v1/news/popular
-   * Get popular news
-   */
-  getPopular: async (): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
-      url: API_ROUTES.news.popular,
-      method: 'GET',
-    });
-  },
-
-  /**
-   * GET /news/v1/news/analytics/trending
-   * Get trending news
-   */
-  getTrending: async (): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
-      url: API_ROUTES.news.trending,
-      method: 'GET',
-    });
-  },
-
-  /**
    * GET /news/v1/news/location
-   * Get news by location
+   * Local news by state/district/city
    */
-  getByLocation: async (params: {
-    latitude?: number;
-    longitude?: number;
-    radius?: number;
-    city?: string;
-    district?: string;
-    state?: string;
-  }): Promise<NewsArticle[]> => {
+  getByLocation: async (params: LocationNewsParams): Promise<NewsArticle[]> => {
     return await request<NewsArticle[]>({
       url: API_ROUTES.news.byLocation,
       method: 'GET',
@@ -271,30 +223,8 @@ export const newsApi = {
   },
 
   /**
-   * GET /news/v1/news/category/:id
-   * Get news by category
-   */
-  getByCategory: async (categoryId: number): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
-      url: API_ROUTES.news.byCategory(categoryId),
-      method: 'GET',
-    });
-  },
-
-  /**
-   * GET /news/v1/news/:uid/related
-   * Get related news articles
-   */
-  getRelated: async (uid: string): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
-      url: API_ROUTES.news.related(uid),
-      method: 'GET',
-    });
-  },
-
-  /**
    * GET /news/v1/search
-   * Search news
+   * Search news with filters
    */
   search: async (params: SearchNewsParams): Promise<NewsArticle[]> => {
     return await request<NewsArticle[]>({
@@ -304,11 +234,50 @@ export const newsApi = {
     });
   },
 
-  // ─── News Shorts ──────────────────────────────────────────────────────────
+  // ─── CATEGORIES ────────────────────────────────────────────────────────
+
+  /**
+   * GET /categories/all
+   */
+  getAllCategories: async (): Promise<Category[]> => {
+    return await request<Category[]>({
+      url: API_ROUTES.categories.all,
+      method: 'GET',
+    });
+  },
+
+  /**
+   * GET /categories/:id/news
+   */
+  getNewsByCategory: async (categoryId: number): Promise<NewsArticle[]> => {
+    return await request<NewsArticle[]>({
+      url: API_ROUTES.categories.news(categoryId),
+      method: 'GET',
+    });
+  },
+
+  /**
+   * GET /news/v1/news/analytics/trending
+   */
+  getTrending: async (): Promise<NewsArticle[]> => {
+    return await request<NewsArticle[]>({
+      url: API_ROUTES.news.trending,
+      method: 'GET',
+    });
+  },
+
+  /**
+   * GET /news/v1/news/popular
+   */
+  getPopular: async (): Promise<NewsArticle[]> => {
+    return await request<NewsArticle[]>({
+      url: API_ROUTES.news.popular,
+      method: 'GET',
+    });
+  },
 
   /**
    * GET /news/v1/news-shorts
-   * Get short-form news content
    */
   getShorts: async (): Promise<NewsArticle[]> => {
     return await request<NewsArticle[]>({
@@ -317,55 +286,88 @@ export const newsApi = {
     });
   },
 
-  // ─── Engagement ───────────────────────────────────────────────────────────
-
   /**
    * GET /news/v1/news/:uid/engagement
-   * Get engagement stats for a news article
    */
-  getEngagement: async (uid: string): Promise<NewsEngagement> => {
-    return await request<NewsEngagement>({
+  getEngagement: async (uid: string): Promise<NewsEngagementDetail> => {
+    return await request<NewsEngagementDetail>({
       url: API_ROUTES.news.engagement(uid),
       method: 'GET',
     });
   },
 
+  // ─── CREATE/UPDATE/DELETE (PUBLISHER) ──────────────────────────────────
+
   /**
-   * POST /news/v1/user/news/:uid/like
-   * Like a news article
+   * POST /news/v1/news
+   * Create new news article (Publishers only)
+   * Returns: { success, message, news, status, next_steps }
    */
-  like: async (uid: string): Promise<void> => {
-    await request({
-      url: API_ROUTES.news.like(uid),
+  create: async (payload: CreateNewsPayload): Promise<{
+    success: boolean;
+    message: string;
+    news: NewsArticle;
+    status: string;
+    next_steps: string;
+  }> => {
+    return await request({
+      url: API_ROUTES.news.create,
       method: 'POST',
+      data: payload,
     });
   },
 
   /**
-   * DELETE /news/v1/user/news/:uid/like
-   * Unlike a news article
+   * PUT /news/v1/news/:uid
+   * Update existing article (Publisher only)
    */
-  unlike: async (uid: string): Promise<void> => {
+  update: async (
+    uid: string,
+    payload: UpdateNewsPayload
+  ): Promise<NewsArticle> => {
+    return await request<NewsArticle>({
+      url: API_ROUTES.news.byId(uid),
+      method: 'PUT',
+      data: payload,
+    });
+  },
+
+  /**
+   * DELETE /news/v1/user/news/:uid
+   * Delete article (Publisher only)
+   */
+  delete: async (uid: string): Promise<void> => {
     await request({
-      url: API_ROUTES.news.like(uid),
+      url: API_ROUTES.news.deleteNews(uid),
       method: 'DELETE',
     });
   },
 
+  // ─── ENGAGEMENT ────────────────────────────────────────────────────────
+
+  /**
+   * POST /news/v1/user/news/:uid/like
+   */
+  like: async (uid: string): Promise<void> => {
+    await request({ url: API_ROUTES.news.like(uid), method: 'POST' });
+  },
+
+  /**
+   * DELETE /news/v1/user/news/:uid/like
+   */
+  unlike: async (uid: string): Promise<void> => {
+    await request({ url: API_ROUTES.news.like(uid), method: 'DELETE' });
+  },
+
   /**
    * POST /news/v1/user/news/:uid/view
-   * Record a view for a news article
    */
   recordView: async (uid: string): Promise<void> => {
-    await request({
-      url: API_ROUTES.news.view(uid),
-      method: 'POST',
-    });
+    await request({ url: API_ROUTES.news.view(uid), method: 'POST' });
   },
 
   /**
    * POST /news/v1/user/news/:uid/share
-   * Record a share for a news article
    */
   recordShare: async (uid: string, platform?: string): Promise<void> => {
     await request({
@@ -375,11 +377,10 @@ export const newsApi = {
     });
   },
 
-  // ─── Comments ─────────────────────────────────────────────────────────────
+  // ─── COMMENTS ──────────────────────────────────────────────────────────
 
   /**
    * GET /news/v1/news/:uid/comments
-   * Get comments for a news article
    */
   getComments: async (uid: string): Promise<NewsComment[]> => {
     return await request<NewsComment[]>({
@@ -390,7 +391,6 @@ export const newsApi = {
 
   /**
    * POST /news/v1/user/news/:uid/comment
-   * Add a comment to a news article
    */
   addComment: async (
     uid: string,
@@ -405,7 +405,6 @@ export const newsApi = {
 
   /**
    * DELETE /news/v1/user/news/:uid/comment/:id
-   * Delete a comment
    */
   deleteComment: async (uid: string, commentId: number): Promise<void> => {
     await request({

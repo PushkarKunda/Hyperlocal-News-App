@@ -240,20 +240,44 @@ export default function NewsDetailScreen() {
 
       {/* Floating Bottom Engagement Bar */}
       <View style={[styles.engagementBar, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: insets.bottom || 12 }]}>
-        <TouchableOpacity style={styles.engagementItem} onPress={handleToggleLike}>
+        {/* <TouchableOpacity style={styles.engagementItem} onPress={handleToggleLike}>
           <Ionicons name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "#EF4444" : colors.textSecondary} />
           <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_likes || article.likes || 0}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
-        <TouchableOpacity style={styles.engagementItem} onPress={() => { /* Navigate to comments section/modal */ }}>
+        {/* <TouchableOpacity style={styles.engagementItem} onPress={() => {}}>
           <Ionicons name="chatbubble-outline" size={22} color={colors.textSecondary} />
           <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_comments || article.comments || 0}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
-        <TouchableOpacity style={styles.engagementItem} onPress={handleShare}>
+        {/* <TouchableOpacity style={styles.engagementItem} onPress={handleShare}>
           <Ionicons name="share-social-outline" size={24} color={colors.textSecondary} />
           <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_shares || 0}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+
+        {/* Likes */}
+        <View style={styles.engagementItem}>
+          <Ionicons name="heart-outline" size={20} color={colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>
+            {engagement?.likes || engagement?.total_likes || article?.likes || 0}
+          </Text>
+        </View>
+
+        {/* Comments */}
+        <View style={styles.engagementItem}>
+          <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>
+            {engagement?.comments || engagement?.total_comments || article?.comments || 0}
+          </Text>
+        </View>
+
+        {/* Shares */}
+        <View style={styles.engagementItem}>
+          <Ionicons name="share-social-outline" size={20} color={colors.textSecondary} />
+          <Text style={[styles.engagementText, { color: colors.textSecondary }]}>
+            {engagement?.shares || engagement?.total_shares || article?.shares || 0}
+          </Text>
+        </View>
 
         <TouchableOpacity style={styles.engagementItem} onPress={handleToggleBookmark}>
           <Ionicons name={bookmarkCheck?.is_bookmarked ? "bookmark" : "bookmark-outline"} size={24} color={bookmarkCheck?.is_bookmarked ? colors.primary : colors.textSecondary} />
