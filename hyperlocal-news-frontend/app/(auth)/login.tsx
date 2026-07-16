@@ -37,7 +37,7 @@ export default function LoginScreen() {
   const heroCardHeight = Math.min(Math.max(width * 0.46, 160), 220);
 
   // ✅ Only from store - no duplicate useState for isLoading
-  const { sendPhoneOTP, isLoading } = useAuthStore();
+  const { sendPhoneOTP, isLoading, loginWithTestingToken } = useAuthStore();
   const {
     signInWithGoogle,
     isGoogleReady,
@@ -191,6 +191,16 @@ export default function LoginScreen() {
       });
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send OTP. Please try again.');
+    }
+  };
+
+  const handleUseTestToken = async () => {
+    try {
+      const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJRSkg2Q0U1SyIsInJvbGUiOjEsImV4cCI6MTc4NDIwMTIxOCwidmVyIjoxNH0.O55kx9vBr35li-awL7jrIaaUmn5S70wjVFNHiXB2RV8';
+      await loginWithTestingToken(testToken);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      Alert.alert('Bypass Login Failed', err.message || 'The testing token may have been revoked or is invalid.');
     }
   };
 
@@ -415,6 +425,35 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={[
+                    styles.googleButton,
+                    {
+                      backgroundColor: colors.primaryLight,
+                      borderColor: colors.primary,
+                      borderWidth: 1,
+                      marginTop: 12,
+                    },
+                    isLoading && { opacity: 0.7 },
+                  ]}
+                  onPress={handleUseTestToken}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="key-outline" size={18} color={colors.primary} />
+                      <Text style={[styles.googleButtonText, { color: colors.primary, fontWeight: '600' }]}>
+                        Use Dev Test Token
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Footer */}

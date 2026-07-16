@@ -19,7 +19,7 @@ import {
   usersApi,
 } from '@/services/api';
 import type { UserPreferences } from '@/services/api';
-import { clearTokens } from '@/services/api/token';
+import { saveTokens, clearTokens } from '@/services/api/token';
 import { compressImage } from '@/services/image';
 import { uploadImageToSupabase } from '@/services/supabase';
 
@@ -154,6 +154,7 @@ interface AuthState {
   cachedPreferences: UserPreferences | null;
   fetchPreferences: () => Promise<UserPreferences>;
   updateCachedPreferences: (updates: Partial<UserPreferences>) => void;
+  loginWithTestingToken: (token: string) => Promise<void>;
 }
 
 // ─── Error Handler ────────────────────────────────────────────────────────────
@@ -605,6 +606,37 @@ export const useAuthStore = create<AuthState>()(
           const authError = handleAuthError(error);
           set({ isLoading: false, error: authError.message });
           throw authError;
+        }
+      },
+
+      loginWithTestingToken: async (token: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await saveTokens(token, 'dummy_refresh_token');
+          const userMe = await usersApi.me();
+          
+          set({
+            user: sanitizeUser({
+              user_uid: userMe.user_uid,
+              user_name: userMe.user_name,
+              name: userMe.name,
+              email: userMe.email,
+              phone: userMe.phone,
+              role: userMe.role,
+              email_verified: userMe.email_verified,
+              mobile_verified: userMe.mobile_verified,
+              is_suspended: userMe.is_suspended,
+              created_at: userMe.created_at,
+              profile_picture: userMe.profile_picture,
+            }),
+            isAuthenticated: true,
+            isOnboarded: true,
+            isLoading: false,
+          });
+        } catch (error: any) {
+          await clearTokens();
+          set({ isLoading: false, error: error.message });
+          throw error;
         }
       },
 
