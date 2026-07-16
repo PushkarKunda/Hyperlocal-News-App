@@ -204,6 +204,12 @@ export default function LocalScreen() {
                       <LocalNewsCard
                         key={item.id}
                         item={item}
+                        onPress={() => {
+                          router.push({
+                            pathname: '/news/[id]',
+                            params: { id: item.id }
+                          });
+                        }}
                       />
                     ))}
                   </View>
@@ -219,6 +225,12 @@ export default function LocalScreen() {
                       <LocalNewsCard
                         key={item.id}
                         item={item}
+                        onPress={() => {
+                          router.push({
+                            pathname: '/news/[id]',
+                            params: { id: item.id }
+                          });
+                        }}
                       />
                     ))}
                   </View>

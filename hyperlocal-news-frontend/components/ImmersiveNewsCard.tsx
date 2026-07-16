@@ -256,6 +256,13 @@ const NewsCard = React.memo(
       } catch (_) { }
     };
 
+    const handleNavigateToDetail = () => {
+      router.push({
+        pathname: '/news/[id]',
+        params: { id: item.news_uid },
+      });
+    };
+
     const categoryName = item.category_names?.[0] || 'News';
     const hasSourceLink = Boolean(item.source_url);
     const actionIconColor = isDark ? '#94A3B8' : '#464554';
@@ -341,8 +348,12 @@ const NewsCard = React.memo(
             { backgroundColor: colors.background },
           ]}
         >
-          {/* Headline + summary — plain View, no navigation */}
-          <View style={styles.textWrapper}>
+          {/* Headline + summary — wrapped in TouchableOpacity to navigate to details */}
+          <TouchableOpacity
+            style={styles.textWrapper}
+            onPress={handleNavigateToDetail}
+            activeOpacity={0.9}
+          >
             <Text
               style={[styles.headline, { color: colors.text }]}
               numberOfLines={3}
@@ -355,7 +366,7 @@ const NewsCard = React.memo(
             >
               {item.summary}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Footer — no navigation, only source link + action buttons */}
           <View style={styles.footerWrapper}>

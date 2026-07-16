@@ -88,26 +88,8 @@ export default function ProfileScreen() {
         : [];
       setComments(commentsList);
     } catch (err) {
-      console.warn('[profile] Failed to load comments from API, using fallback comments:', err);
-      // Defensive fallback so the user doesn't see a blank error
-      setComments([
-        {
-          id: 1,
-          post_uid: postUid,
-          user_uid: '1',
-          user_name: 'John Doe',
-          comment_text: 'This is a great post!',
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: 2,
-          post_uid: postUid,
-          user_uid: '2',
-          user_name: 'Jane Smith',
-          comment_text: 'Awesome update!',
-          created_at: new Date(Date.now() - 1800000).toISOString(),
-        }
-      ]);
+      console.warn('[profile] Failed to load comments from API:', err);
+      setComments([]);
     } finally {
       setIsLoadingComments(false);
     }
@@ -1072,9 +1054,16 @@ export default function ProfileScreen() {
                   color={colors.textTertiary}
                   style={{ marginBottom: 12 }}
                 />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 16 }}>
                   Your published articles will appear here.
                 </Text>
+                <TouchableOpacity
+                  style={[styles.promptButton, { backgroundColor: colors.primary, paddingHorizontal: 24 }]}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/(publisher)/dashboard')}
+                >
+                  <Text style={styles.promptButtonText}>Open Publisher Dashboard</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -1132,114 +1121,139 @@ export default function ProfileScreen() {
               Publisher Status
             </Text>
 
-            {/* Eligibility Status Card */}
-            <View
-              style={[
-                styles.publisherCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <View style={styles.publisherHeader}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={32}
-                  color={canApplyForPublisher ? colors.primary : colors.textSecondary}
-                  style={{ marginBottom: 8 }}
-                />
-                <Text style={[styles.publisherTitle, { color: colors.text }]}>
-                  {canApplyForPublisher
-                    ? 'You are Ready to Apply!'
-                    : 'Complete Requirements to Apply'}
-                </Text>
-                <Text style={[styles.publisherSubtitle, { color: colors.textSecondary }]}>
-                  {publisherMessage}
-                </Text>
-              </View>
-
-              {/* Requirements List */}
-              {missingRequirements.length > 0 && (
-                <View style={styles.requirementsList}>
-                  <Text style={[styles.requirementsTitle, { color: colors.text }]}>
-                    Missing Requirements:
-                  </Text>
-                  {missingRequirements.map((req) => (
-                    <View key={req} style={styles.requirementItem}>
-                      <Ionicons name="close-circle" size={18} color="#EF4444" />
-                      <Text style={[styles.requirementText, { color: colors.textSecondary }]}>
-                        {req
-                          .replace(/_/g, ' ')
-                          .split(' ')
-                          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                          .join(' ')}
-                      </Text>
-                    </View>
-                  ))}
-
-                  <TouchableOpacity
-                    style={[styles.completeButton, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push('/(onboarding)/edit-profile')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="pencil" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.completeButtonText}>Complete Profile</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* All Requirements Met */}
-              {missingRequirements.length === 0 && canApplyForPublisher && (
-                <View style={styles.readySection}>
-                  <View style={styles.checkmarkContainer}>
-                    <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-                  </View>
-                  <Text style={[styles.readyText, { color: colors.text }]}>
-                    All requirements completed!
-                  </Text>
-                  <Text style={[styles.readySubtext, { color: colors.textSecondary }]}>
-                    You're now eligible to become a verified publisher and start publishing news
-                    articles for your community.
-                  </Text>
-
-                  <TouchableOpacity
-                    style={[styles.applyButton, { backgroundColor: colors.primary }]}
-                    onPress={handleApplyForPublisher}
-                    disabled={isApplyingPublisher}
-                    activeOpacity={0.8}
-                  >
-                    {isApplyingPublisher ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="shield-checkmark"
-                          size={18}
-                          color="#FFFFFF"
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={styles.applyButtonText}>Apply as Publisher</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Info Box */}
+            {isPublisher ? (
               <View
                 style={[
-                  styles.infoBox,
-                  {
-                    backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(70, 72, 212, 0.05)',
-                    borderColor: colors.primary,
-                  },
+                  styles.publisherCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center', padding: 24 },
                 ]}
               >
-                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                  Publishers can write and publish news articles, earn badges, and gain followers in
-                  their local community.
+                <Ionicons name="shield-checkmark" size={64} color="#10B981" style={{ marginBottom: 16 }} />
+                <Text style={[styles.publisherTitle, { color: colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 }]}>
+                  Verified Publisher
                 </Text>
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+                  You have access to the publisher dashboard where you can create articles, polls, and manage insights.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.applyButton, { backgroundColor: colors.primary, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 48, borderRadius: 24 }]}
+                  onPress={() => router.push('/(publisher)/dashboard')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="speedometer-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.applyButtonText}>Go to Publisher Dashboard</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+            ) : (
+              /* Eligibility Status Card */
+              <View
+                style={[
+                  styles.publisherCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.publisherHeader}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={32}
+                    color={canApplyForPublisher ? colors.primary : colors.textSecondary}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Text style={[styles.publisherTitle, { color: colors.text }]}>
+                    {canApplyForPublisher
+                      ? 'You are Ready to Apply!'
+                      : 'Complete Requirements to Apply'}
+                  </Text>
+                  <Text style={[styles.publisherSubtitle, { color: colors.textSecondary }]}>
+                    {publisherMessage}
+                  </Text>
+                </View>
+
+                {/* Requirements List */}
+                {missingRequirements.length > 0 && (
+                  <View style={styles.requirementsList}>
+                    <Text style={[styles.requirementsTitle, { color: colors.text }]}>
+                      Missing Requirements:
+                    </Text>
+                    {missingRequirements.map((req) => (
+                      <View key={req} style={styles.requirementItem}>
+                        <Ionicons name="close-circle" size={18} color="#EF4444" />
+                        <Text style={[styles.requirementText, { color: colors.textSecondary }]}>
+                          {req
+                            .replace(/_/g, ' ')
+                            .split(' ')
+                            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                            .join(' ')}
+                        </Text>
+                      </View>
+                    ))}
+
+                    <TouchableOpacity
+                      style={[styles.completeButton, { backgroundColor: colors.primary }]}
+                      onPress={() => router.push('/(onboarding)/edit-profile')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="pencil" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.completeButtonText}>Complete Profile</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* All Requirements Met */}
+                {missingRequirements.length === 0 && canApplyForPublisher && (
+                  <View style={styles.readySection}>
+                    <View style={styles.checkmarkContainer}>
+                      <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                    </View>
+                    <Text style={[styles.readyText, { color: colors.text }]}>
+                      All requirements completed!
+                    </Text>
+                    <Text style={[styles.readySubtext, { color: colors.textSecondary }]}>
+                      You're now eligible to become a verified publisher and start publishing news
+                      articles for your community.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={[styles.applyButton, { backgroundColor: colors.primary }]}
+                      onPress={handleApplyForPublisher}
+                      disabled={isApplyingPublisher}
+                      activeOpacity={0.8}
+                    >
+                      {isApplyingPublisher ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="shield-checkmark"
+                            size={18}
+                            color="#FFFFFF"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text style={styles.applyButtonText}>Apply as Publisher</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Info Box */}
+                <View
+                  style={[
+                    styles.infoBox,
+                    {
+                      backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(70, 72, 212, 0.05)',
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                >
+                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Publishers can write and publish news articles, earn badges, and gain followers in
+                    their local community.
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -2406,5 +2420,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+  },
+  commentText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+    marginTop: 4,
+    lineHeight: 18,
   },
 });
