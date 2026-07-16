@@ -196,7 +196,10 @@ export default function LoginScreen() {
 
   const handleUseTestToken = async () => {
     try {
-      const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJRSkg2Q0U1SyIsInJvbGUiOjEsImV4cCI6MTc4NDIwMTIxOCwidmVyIjoxNH0.O55kx9vBr35li-awL7jrIaaUmn5S70wjVFNHiXB2RV8';
+      const testToken = process.env.EXPO_PUBLIC_DEV_TEST_TOKEN;
+      if (!testToken) {
+        throw new Error('Dev test token is not configured in environment variables.');
+      }
       await loginWithTestingToken(testToken);
       router.replace('/(tabs)');
     } catch (err: any) {

@@ -205,10 +205,7 @@ export default function LocalScreen() {
                         key={item.id}
                         item={item}
                         onPress={() => {
-                          router.push({
-                            pathname: '/news/[id]',
-                            params: { id: item.id }
-                          });
+                          router.push(`/news/${item.id}`);
                         }}
                       />
                     ))}
@@ -226,10 +223,7 @@ export default function LocalScreen() {
                         key={item.id}
                         item={item}
                         onPress={() => {
-                          router.push({
-                            pathname: '/news/[id]',
-                            params: { id: item.id }
-                          });
+                          router.push(`/news/${item.id}`);
                         }}
                       />
                     ))}

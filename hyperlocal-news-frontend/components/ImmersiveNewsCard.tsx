@@ -257,10 +257,12 @@ const NewsCard = React.memo(
     };
 
     const handleNavigateToDetail = () => {
-      router.push({
-        pathname: '/news/[id]',
-        params: { id: item.news_uid },
-      });
+      const articleId = item.news_uid || (item as any).id || (item as any).uid;
+      if (articleId) {
+        router.push(`/news/${articleId}`);
+      } else {
+        console.warn('[ImmersiveNewsCard] news_uid is missing:', item);
+      }
     };
 
     const categoryName = item.category_names?.[0] || 'News';

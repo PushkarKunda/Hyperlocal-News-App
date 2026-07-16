@@ -292,8 +292,8 @@ export default function ProfileScreen() {
         // ✅ Upload to Supabase (avatars folder)
         serverUrl = await uploadImageToSupabase(compressed.uri);
       } catch (uploadErr) {
-        console.warn('[profile] Avatar upload to Supabase failed, falling back to mock avatar url:', uploadErr);
-        serverUrl = `https://picsum.photos/seed/avatar_${Date.now()}/200/200`;
+        console.warn('[profile] Avatar upload to Supabase failed:', uploadErr);
+        throw uploadErr;
       }
 
       if (!serverUrl) {
@@ -484,26 +484,7 @@ export default function ProfileScreen() {
         serverUrl = await uploadImageToSupabase(compressed.uri, 'posts');
       } catch (uploadErr: any) {
         console.warn('[profile] Supabase upload failed:', uploadErr);
-        
-        // Let the user know the database is paused and let them choose whether to cancel or proceed with a placeholder
-        const useMock = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Supabase Offline',
-            'Your Supabase storage instance is paused or offline (DNS not found). Would you like to use a placeholder image to test post creation?',
-            [
-              { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
-              { text: 'Use Placeholder', onPress: () => resolve(true) }
-            ],
-            { cancelable: false }
-          );
-        });
-
-        if (!useMock) {
-          throw new Error('Supabase storage is offline. Post creation cancelled.');
-        }
-
-        // Fallback to picsum photo so the user's post creation doesn't fail!
-        serverUrl = `https://picsum.photos/seed/post_${Date.now()}/800/450`;
+        throw uploadErr;
       }
 
       if (!serverUrl) {

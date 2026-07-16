@@ -107,8 +107,14 @@ export default function HomeScreen() {
       return forYouFeed?.items ?? [];
     }
     // Category tabs: wrap news articles into FeedItem shape
-    return categoryNewsData.map(
-      (article, i): FeedItem => ({
+    const categoryArticles = Array.isArray(categoryNewsData)
+      ? categoryNewsData
+      : (categoryNewsData as any)?.news && Array.isArray((categoryNewsData as any).news)
+      ? (categoryNewsData as any).news
+      : [];
+
+    return categoryArticles.map(
+      (article: any, i: number): FeedItem => ({
         type: 'news',
         data: article,
         position: i,

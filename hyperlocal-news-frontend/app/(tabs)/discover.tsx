@@ -138,7 +138,7 @@ export default function DiscoverScreen() {
                 <React.Fragment key={item.news_uid}>
                   <TouchableOpacity
                     style={styles.listItem}
-                    onPress={() => router.push({ pathname: '/news/[id]', params: { id: item.news_uid } })}
+                    onPress={() => router.push(`/news/${item.news_uid}`)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.listItemContent}>
