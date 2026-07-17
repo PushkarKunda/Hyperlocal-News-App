@@ -31,7 +31,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const navigation = useNavigation();
-  const { user } = useAuthStore();
+  const { user, cachedPreferences } = useAuthStore();
   const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const setTabBarVisible = useTabBarStore((s) => s.setVisible);
@@ -272,20 +272,26 @@ export default function HomeScreen() {
                 .
               </Text>
             </Text>
-            <View style={styles.locationRow}>
+            <TouchableOpacity 
+              style={styles.locationRow}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/settings-location')}
+            >
               <Ionicons
                 name="location-sharp"
                 size={12}
                 color={isDark ? '#818CF8' : colors.primary}
               />
               <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-                {user?.district
-                  ? `${user.district.toUpperCase()}, ${user.state?.toUpperCase() ?? ''}`
-                  : user?.state
-                    ? user.state.toUpperCase()
-                    : 'SELECT LOCATION'}
+                {(() => {
+                  const dist = cachedPreferences?.district_name || user?.district;
+                  const st = cachedPreferences?.state_name || user?.state;
+                  if (dist) return `${dist.toUpperCase()}, ${st?.toUpperCase() ?? ''}`;
+                  if (st) return st.toUpperCase();
+                  return 'SELECT LOCATION';
+                })()}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity

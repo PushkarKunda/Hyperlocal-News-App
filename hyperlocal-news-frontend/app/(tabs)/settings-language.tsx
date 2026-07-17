@@ -174,7 +174,10 @@ export default function SettingsLanguageScreen() {
         const prefs = cachedPreferences ?? (await fetchPreferences());
         console.log('[SettingsLanguage] prefs:', prefs);
         console.log('[SettingsLanguage] languagesList:', languagesList);
-        const langId = prefs.language_id ?? null;
+        let langId = prefs.language_id ?? null;
+        if (!langId && prefs.language && languagesList.length > 0) {
+          langId = languagesList.find((l: any) => l.id === prefs.language)?.backendId ?? null;
+        }
         setSelectedLanguageId(langId);
         setInitialLanguageId(langId);
       } catch (error) {
