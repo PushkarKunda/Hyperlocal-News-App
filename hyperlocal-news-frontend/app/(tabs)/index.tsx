@@ -9,7 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useNavigation } from 'expo-router';
+import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNewsFeed, useCategories, useCategoryNews } from '@/hooks/useNews';
@@ -39,6 +39,17 @@ export default function HomeScreen() {
   // ─── State ────────────────────────────────────────────────────────────
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [activeCategory, setActiveCategory] = useState<CategoryId>(FOR_YOU_ID);
+
+  const params = useLocalSearchParams<{ categoryId?: string }>();
+
+  useEffect(() => {
+    if (params.categoryId) {
+      const catId = Number(params.categoryId);
+      if (!isNaN(catId)) {
+        setActiveCategory(catId);
+      }
+    }
+  }, [params.categoryId]);
 
   // ─── Refs ─────────────────────────────────────────────────────────────
   const categoryTabRef = useRef<FlatList>(null);
@@ -96,8 +107,14 @@ export default function HomeScreen() {
       return forYouFeed?.items ?? [];
     }
     // Category tabs: wrap news articles into FeedItem shape
-    return categoryNewsData.map(
-      (article, i): FeedItem => ({
+    const categoryArticles = Array.isArray(categoryNewsData)
+      ? categoryNewsData
+      : (categoryNewsData as any)?.news && Array.isArray((categoryNewsData as any).news)
+      ? (categoryNewsData as any).news
+      : [];
+
+    return categoryArticles.map(
+      (article: any, i: number): FeedItem => ({
         type: 'news',
         data: article,
         position: i,

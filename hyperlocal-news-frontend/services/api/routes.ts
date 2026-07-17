@@ -204,10 +204,20 @@ export const API_ROUTES = {
 
   // ─── Posts ──────────────────────────────────────────────────────────────────
   posts: {
+    create: '/posts/',                                          // POST - Create post
+    feed: '/posts/feed',                                        // GET - Get public feed
     byId: (uid: string) => `/posts/${uid}`,                     // GET - Get post
+    updatePost: (uid: string) => `/posts/${uid}`,               // PUT - Update post
+    deletePost: (uid: string) => `/posts/${uid}`,               // DELETE - Delete post
     userPosts: (uid: string) => `/posts/user/${uid}`,           // GET - User posts
-    byHashtag: (name: string) => `/posts/hashtag/${name}/posts`, // GET - Posts by hashtag
+    editHashtags: (uid: string) => `/posts/${uid}/hashtags`,    // PATCH - Edit post hashtags
+    like: (uid: string) => `/posts/${uid}/like`,                // POST - Like/Unlike post
+    comment: (uid: string) => `/posts/${uid}/comment`,          // POST - Add comment
     comments: (uid: string) => `/posts/${uid}/comments`,        // GET - Post comments
+    share: (uid: string) => `/posts/${uid}/share`,              // POST - Share post
+    trendingHashtags: '/posts/hashtags/trending',               // GET - Get trending hashtags
+    hashtagSuggestions: '/posts/hashtags/suggestions',          // GET - Get hashtag suggestions
+    byHashtag: (name: string) => `/posts/hashtag/${name}/posts`, // GET - Posts by hashtag
   },
 
   // ─── Follow ─────────────────────────────────────────────────────────────────

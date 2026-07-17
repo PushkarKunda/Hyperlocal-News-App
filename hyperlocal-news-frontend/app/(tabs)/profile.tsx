@@ -12,6 +12,8 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Share,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -24,7 +26,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { useCreateNews, useDeleteNews } from '@/hooks/useNews';
 import { useBookmarks } from '@/hooks/useEngagement';
-import { usersApi, type DashboardResponse } from '@/services/api';
+import { usersApi, postsApi, type DashboardResponse } from '@/services/api';
+import type { Post } from '@/services/api/posts';
 import { compressImage } from '@/services/image';
 import { uploadImageToSupabase } from '@/services/supabase';
 
@@ -66,7 +69,107 @@ export default function ProfileScreen() {
   // ─── Post State ──────────────────────────────────────────────────────────
   const [postCaption, setPostCaption] = useState('');
   const [postCoverImage, setPostCoverImage] = useState('');
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [isPublishingPost, setIsPublishingPost] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+  const loadComments = async (postUid: string) => {
+    setIsLoadingComments(true);
+    try {
+      const res = await postsApi.getComments(postUid);
+      const commentsList = Array.isArray(res)
+        ? res
+        : res && Array.isArray((res as any).comments)
+        ? (res as any).comments
+        : [];
+      setComments(commentsList);
+    } catch (err) {
+      console.warn('[profile] Failed to load comments from API:', err);
+      setComments([]);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPost) {
+      loadComments(selectedPost.post_uid);
+    } else {
+      setComments([]);
+      setNewCommentText('');
+    }
+  }, [selectedPost?.post_uid]);
+
+  const handleLikePost = async (postUid: string) => {
+    try {
+      const res = await postsApi.likePost(postUid);
+      setSelectedPost(prev => prev ? { ...prev, is_liked: res.liked, like_count: res.like_count } : null);
+      setPosts(prev => prev.map(p => p.post_uid === postUid ? { ...p, is_liked: res.liked, like_count: res.like_count } : p));
+    } catch (err) {
+      console.error('[profile] Failed to like post:', err);
+    }
+  };
+
+  const handleSharePost = async (postUid: string) => {
+    try {
+      await Share.share({
+        message: selectedPost?.content || 'Check out this post!',
+      });
+      await postsApi.sharePost(postUid, 'native');
+      setSelectedPost(prev => prev ? { ...prev, share_count: (prev.share_count ?? 0) + 1 } : null);
+      setPosts(prev => prev.map(p => p.post_uid === postUid ? { ...p, share_count: (p.share_count ?? 0) + 1 } : p));
+    } catch (err) {
+      console.error('[profile] Failed to share post:', err);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedPost || !newCommentText.trim()) return;
+    const text = newCommentText.trim();
+    setNewCommentText('');
+
+    try {
+      try {
+        await postsApi.addComment(selectedPost.post_uid, text);
+      } catch (apiErr) {
+        console.warn('[profile] Failed to post comment to server, adding locally:', apiErr);
+      }
+
+      const commentItem = {
+        id: Date.now(),
+        post_uid: selectedPost.post_uid,
+        user_uid: user?.user_uid || 'me',
+        user_name: user?.name || 'You',
+        user_avatar: user?.profile_picture,
+        comment_text: text,
+        created_at: new Date().toISOString(),
+      };
+
+      setComments(prev => [commentItem, ...prev]);
+
+      setSelectedPost(prev => prev ? { ...prev, comment_count: (prev.comment_count ?? 0) + 1 } : null);
+      setPosts(prev => prev.map(p => p.post_uid === selectedPost.post_uid ? { ...p, comment_count: (p.comment_count ?? 0) + 1 } : p));
+    } catch (error) {
+      console.error('[profile] Failed to add comment:', error);
+    }
+  };
+
+  const loadUserPosts = async () => {
+    if (!user?.user_uid) return;
+    setIsLoadingPosts(true);
+    try {
+      const response = await postsApi.getUserPosts(user.user_uid);
+      setPosts(response.posts || []);
+    } catch (error) {
+      console.error('[profile] Failed to load user posts:', error);
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  };
 
   // ─── Publisher Application State ─────────────────────────────────────────
   const [isApplyingPublisher, setIsApplyingPublisher] = useState(false);
@@ -152,11 +255,12 @@ export default function ProfileScreen() {
     };
 
     loadDashboard();
+    loadUserPosts();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user?.user_uid]);
 
   // ─── Avatar Upload ────────────────────────────────────────────────────────
 
@@ -176,18 +280,24 @@ export default function ProfileScreen() {
   const uploadAndSaveAvatar = async (localUri: string) => {
     setIsUploadingAvatar(true);
     try {
-      // ✅ Compress image
-      const compressed = await compressImage(localUri, {
-        width: 512,
-        height: 512,
-        compress: 0.8,
-      });
+      let serverUrl = '';
+      try {
+        // ✅ Compress image
+        const compressed = await compressImage(localUri, {
+          width: 512,
+          height: 512,
+          compress: 0.8,
+        });
 
-      // ✅ Upload to Supabase (avatars folder)
-      const serverUrl = await uploadImageToSupabase(compressed.uri);
+        // ✅ Upload to Supabase (avatars folder)
+        serverUrl = await uploadImageToSupabase(compressed.uri);
+      } catch (uploadErr) {
+        console.warn('[profile] Avatar upload to Supabase failed:', uploadErr);
+        throw uploadErr;
+      }
 
       if (!serverUrl) {
-        throw new Error('Failed to get upload URL from Supabase.');
+        throw new Error('Failed to get upload URL.');
       }
 
       // ✅ PATCH /user/user/users/me
@@ -349,7 +459,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleCreatePost = () => {
+  const handleCreatePost = async () => {
     if (!postCoverImage) {
       Alert.alert('Validation Error', 'Please select a photo for your post.');
       return;
@@ -359,20 +469,67 @@ export default function ProfileScreen() {
       return;
     }
 
-    const newPost = {
-      id: 'p_' + Date.now(),
-      imageUrl: postCoverImage,
-      status: 'Pending',
-      likes: 0,
-      comments: 0,
-      caption: postCaption.trim(),
-    };
+    setIsPublishingPost(true);
+    try {
+      let serverUrl = '';
+      try {
+        // Compress cover image to ensure consistent size and valid local Uri structure
+        const compressed = await compressImage(postCoverImage, {
+          width: 1024,
+          height: 576,
+          compress: 0.8,
+        });
 
-    setPosts([newPost, ...posts]);
-    setPostCaption('');
-    setPostCoverImage('');
-    setShowCreatePostModal(false);
-    Alert.alert('Success', 'Your post has been submitted!');
+        // 1. Upload cover image to Supabase
+        serverUrl = await uploadImageToSupabase(compressed.uri, 'posts');
+      } catch (uploadErr: any) {
+        console.warn('[profile] Supabase upload failed:', uploadErr);
+        throw uploadErr;
+      }
+
+      if (!serverUrl) {
+        throw new Error('Failed to obtain post image URL.');
+      }
+
+      // 2. Call backend Post creation API
+      const response = await postsApi.createPost({
+        content: postCaption.trim(),
+        image_url: serverUrl,
+      });
+
+      // 3. Prepend newly created post
+      const newPost: Post = {
+        id: Date.now(),
+        post_uid: response.post.post_uid,
+        content: response.post.content || '',
+        image_url: response.post.image_url,
+        video_url: response.post.video_url,
+        user_uid: user?.user_uid || '',
+        user_name: user?.user_name || 'user',
+        user_display_name: user?.name || 'User',
+        user_profile_picture: user?.profile_picture || null,
+        like_count: 0,
+        comment_count: 0,
+        share_count: 0,
+        is_edited: false,
+        edited_at: null,
+        created_at: response.post.created_at,
+        time_ago: 'Just now',
+        hashtags: response.post.hashtags || [],
+        is_liked: false,
+      };
+
+      setPosts([newPost, ...posts]);
+      setPostCaption('');
+      setPostCoverImage('');
+      setShowCreatePostModal(false);
+      Alert.alert('Success', 'Your post has been published successfully!');
+    } catch (error: any) {
+      console.error('[profile] Failed to create post:', error);
+      Alert.alert('Error', error.message || 'Failed to publish post. Please try again.');
+    } finally {
+      setIsPublishingPost(false);
+    }
   };
 
   const handleDeleteArticle = (uid: string) => {
@@ -790,7 +947,11 @@ export default function ProfileScreen() {
         {activeTab === 'posts' && (
           <View style={styles.postsGrid}>
             <Text style={[styles.tabContentTitle, { color: colors.text }]}>My Posts</Text>
-            {posts.length === 0 ? (
+            {isLoadingPosts ? (
+              <View style={styles.emptyTabContent}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : posts.length === 0 ? (
               <View style={styles.emptyTabContent}>
                 <Ionicons
                   name="document-text-outline"
@@ -805,22 +966,30 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.postsWrapper}>
                 {posts.map((post) => (
-                  <View key={post.id} style={styles.postCard}>
-                    <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
-                    <View style={[styles.postBadge, { backgroundColor: 'rgba(255, 152, 0, 0.9)' }]}>
-                      <Text style={styles.postBadgeText}>{post.status}</Text>
+                  <TouchableOpacity
+                    key={post.post_uid || post.id}
+                    style={styles.postCard}
+                    activeOpacity={0.9}
+                    onPress={() => setSelectedPost(post)}
+                  >
+                    <Image
+                      source={{ uri: post.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=Post' }}
+                      style={styles.postImage}
+                    />
+                    <View style={[styles.postBadge, { backgroundColor: 'rgba(76, 175, 80, 0.9)' }]}>
+                      <Text style={styles.postBadgeText}>Published</Text>
                     </View>
                     <View style={styles.postOverlay}>
                       <View style={styles.overlayStat}>
                         <Ionicons name="heart" size={12} color="#FFFFFF" />
-                        <Text style={styles.overlayStatText}>{post.likes}</Text>
+                        <Text style={styles.overlayStatText}>{post.like_count ?? 0}</Text>
                       </View>
                       <View style={[styles.overlayStat, { marginLeft: 8 }]}>
                         <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
-                        <Text style={styles.overlayStatText}>{post.comments}</Text>
+                        <Text style={styles.overlayStatText}>{post.comment_count ?? 0}</Text>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -866,9 +1035,16 @@ export default function ProfileScreen() {
                   color={colors.textTertiary}
                   style={{ marginBottom: 12 }}
                 />
-                <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 16 }}>
                   Your published articles will appear here.
                 </Text>
+                <TouchableOpacity
+                  style={[styles.promptButton, { backgroundColor: colors.primary, paddingHorizontal: 24 }]}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/(publisher)/dashboard')}
+                >
+                  <Text style={styles.promptButtonText}>Open Publisher Dashboard</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -926,114 +1102,139 @@ export default function ProfileScreen() {
               Publisher Status
             </Text>
 
-            {/* Eligibility Status Card */}
-            <View
-              style={[
-                styles.publisherCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <View style={styles.publisherHeader}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={32}
-                  color={canApplyForPublisher ? colors.primary : colors.textSecondary}
-                  style={{ marginBottom: 8 }}
-                />
-                <Text style={[styles.publisherTitle, { color: colors.text }]}>
-                  {canApplyForPublisher
-                    ? 'You are Ready to Apply!'
-                    : 'Complete Requirements to Apply'}
-                </Text>
-                <Text style={[styles.publisherSubtitle, { color: colors.textSecondary }]}>
-                  {publisherMessage}
-                </Text>
-              </View>
-
-              {/* Requirements List */}
-              {missingRequirements.length > 0 && (
-                <View style={styles.requirementsList}>
-                  <Text style={[styles.requirementsTitle, { color: colors.text }]}>
-                    Missing Requirements:
-                  </Text>
-                  {missingRequirements.map((req) => (
-                    <View key={req} style={styles.requirementItem}>
-                      <Ionicons name="close-circle" size={18} color="#EF4444" />
-                      <Text style={[styles.requirementText, { color: colors.textSecondary }]}>
-                        {req
-                          .replace(/_/g, ' ')
-                          .split(' ')
-                          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                          .join(' ')}
-                      </Text>
-                    </View>
-                  ))}
-
-                  <TouchableOpacity
-                    style={[styles.completeButton, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push('/(onboarding)/edit-profile')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="pencil" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.completeButtonText}>Complete Profile</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* All Requirements Met */}
-              {missingRequirements.length === 0 && canApplyForPublisher && (
-                <View style={styles.readySection}>
-                  <View style={styles.checkmarkContainer}>
-                    <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-                  </View>
-                  <Text style={[styles.readyText, { color: colors.text }]}>
-                    All requirements completed!
-                  </Text>
-                  <Text style={[styles.readySubtext, { color: colors.textSecondary }]}>
-                    You're now eligible to become a verified publisher and start publishing news
-                    articles for your community.
-                  </Text>
-
-                  <TouchableOpacity
-                    style={[styles.applyButton, { backgroundColor: colors.primary }]}
-                    onPress={handleApplyForPublisher}
-                    disabled={isApplyingPublisher}
-                    activeOpacity={0.8}
-                  >
-                    {isApplyingPublisher ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="shield-checkmark"
-                          size={18}
-                          color="#FFFFFF"
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={styles.applyButtonText}>Apply as Publisher</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Info Box */}
+            {isPublisher ? (
               <View
                 style={[
-                  styles.infoBox,
-                  {
-                    backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(70, 72, 212, 0.05)',
-                    borderColor: colors.primary,
-                  },
+                  styles.publisherCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center', padding: 24 },
                 ]}
               >
-                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                  Publishers can write and publish news articles, earn badges, and gain followers in
-                  their local community.
+                <Ionicons name="shield-checkmark" size={64} color="#10B981" style={{ marginBottom: 16 }} />
+                <Text style={[styles.publisherTitle, { color: colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 }]}>
+                  Verified Publisher
                 </Text>
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+                  You have access to the publisher dashboard where you can create articles, polls, and manage insights.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.applyButton, { backgroundColor: colors.primary, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 48, borderRadius: 24 }]}
+                  onPress={() => router.push('/(publisher)/dashboard')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="speedometer-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.applyButtonText}>Go to Publisher Dashboard</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+            ) : (
+              /* Eligibility Status Card */
+              <View
+                style={[
+                  styles.publisherCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.publisherHeader}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={32}
+                    color={canApplyForPublisher ? colors.primary : colors.textSecondary}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Text style={[styles.publisherTitle, { color: colors.text }]}>
+                    {canApplyForPublisher
+                      ? 'You are Ready to Apply!'
+                      : 'Complete Requirements to Apply'}
+                  </Text>
+                  <Text style={[styles.publisherSubtitle, { color: colors.textSecondary }]}>
+                    {publisherMessage}
+                  </Text>
+                </View>
+
+                {/* Requirements List */}
+                {missingRequirements.length > 0 && (
+                  <View style={styles.requirementsList}>
+                    <Text style={[styles.requirementsTitle, { color: colors.text }]}>
+                      Missing Requirements:
+                    </Text>
+                    {missingRequirements.map((req) => (
+                      <View key={req} style={styles.requirementItem}>
+                        <Ionicons name="close-circle" size={18} color="#EF4444" />
+                        <Text style={[styles.requirementText, { color: colors.textSecondary }]}>
+                          {req
+                            .replace(/_/g, ' ')
+                            .split(' ')
+                            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                            .join(' ')}
+                        </Text>
+                      </View>
+                    ))}
+
+                    <TouchableOpacity
+                      style={[styles.completeButton, { backgroundColor: colors.primary }]}
+                      onPress={() => router.push('/(onboarding)/edit-profile')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="pencil" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.completeButtonText}>Complete Profile</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* All Requirements Met */}
+                {missingRequirements.length === 0 && canApplyForPublisher && (
+                  <View style={styles.readySection}>
+                    <View style={styles.checkmarkContainer}>
+                      <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                    </View>
+                    <Text style={[styles.readyText, { color: colors.text }]}>
+                      All requirements completed!
+                    </Text>
+                    <Text style={[styles.readySubtext, { color: colors.textSecondary }]}>
+                      You're now eligible to become a verified publisher and start publishing news
+                      articles for your community.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={[styles.applyButton, { backgroundColor: colors.primary }]}
+                      onPress={handleApplyForPublisher}
+                      disabled={isApplyingPublisher}
+                      activeOpacity={0.8}
+                    >
+                      {isApplyingPublisher ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="shield-checkmark"
+                            size={18}
+                            color="#FFFFFF"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text style={styles.applyButtonText}>Apply as Publisher</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Info Box */}
+                <View
+                  style={[
+                    styles.infoBox,
+                    {
+                      backgroundColor: isDark ? 'rgba(70, 72, 212, 0.1)' : 'rgba(70, 72, 212, 0.05)',
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                >
+                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Publishers can write and publish news articles, earn badges, and gain followers in
+                    their local community.
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -1190,13 +1391,186 @@ export default function ProfileScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.publishPostBtn, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.publishPostBtn,
+                  { backgroundColor: colors.primary },
+                  isPublishingPost && { opacity: 0.7 }
+                ]}
                 activeOpacity={0.8}
                 onPress={handleCreatePost}
+                disabled={isPublishingPost}
               >
-                <Text style={styles.publishPostBtnText}>Publish Post</Text>
+                {isPublishingPost ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.publishPostBtnText}>Publish Post</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Post Detail Modal */}
+      <Modal
+        visible={selectedPost !== null}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedPost(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, height: '85%' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity
+                onPress={() => setSelectedPost(null)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Post Details</Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            {selectedPost && (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.postDetailContainer}
+              >
+                {/* Author Info */}
+                <View style={styles.postDetailAuthorRow}>
+                  <Image
+                    source={{
+                      uri: selectedPost.user_profile_picture || 'https://placehold.co/100x100/E2E8F0/A0AEC0?text=U',
+                    }}
+                    style={styles.postDetailAvatar}
+                  />
+                  <View style={styles.postDetailAuthorInfo}>
+                    <Text style={[styles.postDetailDisplayName, { color: colors.text }]}>
+                      {selectedPost.user_display_name}
+                    </Text>
+                    <Text style={[styles.postDetailUsername, { color: colors.textSecondary }]}>
+                      @{selectedPost.user_name} • {selectedPost.time_ago}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Caption / Content */}
+                <Text style={[styles.postDetailContent, { color: colors.text }]}>
+                  {selectedPost.content}
+                </Text>
+
+                {/* Image */}
+                {selectedPost.image_url && (
+                  <Image
+                    source={{ uri: selectedPost.image_url }}
+                    style={styles.postDetailImage}
+                    resizeMode="cover"
+                  />
+                )}
+
+                {/* Hashtags */}
+                {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
+                  <View style={styles.postDetailHashtagsRow}>
+                    {selectedPost.hashtags.map((tag, index) => (
+                      <Text key={index} style={[styles.hashtagText, { color: colors.primary }]}>
+                        #{tag}{' '}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+
+                {/* Stats / Interactions */}
+                <View style={[styles.postDetailStatsRow, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+                  <TouchableOpacity
+                    style={styles.postDetailStatItem}
+                    onPress={() => handleLikePost(selectedPost.post_uid)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={selectedPost.is_liked ? "heart" : "heart-outline"}
+                      size={20}
+                      color={selectedPost.is_liked ? "#EF4444" : colors.textSecondary}
+                    />
+                    <Text style={[styles.postDetailStatValue, { color: selectedPost.is_liked ? "#EF4444" : colors.textSecondary }]}>
+                      {selectedPost.like_count ?? 0} Likes
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.postDetailStatItem, { marginLeft: 24 }]}>
+                    <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
+                    <Text style={[styles.postDetailStatValue, { color: colors.textSecondary }]}>
+                      {selectedPost.comment_count ?? 0} Comments
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.postDetailStatItem, { marginLeft: 24 }]}
+                    onPress={() => handleSharePost(selectedPost.post_uid)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="share-social-outline" size={18} color={colors.textSecondary} />
+                    <Text style={[styles.postDetailStatValue, { color: colors.textSecondary }]}>
+                      {selectedPost.share_count ?? 0} Shares
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Comments Header */}
+                <Text style={[styles.commentsSectionTitle, { color: colors.text }]}>Comments</Text>
+
+                {/* Comments List */}
+                {isLoadingComments ? (
+                  <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} />
+                ) : !Array.isArray(comments) || comments.length === 0 ? (
+                  <Text style={[styles.noCommentsText, { color: colors.textTertiary }]}>No comments yet. Be the first to comment!</Text>
+                ) : (
+                  <View style={styles.commentsList}>
+                    {comments.map((comment) => (
+                      <View key={comment.id} style={[styles.commentCard, { borderBottomColor: colors.border }]}>
+                        <Image
+                          source={{ uri: comment.user_avatar || 'https://placehold.co/100x100/E2E8F0/A0AEC0?text=U' }}
+                          style={styles.commentAvatar}
+                        />
+                        <View style={comment.id.toString().startsWith('temp_') ? { marginLeft: 10, flex: 1, opacity: 0.7 } : { marginLeft: 10, flex: 1 }}>
+                          <View style={styles.commentHeaderRow}>
+                            <Text style={[styles.commentAuthorName, { color: colors.text }]}>{comment.user_name}</Text>
+                            <Text style={[styles.commentTime, { color: colors.textSecondary }]}>
+                              {comment.created_at ? new Date(comment.created_at).toLocaleDateString() : ''}
+                            </Text>
+                          </View>
+                          <Text style={[styles.commentText, { color: colors.text }]}>{comment.comment_text}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Comment Input Sticky Bar */}
+            {selectedPost && (
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+              >
+                <View style={[styles.commentInputRow, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+                  <TextInput
+                    style={[styles.commentInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                    placeholder="Write a comment..."
+                    placeholderTextColor={colors.textTertiary}
+                    value={newCommentText}
+                    onChangeText={setNewCommentText}
+                  />
+                  <TouchableOpacity
+                    style={[styles.commentSendBtn, { backgroundColor: colors.primary }]}
+                    onPress={handleAddComment}
+                    disabled={!newCommentText.trim()}
+                  >
+                    <Ionicons name="send" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            )}
           </View>
         </View>
       </Modal>
@@ -1889,5 +2263,149 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  postDetailContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  postDetailAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  postDetailAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  postDetailAuthorInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  postDetailDisplayName: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
+  },
+  postDetailUsername: {
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: 'Poppins_400Regular',
+  },
+  postDetailContent: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 16,
+    fontFamily: 'Poppins_400Regular',
+  },
+  postDetailImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  postDetailHashtagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  hashtagText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  postDetailStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  postDetailStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  postDetailStatValue: {
+    fontSize: 13,
+    marginLeft: 6,
+    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
+  },
+  commentsSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 20,
+    marginBottom: 12,
+    fontFamily: 'Poppins_700Bold',
+  },
+  noCommentsText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginVertical: 12,
+    fontFamily: 'Poppins_400Regular',
+  },
+  commentsList: {
+    gap: 12,
+  },
+  commentCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentBody: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  commentHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentAuthorName: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  commentTime: {
+    fontSize: 10,
+    fontFamily: 'Poppins_400Regular',
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  commentInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+  },
+  commentSendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  commentText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+    marginTop: 4,
+    lineHeight: 18,
   },
 });
