@@ -7,16 +7,18 @@ import {
   Pressable,
   FlatList,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { useNewsFeed } from '@/hooks/useNews';
+import { useNewsFeed, useCreateNews } from '@/hooks/useNews';
 import { NewsArticle } from '@/services/api/news';
 import { useAuthStore } from '@/store/authStore';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { CreateArticleModal } from '@/components/CreateArticleModal';
 
 const TABS = ['all', 'pending', 'published', 'rejected'] as const;
 type TabKey = (typeof TABS)[number];
@@ -33,6 +35,29 @@ export default function PublisherDashboard() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+
+  const { mutate: createArticleMutate } = useCreateNews();
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+
+  const handleCreateNewsArticle = (data: any) => {
+    createArticleMutate(
+      {
+        title: data.headline,
+        summary: data.summary || '',
+        category_ids: [parseInt(data.category, 10)],
+        image_url: data.imageUrl || '',
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Submitted!', 'Your news article has been submitted for review.');
+          setIsCreateModalVisible(false);
+        },
+        onError: (err: any) => {
+          Alert.alert('Error', err.message || 'Failed to publish article.');
+        },
+      }
+    );
+  };
 
   const { data: feedResponse, isLoading } = useNewsFeed();
 
@@ -119,7 +144,7 @@ export default function PublisherDashboard() {
         </View>
         <Pressable
           style={[styles.fabSmall, { backgroundColor: colors.primary }]}
-          onPress={() => router.push('/(publisher)/create' as any)}
+          onPress={() => setIsCreateModalVisible(true)}
         >
           <MaterialIcons name="add" size={22} color="#fff" />
         </Pressable>
@@ -200,7 +225,7 @@ export default function PublisherDashboard() {
           {activeTab === 'all' && (
             <Pressable
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(publisher)/create' as any)}
+              onPress={() => setIsCreateModalVisible(true)}
             >
               <MaterialIcons name="edit" size={18} color="#fff" />
               <Text style={styles.emptyButtonText}>Write Article</Text>
@@ -208,6 +233,11 @@ export default function PublisherDashboard() {
           )}
         </View>
       )}
+      <CreateArticleModal
+        isVisible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onSubmit={handleCreateNewsArticle}
+      />
     </SafeAreaView>
   );
 }

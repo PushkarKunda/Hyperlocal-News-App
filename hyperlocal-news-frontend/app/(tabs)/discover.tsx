@@ -136,7 +136,11 @@ export default function DiscoverScreen() {
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {trendingNews.slice(0, 5).map((item, index) => (
                 <React.Fragment key={item.news_uid}>
-                  <TouchableOpacity style={styles.listItem}>
+                  <TouchableOpacity
+                    style={styles.listItem}
+                    onPress={() => router.push(`/news/${item.news_uid}`)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.listItemContent}>
                       <Text style={[styles.itemTitle, { color: colors.primary }]}>{item.title}</Text>
                       <Text style={[styles.itemSubtitle, { color: colors.textTertiary }]}>{`${item.views} views`}</Text>
@@ -161,7 +165,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   key={topic.id}
                   style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.divider }]}
-                  onPress={() => router.push(`/news/category/${topic.id}` as any)}
+                  onPress={() => router.push({ pathname: '/(tabs)', params: { categoryId: topic.id } })}
                 >
                   <View style={[styles.iconContainer, { backgroundColor: topic.iconBg }]}>
                     {topic.iconType === 'feather' ? (
