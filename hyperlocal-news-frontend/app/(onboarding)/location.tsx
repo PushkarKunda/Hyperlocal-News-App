@@ -19,7 +19,7 @@ import { useRouter, usePathname } from 'expo-router'; // Added usePathname
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { useStatesList } from '@/hooks/useApi';
+import { useLanguagesList, useStatesList } from '@/hooks/useApi';
 import { usersApi } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { scaleFontSize } from '@/utils/responsive';
@@ -151,13 +151,13 @@ export default function LocationScreen() {
   // ─── API & State ───────────────────────────────────────────────────────────
 
   const { data: statesList = [], isLoading } = useStatesList();
+  const { data: languagesList = [] } = useLanguagesList();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState('ts'); // Default 'ts'
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [userLanguage, setUserLanguage] = useState<string>('');
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const gpsScale = useRef(new Animated.Value(1)).current;
@@ -178,10 +178,6 @@ export default function LocationScreen() {
     const loadPreferences = async () => {
       try {
         const prefs = await usersApi.getPreferences();
-
-        if (prefs.language_name) {
-          setUserLanguage(prefs.language_name);
-        }
 
         if (prefs.state_name) {
           const matched = statesList.find(
@@ -354,13 +350,20 @@ export default function LocationScreen() {
     }
 
     // Store in authStore onboarding data
-    const { setOnboardingData } = useAuthStore.getState();
+    const { setOnboardingData, onboardingData } = useAuthStore.getState();
     setOnboardingData({ state_id: matchedState.backendId });
+
+    // Derive language code synchronously from the language the user picked
+    // onboardingData.language_id is set in language.tsx before navigating here
+    const selectedLang = languagesList.find(
+      (l) => l.backendId === onboardingData.language_id
+    );
+    const languageCode = selectedLang?.id ?? null; // e.g. 'te', 'en', 'hi'
 
     // Check if district/city selection is needed
     // Only Telugu users need district/city for AP/TS
     const needsDistrictCity = shouldShowDistrictCity(
-      userLanguage,
+      languageCode,
       matchedState.id === 'ap' ? 1 : matchedState.id === 'ts' ? 2 : null
     );
 
