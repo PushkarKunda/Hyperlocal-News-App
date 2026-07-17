@@ -2,7 +2,7 @@
 export const API_ROUTES = {
   // ─── Auth ───────────────────────────────────────────────────────────────────
   auth: {
-    firebaseLogin: '/user/user/auth/firebase/login',           // POST - Firebase Login
+    firebaseLogin: '/user/user/auth/firebase/login1',           // POST - Firebase Login
     refreshToken: '/user/user/auth/refresh',                   // POST - Refresh token (query param)
     logout: '/user/user/auth/logout',                          // POST - Logout
     switchToPublisher: '/user/user/auth/switch-to-publisher',  // POST - Switch to publisher
