@@ -29,7 +29,7 @@ import { useBookmarks } from '@/hooks/useEngagement';
 import { usersApi, postsApi, type DashboardResponse } from '@/services/api';
 import type { Post } from '@/services/api/posts';
 import { compressImage } from '@/services/image';
-import { uploadImageToSupabase } from '@/services/supabase';
+import { uploadImageToSupabaseNews, uploadImageToSupabaseProfile } from '@/services/supabase';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -53,7 +53,13 @@ export default function ProfileScreen() {
   // ─── API Mutations ───────────────────────────────────────────────────────
   const { mutate: createArticleMutate } = useCreateNews();
   const { mutate: deleteArticleMutate } = useDeleteNews();
-  const { data: bookmarks = [] } = useBookmarks();
+
+  // ✅ API hooks - Fetch BOTH content types
+  const { data: newsBookmarks = [] } = useBookmarks('news');
+  const { data: postBookmarks = [] } = useBookmarks('post');
+
+  // ✅ Combine bookmarks
+  const allBookmarks = [...newsBookmarks, ...postBookmarks];
 
   // ─── Tab State ───────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'posts' | 'news' | 'saved' | 'publisher'>('posts');
@@ -84,8 +90,8 @@ export default function ProfileScreen() {
       const commentsList = Array.isArray(res)
         ? res
         : res && Array.isArray((res as any).comments)
-        ? (res as any).comments
-        : [];
+          ? (res as any).comments
+          : [];
       setComments(commentsList);
     } catch (err) {
       console.warn('[profile] Failed to load comments from API:', err);
@@ -289,8 +295,8 @@ export default function ProfileScreen() {
           compress: 0.8,
         });
 
-        // ✅ Upload to Supabase (avatars folder)
-        serverUrl = await uploadImageToSupabase(compressed.uri);
+        // ✅ Upload to Supabase (profile folder)
+        serverUrl = await uploadImageToSupabaseProfile(compressed.uri);
       } catch (uploadErr) {
         console.warn('[profile] Avatar upload to Supabase failed:', uploadErr);
         throw uploadErr;
@@ -481,7 +487,7 @@ export default function ProfileScreen() {
         });
 
         // 1. Upload cover image to Supabase
-        serverUrl = await uploadImageToSupabase(compressed.uri, 'posts');
+        serverUrl = await uploadImageToSupabaseNews(compressed.uri, 'news');
       } catch (uploadErr: any) {
         console.warn('[profile] Supabase upload failed:', uploadErr);
         throw uploadErr;
@@ -1053,8 +1059,8 @@ export default function ProfileScreen() {
         {/* Tab: Saved */}
         {activeTab === 'saved' && (
           <View style={styles.postsGrid}>
-            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Saved Articles</Text>
-            {bookmarks.length === 0 ? (
+            <Text style={[styles.tabContentTitle, { color: colors.text }]}>Saved Items</Text>
+            {allBookmarks.length === 0 ? (
               <View style={styles.emptyTabContent}>
                 <Ionicons
                   name="bookmark-outline"
@@ -1063,33 +1069,84 @@ export default function ProfileScreen() {
                   style={{ marginBottom: 12 }}
                 />
                 <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
-                  No saved bookmarks found.
+                  No saved items found. Start bookmarking news and posts!
                 </Text>
               </View>
             ) : (
               <View style={styles.postsWrapper}>
-                {bookmarks
-                  .filter((b) => b.news)
-                  .map((b) => (
-                    <View key={b.content_id} style={styles.postCard}>
+                {allBookmarks.map((bookmark) => {
+                  // ✅ Handle both news and post content types
+                  const isNews = bookmark.content_type === 'news';
+                  const content = isNews ? bookmark.news : bookmark.post;
+
+                  if (!content) return null;
+
+                  const imageUrl = isNews
+                    ? content.image_url
+                    : content.images?.[0]?.image_url;
+
+                  const likesCount = isNews
+                    ? content.likes || 0
+                    : content.like_count || 0;
+
+                  const commentsCount = isNews
+                    ? content.comments || 0
+                    : content.comment_count || 0;
+
+                  return (
+                    <TouchableOpacity
+                      key={`${bookmark.content_type}-${bookmark.content_uid}`}
+                      style={styles.postCard}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        if (isNews) {
+                          router.push(`/news/${bookmark.content_uid}`);
+                        } else {
+                          // Navigate to post detail or open modal
+                          //router.push(`/posts/${bookmark.content_uid}`);
+                        }
+                      }}
+                    >
                       <Image
                         source={{
-                          uri: b.news?.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=N',
+                          uri: imageUrl || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=Saved'
                         }}
                         style={styles.postImage}
                       />
+
+                      {/* Content Type Badge */}
+                      <View style={[
+                        styles.postBadge,
+                        {
+                          backgroundColor: isNews
+                            ? 'rgba(70, 72, 212, 0.9)'
+                            : 'rgba(255, 159, 10, 0.9)'
+                        }
+                      ]}>
+                        <Ionicons
+                          name={isNews ? 'newspaper' : 'chatbubble'}
+                          size={10}
+                          color="#FFFFFF"
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text style={styles.postBadgeText}>
+                          {isNews ? 'News' : 'Post'}
+                        </Text>
+                      </View>
+
                       <View style={styles.postOverlay}>
                         <View style={styles.overlayStat}>
                           <Ionicons name="heart" size={12} color="#FFFFFF" />
-                          <Text style={styles.overlayStatText}>{b.news?.likes || 0}</Text>
+                          <Text style={styles.overlayStatText}>{likesCount}</Text>
                         </View>
                         <View style={[styles.overlayStat, { marginLeft: 8 }]}>
                           <Ionicons name="chatbubble" size={10} color="#FFFFFF" />
-                          <Text style={styles.overlayStatText}>{b.news?.comments || 0}</Text>
+                          <Text style={styles.overlayStatText}>{commentsCount}</Text>
                         </View>
                       </View>
-                    </View>
-                  ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -1945,6 +2002,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,

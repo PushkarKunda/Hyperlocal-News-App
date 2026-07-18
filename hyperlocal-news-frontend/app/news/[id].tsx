@@ -35,7 +35,8 @@ const AdCard = ({ ad, colors }: { ad: Advertisement; colors: any }) => (
 );
 
 export default function NewsDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, type } = useLocalSearchParams();
+  const contentType = (type as 'news' | 'post') || 'news';
   const router = useRouter();
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -45,7 +46,7 @@ export default function NewsDetailScreen() {
   // Load article dynamically
   const { data: article, isLoading } = useNewsArticle(id as string);
   const { data: engagement } = useNewsEngagement(id as string);
-  const { data: bookmarkCheck } = useCheckBookmark(id as string);
+  const { data: bookmarkCheck } = useCheckBookmark(id as string, contentType);
   const { data: comments } = useNewsComments(id as string);
 
   // Fetch Ads
@@ -83,9 +84,9 @@ export default function NewsDetailScreen() {
   const handleToggleBookmark = () => {
     if (!id) return;
     if (bookmarkCheck?.is_bookmarked) {
-      removeBookmark(id as string);
+      removeBookmark({ contentUid: id as string, contentType });
     } else {
-      addBookmark(id as string);
+      addBookmark({ contentUid: id as string, contentType });
     }
   };
 

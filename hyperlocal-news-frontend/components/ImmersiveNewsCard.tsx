@@ -28,6 +28,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { formatTimeAgo } from '@/utils/formatters';
 import { useRouter } from 'expo-router';
+import { useRecordView } from '@/hooks/useNews';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROPS
@@ -39,6 +40,7 @@ interface ImmersiveFeedCardProps {
   // Set of bookmarked news_uids - update to content_id set once
   // numeric ID is confirmed from GET /news/v1/news/:uid
   bookmarkedNewsUids: Set<string>;
+  onOpenComments?: (uid: string) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -202,66 +204,83 @@ const SponsoredCard = React.memo(
 const NewsCard = React.memo(
   ({
     item,
+    itemType,
     containerHeight,
     isBookmarked,
     colors,
     isDark,
+    onOpenComments,
   }: {
     item: NewsArticle;
+    itemType: 'news' | 'post';
     containerHeight: number;
     isBookmarked: boolean;
     colors: any;
     isDark: boolean;
+    onOpenComments?: (uid: string) => void;
   }) => {
     const router = useRouter();
     const { user } = useAuthStore();
+    
+    const contentUid = item.news_uid || (item as any).post_uid || (item as any).id;
 
     const { mutate: like } = useLike();
     const { mutate: unlike } = useUnlike();
     const { mutate: addBookmark } = useAddBookmark();
     const { mutate: removeBookmark } = useRemoveBookmark();
     const { mutate: recordShare } = useRecordShare();
+    const { mutate: recordView } = useRecordView();
 
     // Local optimistic like state
     const [liked, setLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(item.likes ?? 0);
 
+    React.useEffect(() => {
+      // Record view when card mounts
+      if (contentUid) {
+        recordView(contentUid);
+      }
+    }, [contentUid, recordView]);
+
     const handleToggleLike = () => {
+      if (!contentUid) return;
       if (liked) {
         setLiked(false);
         setLikeCount((c) => Math.max(0, c - 1));
-        unlike(item.news_uid);
+        unlike(contentUid);
       } else {
         setLiked(true);
         setLikeCount((c) => c + 1);
-        like(item.news_uid);
+        like(contentUid);
       }
     };
 
     const handleToggleBookmark = () => {
+      if (!contentUid) return;
       if (isBookmarked) {
-        removeBookmark(item.news_uid);
+        removeBookmark({ contentUid, contentType: itemType });
       } else {
-        addBookmark(item.news_uid);
+        addBookmark({ contentUid, contentType: itemType });
       }
     };
 
     const handleShare = async () => {
       try {
-        recordShare({ newsUid: item.news_uid, platform: 'general' });
+        if (contentUid) {
+          recordShare({ newsUid: contentUid, platform: 'general' });
+        }
         await Share.share({
-          message: `${item.title}\n\n${item.summary}\n\nShared via HyperLocal`,
-          title: item.title,
+          message: `${item.title || (item as any).content || ''}\n\n${item.summary || ''}\n\nShared via HyperLocal`,
+          title: item.title || 'HyperLocal Post',
         });
       } catch (_) { }
     };
 
     const handleNavigateToDetail = () => {
-      const articleId = item.news_uid || (item as any).id || (item as any).uid;
-      if (articleId) {
-        router.push(`/news/${articleId}`);
+      if (contentUid) {
+        router.push({ pathname: `/news/[id]`, params: { id: contentUid, type: itemType } });
       } else {
-        console.warn('[ImmersiveNewsCard] news_uid is missing:', item);
+        console.warn('[ImmersiveNewsCard] contentUid is missing:', item);
       }
     };
 
@@ -310,6 +329,7 @@ const NewsCard = React.memo(
     };
 
     return (
+      <>
       <View
         style={[
           styles.cardContainer,
@@ -350,12 +370,8 @@ const NewsCard = React.memo(
             { backgroundColor: colors.background },
           ]}
         >
-          {/* Headline + summary — wrapped in TouchableOpacity to navigate to details */}
-          <TouchableOpacity
-            style={styles.textWrapper}
-            onPress={handleNavigateToDetail}
-            activeOpacity={0.9}
-          >
+          {/* Headline + summary — plain View to prevent accidental navigation */}
+          <View style={styles.textWrapper}>
             <Text
               style={[styles.headline, { color: colors.text }]}
               numberOfLines={3}
@@ -368,7 +384,7 @@ const NewsCard = React.memo(
             >
               {item.summary}
             </Text>
-          </TouchableOpacity>
+          </View>
 
           {/* Footer — no navigation, only source link + action buttons */}
           <View style={styles.footerWrapper}>
@@ -431,58 +447,80 @@ const NewsCard = React.memo(
 
               {/* Actions */}
               <View style={styles.actionsRow}>
+                {/* Views */}
+                <View style={styles.actionBtnWrapper}>
+                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <Ionicons name="eye-outline" size={16} color={actionIconColor} />
+                  </View>
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
+                    {item.engagement?.total_views ?? item.views ?? 0}
+                  </Text>
+                </View>
+
+                {/* Comment */}
+                <TouchableOpacity
+                  style={styles.actionBtnWrapper}
+                  onPress={() => contentUid && onOpenComments?.(contentUid)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <Ionicons name="chatbubble-outline" size={16} color={actionIconColor} />
+                  </View>
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
+                    {item.engagement?.total_comments ?? item.comments ?? 0}
+                  </Text>
+                </TouchableOpacity>
+
                 {/* Like */}
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  style={styles.actionBtnWrapper}
                   onPress={handleToggleLike}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={liked ? 'heart' : 'heart-outline'}
-                    size={16}
-                    color={liked ? '#EF4444' : actionIconColor}
-                  />
+                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <Ionicons
+                      name={liked ? 'heart' : 'heart-outline'}
+                      size={16}
+                      color={liked ? '#EF4444' : actionIconColor}
+                    />
+                  </View>
                 </TouchableOpacity>
 
                 {/* Share */}
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  style={styles.actionBtnWrapper}
                   onPress={handleShare}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name="share-social-outline"
-                    size={16}
-                    color={actionIconColor}
-                  />
+                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <Ionicons
+                      name="share-social-outline"
+                      size={16}
+                      color={actionIconColor}
+                    />
+                  </View>
                 </TouchableOpacity>
 
                 {/* Bookmark */}
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
+                  style={styles.actionBtnWrapper}
                   onPress={handleToggleBookmark}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                    size={16}
-                    color={isBookmarked ? '#FFAC33' : actionIconColor}
-                  />
-                </TouchableOpacity>
-
-                {/* More — opens options */}
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: actionBg }]}
-                  activeOpacity={0.7}
-                  onPress={handleMoreOptions}
-                >
-                  <Feather name="more-vertical" size={16} color={actionIconColor} />
+                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <Ionicons
+                      name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                      size={16}
+                      color={isBookmarked ? '#FFAC33' : actionIconColor}
+                    />
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </View>
       </View>
+      </>
     );
   },
   (prev, next) =>
@@ -497,7 +535,7 @@ const NewsCard = React.memo(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const ImmersiveFeedCard = React.memo(
-  ({ item, containerHeight, bookmarkedNewsUids }: ImmersiveFeedCardProps) => {
+  ({ item, containerHeight, bookmarkedNewsUids, onOpenComments }: ImmersiveFeedCardProps) => {
     const colorScheme = useAppColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -528,10 +566,12 @@ export const ImmersiveFeedCard = React.memo(
     return (
       <NewsCard
         item={newsItem}
+        itemType={item.type === 'post' ? 'post' : 'news'}
         containerHeight={containerHeight}
-        isBookmarked={bookmarkedNewsUids.has(newsItem.news_uid)}
+        isBookmarked={bookmarkedNewsUids.has(newsItem.news_uid || (newsItem as any).post_uid)}
         colors={colors}
         isDark={isDark}
+        onOpenComments={onOpenComments}
       />
     );
   }
@@ -749,7 +789,12 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+  },
+  actionBtnWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   actionBtn: {
     width: 32,
@@ -758,4 +803,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  actionCount: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+  }
 });

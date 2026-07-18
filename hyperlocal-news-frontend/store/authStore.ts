@@ -21,7 +21,7 @@ import {
 import type { UserPreferences } from '@/services/api';
 import { clearTokens } from '@/services/api/token';
 import { compressImage } from '@/services/image';
-import { uploadImageToSupabase } from '@/services/supabase';
+import { uploadImageToSupabaseProfile } from '@/services/supabase';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -557,9 +557,9 @@ export const useAuthStore = create<AuthState>()(
                 compress: 0.8,
               });
 
-              uploadedAvatarUrl = await uploadImageToSupabase(
+              uploadedAvatarUrl = await uploadImageToSupabaseProfile(
                 compressed.uri,
-                'avatars'
+                'profile'
               );
             } catch (uploadErr) {
               console.error('[completeOnboarding] Avatar upload failed:', uploadErr);
@@ -567,13 +567,6 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          // ✅ Update basic profile (name, avatar, gender, DOB)
-          // await usersApi.updateMe({
-          //   name: user.name ?? undefined,
-          //   profile_picture: uploadedAvatarUrl ?? null,
-          //   gender: user.gender ?? null,
-          //   date_of_birth: user.date_of_birth ?? null,
-          // });
 
           // ✅ Save ALL preferences in ONE POST request
           await usersApi.savePreferences({

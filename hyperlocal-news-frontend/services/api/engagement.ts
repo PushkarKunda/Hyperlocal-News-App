@@ -1,3 +1,5 @@
+// services/api/engagement.ts
+
 import { API_ROUTES } from './routes';
 import { request } from './client';
 import type { NewsArticle, NewsComment, CreateCommentPayload } from './news';
@@ -6,17 +8,17 @@ import type { NewsArticle, NewsComment, CreateCommentPayload } from './news';
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
+export type ContentType = 'news' | 'post' | 'event' | 'poll';
+
 export interface Bookmark {
   id: number;
   user_uid: string;
-  content_type: string;
-  content_id: number; // API uses integer
+  content_type: ContentType;
+  content_uid: string;
   created_at: string;
-  news?: NewsArticle;
-
-  // DEPRECATED: For backward compatibility until numeric ID is confirmed
-  // Will be removed once GET /news/v1/news/:uid returns numeric ID
-  news_uid?: string;
+  news?: NewsArticle; // Keep for backward compatibility if needed
+  post?: any;
+  content?: NewsArticle | any; // Actual field returned by the backend
 }
 
 export interface BookmarksListResponse {
@@ -42,9 +44,10 @@ export const engagementApi = {
 
   /**
    * GET /engagement/bookmarks?content_type=news&limit=50&offset=0
+   * ✅ contentType is now required parameter, no default
    */
   getBookmarks: async (
-    contentType: string = 'news',
+    contentType: ContentType,
     limit: number = 50,
     offset: number = 0
   ): Promise<Bookmark[]> => {
@@ -58,66 +61,55 @@ export const engagementApi = {
 
   /**
    * POST /engagement/bookmarks
-   * { user_uid, content_type, content_id (integer) }
-   * TODO: Replace contentId with actual numeric ID from
-   * GET /news/v1/news/:uid response once confirmed
+   * { content_type, content_uid }
+   * ✅ contentType is now required parameter
    */
   addBookmark: async (
-    userUid: string,
-    contentId: number,
-    contentType: string = 'news'
+    contentUid: string,
+    contentType: ContentType
   ): Promise<Bookmark> => {
     return await request<Bookmark>({
       url: API_ROUTES.engagement.bookmarks,
       method: 'POST',
       data: {
-        user_uid: userUid,
         content_type: contentType,
-        content_id: contentId,
+        content_uid: contentUid,
       },
     });
   },
 
   /**
-   * DELETE /engagement/bookmarks?content_type=news&content_id=xxx
+   * DELETE /engagement/bookmarks?content_type=news&content_uid=xxx
+   * ✅ contentType is now required parameter
    */
   removeBookmark: async (
-    contentId: number,
-    contentType: string = 'news'
+    contentUid: string,
+    contentType: ContentType
   ): Promise<void> => {
     await request({
       url: API_ROUTES.engagement.bookmarks,
       method: 'DELETE',
       params: {
         content_type: contentType,
-        content_id: contentId,
+        content_uid: contentUid,
       },
     });
   },
 
   /**
-   * DELETE /engagement/bookmarks/:id
-   */
-  deleteBookmarkById: async (bookmarkId: number): Promise<void> => {
-    await request({
-      url: API_ROUTES.engagement.bookmarkById(bookmarkId),
-      method: 'DELETE',
-    });
-  },
-
-  /**
-   * GET /engagement/bookmarks/check?content_type=news&content_id=xxx
+   * GET /engagement/bookmarks/check?content_type=news&content_uid=xxx
+   * ✅ contentType is now required parameter
    */
   checkBookmark: async (
-    contentId: number,
-    contentType: string = 'news'
+    contentUid: string,
+    contentType: ContentType
   ): Promise<BookmarkCheckResponse> => {
     return await request<BookmarkCheckResponse>({
       url: API_ROUTES.engagement.checkBookmark,
       method: 'GET',
       params: {
         content_type: contentType,
-        content_id: contentId,
+        content_uid: contentUid,
       },
     });
   },

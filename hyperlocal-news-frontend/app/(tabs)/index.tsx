@@ -21,6 +21,7 @@ import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAuthStore } from '@/store/authStore';
 import { useTabBarStore } from '@/store/tabBarStore';
+import { CommentsModal } from '@/components/CommentsModal';
 
 const FOR_YOU_ID = 'for-you' as const;
 type CategoryId = typeof FOR_YOU_ID | number;
@@ -31,14 +32,20 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const navigation = useNavigation();
-  const { user, cachedPreferences } = useAuthStore();
+  const { user, cachedPreferences, fetchPreferences } = useAuthStore();
   const { height: screenHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    // Fetch user preferences in the background to ensure header location is up-to-date
+    fetchPreferences().catch((err) => console.log('Failed to fetch preferences', err));
+  }, [fetchPreferences]);
   const insets = useSafeAreaInsets();
   const setTabBarVisible = useTabBarStore((s) => s.setVisible);
 
   // ─── State ────────────────────────────────────────────────────────────
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [activeCategory, setActiveCategory] = useState<CategoryId>(FOR_YOU_ID);
+  const [activeCommentUid, setActiveCommentUid] = useState<string | null>(null);
 
   const params = useLocalSearchParams<{ categoryId?: string }>();
 
@@ -76,9 +83,8 @@ export default function HomeScreen() {
     );
 
   // Bookmarks - used to show filled/outline bookmark icon
-  // TODO: Update bookmarkedNewsUids to use numeric content_id set
-  // once GET /news/v1/news/:uid confirms the numeric ID field
-  const { data: rawBookmarks = [] } = useBookmarks('news');
+  const { data: rawNewsBookmarks = [] } = useBookmarks('news');
+  const { data: rawPostBookmarks = [] } = useBookmarks('post');
 
   // ─── Derived ──────────────────────────────────────────────────────────
 
@@ -94,11 +100,12 @@ export default function HomeScreen() {
   }, [categoriesData]);
 
   // Bookmarked news_uids for O(1) lookup
-  // TODO: Change to content_id (number) once confirmed
-  const bookmarkedNewsUids = useMemo(
-    () => new Set(rawBookmarks.map((b) => String(b.content_id))),
-    [rawBookmarks]
-  );
+  const bookmarkedNewsUids = useMemo(() => {
+    const set = new Set<string>();
+    rawNewsBookmarks.forEach(b => set.add(String(b.content_uid)));
+    rawPostBookmarks.forEach(b => set.add(String(b.content_uid)));
+    return set;
+  }, [rawNewsBookmarks, rawPostBookmarks]);
 
   // Feed items to render in the vertical snap list
   const feedItems = useMemo((): FeedItem[] => {
@@ -110,8 +117,8 @@ export default function HomeScreen() {
     const categoryArticles = Array.isArray(categoryNewsData)
       ? categoryNewsData
       : (categoryNewsData as any)?.news && Array.isArray((categoryNewsData as any).news)
-      ? (categoryNewsData as any).news
-      : [];
+        ? (categoryNewsData as any).news
+        : [];
 
     return categoryArticles.map(
       (article: any, i: number): FeedItem => ({
@@ -214,15 +221,24 @@ export default function HomeScreen() {
 
   // ─── Render helpers ───────────────────────────────────────────────────
 
+  const handleOpenComments = useCallback((uid: string) => {
+    setActiveCommentUid(uid);
+  }, []);
+
+  const handleCloseComments = useCallback(() => {
+    setActiveCommentUid(null);
+  }, []);
+
   const renderFeedItem = useCallback(
     ({ item }: { item: FeedItem }) => (
       <ImmersiveFeedCard
         item={item}
         containerHeight={scrollHeight}
         bookmarkedNewsUids={bookmarkedNewsUids}
+        onOpenComments={handleOpenComments}
       />
     ),
-    [scrollHeight, bookmarkedNewsUids]
+    [scrollHeight, bookmarkedNewsUids, handleOpenComments]
   );
 
   const getItemLayout = useCallback(
@@ -289,7 +305,7 @@ export default function HomeScreen() {
                 .
               </Text>
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.locationRow}
               activeOpacity={0.7}
               onPress={() => router.push('/(tabs)/settings-location')}
@@ -425,9 +441,19 @@ export default function HomeScreen() {
             disableIntervalMomentum
             bounces={false}
             getItemLayout={getItemLayout}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={5}
+            removeClippedSubviews={true}
           />
         )}
       </View>
+
+      <CommentsModal
+        visible={!!activeCommentUid}
+        onClose={handleCloseComments}
+        newsUid={activeCommentUid || ''}
+      />
     </View>
   );
 }

@@ -30,7 +30,7 @@ import { useGoogleFirebaseAuth } from '@/hooks/useGoogleFirebaseAuth';
 import { statusCodes } from '@react-native-google-signin/google-signin';
 import { usersApi, type UserMeResponse, type UpdateMePayload } from '@/services/api';
 import { compressImage } from '@/services/image';
-import { uploadImageToSupabase } from '@/services/supabase';
+import { uploadImageToSupabaseProfile } from '@/services/supabase';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -396,7 +396,7 @@ export default function ProfileCompletionScreen() {
             compress: 0.8,
           });
 
-          uploadedAvatarUrl = await uploadImageToSupabase(compressed.uri, 'avatars');
+          uploadedAvatarUrl = await uploadImageToSupabaseProfile(compressed.uri, 'profile');
 
           if (!uploadedAvatarUrl) {
             throw new Error('Failed to get upload URL from Supabase.');

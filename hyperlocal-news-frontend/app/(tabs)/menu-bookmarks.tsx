@@ -1,3 +1,5 @@
+// app/(tabs)/menu-bookmarks.tsx
+
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -17,24 +19,24 @@ import { Colors } from '@/constants/Colors';
 import { useBookmarks, useRemoveBookmark } from '@/hooks/useEngagement';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
+import type { ContentType } from '@/services/api/engagement';
 
 interface MenuBookmarkItem {
   id: number;
-  news_uid: string;
-  contentId: number;
+  contentUid: string;
+  contentType: ContentType;
   category: string;
   title: string;
   description: string;
-  imageUrl: string | null;
+  imageUrl: string | null; // Keep as null, not undefined
   timeAgo: string;
   reads: string;
 }
 
 const CATEGORIES = [
   { label: 'All Items', value: 'all' },
-  { label: 'Technology', value: 'TECH' },
-  { label: 'Health', value: 'HEALTH' },
-  { label: 'Business', value: 'BUSINESS' },
+  { label: 'News', value: 'news' },
+  { label: 'Posts', value: 'post' },
 ];
 
 export default function MenuBookmarksScreen() {
@@ -44,78 +46,122 @@ export default function MenuBookmarksScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // API hooks
-  const { data: rawBookmarks = [], isLoading } = useBookmarks();
+  // ✅ Fetch BOTH news and posts bookmarks
+  const { data: newsBookmarks = [], isLoading: isLoadingNews } = useBookmarks('news');
+  const { data: postBookmarks = [], isLoading: isLoadingPosts } = useBookmarks('post');
+
   const { mutate: removeBookmarkMutate } = useRemoveBookmark();
 
-  // Screen states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  // Remove individual bookmark
-  const toggleBookmark = (bookmarkId: number) => {
-    if (!bookmarkId) return; // Guard against undefined
-    removeBookmarkMutate({ contentId: bookmarkId, contentType: 'news' });
+  const isLoading = isLoadingNews || isLoadingPosts;
+
+  const toggleBookmark = (contentUid: string, contentType: ContentType) => {
+    if (!contentUid) return;
+    removeBookmarkMutate({
+      contentUid,
+      contentType
+    });
   };
 
-  // Map backend articles to local MenuBookmarkItem format
-  const bookmarks = useMemo(() => {
-    return rawBookmarks.map((bookmark) => {
-      const article = bookmark.news;
-      const categoryName = article?.category_names?.[0] || 'General';
-      return {
-        id: bookmark.id,
-        news_uid: bookmark.news_uid || String(bookmark.content_id),
-        contentId: bookmark.content_id,
-        category: categoryName,
-        title: article?.title || 'Untitled',
-        description: article?.summary || '',
-        imageUrl: article?.image_url,
-        timeAgo: formatTimeAgo(article?.created_at || bookmark.created_at),
-        reads: `${formatNumber(article?.views || 0)} reads`,
-      };
-    }).filter(b => b.title !== 'Untitled'); // Filter out broken bookmarks if any
-  }, [rawBookmarks]);
+  // ✅ Fixed: Proper type narrowing with filter
+  const bookmarks = useMemo((): MenuBookmarkItem[] => {
+    const mappedNews = newsBookmarks
+      .map((bookmark) => {
+        const article = (bookmark as any).content;
+        if (!article) return null;
 
-  const bookmarkItems = rawBookmarks.map((bookmark) => ({
-    id: bookmark.id, // Use numeric bookmark.id instead of news_uid
-    news_uid: bookmark.news_uid || String(bookmark.content_id), // Fallback
-    title: bookmark.news?.title || 'Untitled',
-    source: bookmark.news?.source_name || 'HyperLocal',
-    timeAgo: formatTimeAgo(bookmark.created_at),
-    imageUrl: bookmark.news?.image_url,
-    location: bookmark.news?.location,
-  }));
+        const categoryName = article.category_names?.[0] || 'General';
 
-  // Filtered bookmark list logic
-  const filteredBookmarks = bookmarks.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return {
+          id: bookmark.id,
+          contentUid: bookmark.content_uid,
+          contentType: 'news' as ContentType,
+          category: categoryName,
+          title: article.title || 'Untitled',
+          description: article.summary || '',
+          imageUrl: article.image_url || null, // ✅ Explicitly null
+          timeAgo: formatTimeAgo(article.created_at || bookmark.created_at),
+          reads: `${formatNumber(article.views || 0)} reads`,
+        };
+      })
+      .filter((item): item is MenuBookmarkItem => item !== null); // Type guard
 
-    const catUpper = item.category.toUpperCase();
-    const filterUpper = selectedCategory.toUpperCase();
+    const mappedPosts = postBookmarks
+      .map((bookmark) => {
+        const post = (bookmark as any).content;
+        if (!post) return null;
 
-    const matchesCategory =
-      selectedCategory === 'all' ||
-      catUpper === filterUpper ||
-      (filterUpper === 'TECH' && (catUpper === 'TECH' || catUpper === 'TECHNOLOGY'));
+        return {
+          id: bookmark.id,
+          contentUid: bookmark.content_uid,
+          contentType: 'post' as ContentType,
+          category: 'Community',
+          title: post.title || post.content?.substring(0, 100) || 'Untitled',
+          description: post.content || '',
+          imageUrl: post.images?.[0]?.image_url || null, // ✅ Explicitly null
+          timeAgo: formatTimeAgo(post.created_at || bookmark.created_at),
+          reads: `${formatNumber(post.views || 0)} views`,
+        };
+      })
+      .filter((item): item is MenuBookmarkItem => item !== null); // ✅ Type guard
 
-    return matchesSearch && matchesCategory;
-  });
+    return [...mappedNews, ...mappedPosts];
+  }, [newsBookmarks, postBookmarks]);
+
+  // ✅ Enhanced filtering - now type-safe
+  const filteredBookmarks = useMemo(() => {
+    return bookmarks.filter((item) => {
+      const matchesSearch =
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const filterUpper = selectedCategory.toUpperCase();
+
+      let matchesCategory = true;
+
+      if (filterUpper === 'ALL') {
+        matchesCategory = true;
+      } else if (filterUpper === 'NEWS') {
+        matchesCategory = item.contentType === 'news';
+      } else if (filterUpper === 'POST') {
+        matchesCategory = item.contentType === 'post';
+      } else {
+        const catUpper = item.category.toUpperCase();
+        matchesCategory =
+          catUpper === filterUpper ||
+          (filterUpper === 'TECH' && (catUpper === 'TECH' || catUpper === 'TECHNOLOGY'));
+      }
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [bookmarks, searchQuery, selectedCategory]);
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#111122' : '#F8F9FF', justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
-        <LoadingSpinner fullScreen text="Loading bookmarks..." colorScheme={colorScheme ?? 'light'} />
+      <View style={[styles.container, {
+        backgroundColor: isDark ? '#111122' : '#F8F9FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: insets.top
+      }]}>
+        <LoadingSpinner
+          fullScreen
+          text="Loading bookmarks..."
+          colorScheme={colorScheme ?? 'light'}
+        />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#111122' : '#F8F9FF', paddingTop: insets.top }]}>
+    <View style={[styles.container, {
+      backgroundColor: isDark ? '#111122' : '#F8F9FF',
+      paddingTop: insets.top
+    }]}>
 
-      {/* Header - Top App Bar */}
+      {/* Header */}
       <View style={[styles.header, { borderBottomColor: isDark ? '#374151' : '#E2E8F0' }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
@@ -125,7 +171,9 @@ export default function MenuBookmarksScreen() {
           >
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Bookmarks</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Bookmarks ({filteredBookmarks.length})
+          </Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -139,19 +187,26 @@ export default function MenuBookmarksScreen() {
         </View>
       </View>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Search Block Container */}
+        {/* Search */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchInputContainer, { backgroundColor: isDark ? '#1A1A35' : '#EFF4FF' }]}>
-            <Ionicons name="search" size={18} color={isDark ? 'rgba(148, 163, 184, 0.6)' : 'rgba(70, 69, 84, 0.6)'} style={styles.searchIcon} />
+          <View style={[styles.searchInputContainer, {
+            backgroundColor: isDark ? '#1A1A35' : '#EFF4FF'
+          }]}>
+            <Ionicons
+              name="search"
+              size={18}
+              color={isDark ? 'rgba(148, 163, 184, 0.6)' : 'rgba(70, 69, 84, 0.6)'}
+              style={styles.searchIcon}
+            />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search saved stories..."
+              placeholder="Search saved items..."
               placeholderTextColor={isDark ? 'rgba(148, 163, 184, 0.6)' : 'rgba(70, 69, 84, 0.6)'}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -160,7 +215,7 @@ export default function MenuBookmarksScreen() {
           </View>
         </View>
 
-        {/* Filter Categories Chips */}
+        {/* Filter Chips */}
         <View style={styles.filtersWrapper}>
           <ScrollView
             horizontal
@@ -206,32 +261,39 @@ export default function MenuBookmarksScreen() {
           </ScrollView>
         </View>
 
-        {/* Vertical Bento Bookmarks List */}
+        {/* Bookmarks List */}
         {filteredBookmarks.length > 0 ? (
           <View style={styles.bookmarksList}>
             {filteredBookmarks.map((item) => {
-              // Custom category styles based on the type
               let categoryBg = 'rgba(70, 72, 212, 0.1)';
               let categoryColor = '#4648D4';
               const catUpper = item.category.toUpperCase();
+
               if (catUpper.includes('HEALTH')) {
                 categoryBg = 'rgba(0, 106, 97, 0.1)';
                 categoryColor = '#006A61';
               } else if (catUpper.includes('BUSINESS')) {
                 categoryBg = 'rgba(185, 5, 56, 0.1)';
                 categoryColor = '#B90538';
+              } else if (catUpper.includes('COMMUNITY') || item.contentType === 'post') {
+                categoryBg = 'rgba(255, 159, 10, 0.1)';
+                categoryColor = '#FF9F0A';
               }
 
-              // Adjust category background in dark mode
               if (isDark) {
-                if (catUpper.includes('TECH') || catUpper.includes('TECHNOLOGY')) categoryBg = 'rgba(70, 72, 212, 0.25)';
-                if (catUpper.includes('HEALTH')) categoryBg = 'rgba(0, 106, 97, 0.25)';
-                if (catUpper.includes('BUSINESS')) categoryBg = 'rgba(185, 5, 56, 0.25)';
+                if (catUpper.includes('TECH') || catUpper.includes('TECHNOLOGY'))
+                  categoryBg = 'rgba(70, 72, 212, 0.25)';
+                if (catUpper.includes('HEALTH'))
+                  categoryBg = 'rgba(0, 106, 97, 0.25)';
+                if (catUpper.includes('BUSINESS'))
+                  categoryBg = 'rgba(185, 5, 56, 0.25)';
+                if (catUpper.includes('COMMUNITY') || item.contentType === 'post')
+                  categoryBg = 'rgba(255, 159, 10, 0.25)';
               }
 
               return (
-                <View
-                  key={item.id}
+                <TouchableOpacity
+                  key={`${item.contentType}-${item.id}`}
                   style={[
                     styles.articleCard,
                     {
@@ -239,90 +301,123 @@ export default function MenuBookmarksScreen() {
                       borderColor: isDark ? '#2E2E48' : '#F0F3FA',
                     },
                   ]}
+                  activeOpacity={0.8}
+                  onPress={() => router.push({
+                    pathname: `/news/[id]`,
+                    params: { id: item.contentUid, type: item.contentType }
+                  })}
                 >
-                  {/* Article rounded cover photo */}
-                  <View style={styles.cardImageContainer}>
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.cardImage}
-                      contentFit="cover"
-                    />
-                  </View>
+                  {item.imageUrl && (
+                    <View style={styles.cardImageContainer}>
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.cardImage}
+                        contentFit="cover"
+                      />
+                    </View>
+                  )}
 
-                  {/* Card Content details */}
                   <View style={styles.cardInfoContainer}>
                     <View style={styles.cardHeaderRow}>
-                      <View style={[styles.categoryBadge, { backgroundColor: categoryBg }]}>
-                        <Text style={[styles.categoryBadgeText, { color: categoryColor }]}>
-                          {item.category}
-                        </Text>
+                      <View style={styles.categoryRow}>
+                        <View style={[styles.contentTypeBadge, {
+                          backgroundColor: item.contentType === 'news'
+                            ? 'rgba(70, 72, 212, 0.1)'
+                            : 'rgba(255, 159, 10, 0.1)'
+                        }]}>
+                          <Ionicons
+                            name={item.contentType === 'news' ? 'newspaper-outline' : 'chatbubble-outline'}
+                            size={12}
+                            color={item.contentType === 'news' ? '#4648D4' : '#FF9F0A'}
+                          />
+                        </View>
+
+                        <View style={[styles.categoryBadge, { backgroundColor: categoryBg }]}>
+                          <Text style={[styles.categoryBadgeText, { color: categoryColor }]}>
+                            {item.category}
+                          </Text>
+                        </View>
                       </View>
 
                       <TouchableOpacity
                         style={styles.bookmarkIconButton}
-                        onPress={() => toggleBookmark(item.contentId)}
+                        onPress={() => toggleBookmark(item.contentUid, item.contentType)}
                         activeOpacity={0.7}
                       >
                         <Ionicons name="bookmark" size={20} color="#4648D4" />
                       </TouchableOpacity>
                     </View>
 
-                    {/* Heading Text */}
                     <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>
                       {item.title}
                     </Text>
 
-                    {/* Subtitle Description text */}
-                    <Text style={[styles.articleDesc, { color: isDark ? '#94A3B8' : '#464554' }]} numberOfLines={2}>
+                    <Text style={[styles.articleDesc, {
+                      color: isDark ? '#94A3B8' : '#464554'
+                    }]} numberOfLines={2}>
                       {item.description}
                     </Text>
 
-                    {/* Bottom Info metrics row */}
                     <View style={styles.cardMetaRow}>
                       <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={14} color={isDark ? '#94A3B8' : '#464554'} />
-                        <Text style={[styles.metaItemText, { color: isDark ? '#94A3B8' : '#464554' }]}>
+                        <Ionicons
+                          name="time-outline"
+                          size={14}
+                          color={isDark ? '#94A3B8' : '#464554'}
+                        />
+                        <Text style={[styles.metaItemText, {
+                          color: isDark ? '#94A3B8' : '#464554'
+                        }]}>
                           {item.timeAgo}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Ionicons name="eye-outline" size={14} color={isDark ? '#94A3B8' : '#464554'} />
-                        <Text style={[styles.metaItemText, { color: isDark ? '#94A3B8' : '#464554' }]}>
+                        <Ionicons
+                          name="eye-outline"
+                          size={14}
+                          color={isDark ? '#94A3B8' : '#464554'}
+                        />
+                        <Text style={[styles.metaItemText, {
+                          color: isDark ? '#94A3B8' : '#464554'
+                        }]}>
                           {item.reads}
                         </Text>
                       </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         ) : (
-          /* High quality Empty State */
           <View style={styles.emptyStateContainer}>
-            <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? 'rgba(70, 72, 212, 0.15)' : 'rgba(70, 72, 212, 0.08)' }]}>
+            <View style={[styles.emptyIconWrapper, {
+              backgroundColor: isDark
+                ? 'rgba(70, 72, 212, 0.15)'
+                : 'rgba(70, 72, 212, 0.08)'
+            }]}>
               <Ionicons name="bookmark-outline" size={48} color="#4648D4" />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Saved Stories</Text>
-            <Text style={[styles.emptySubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              No Saved Items
+            </Text>
+            <Text style={[styles.emptySubtitle, {
+              color: isDark ? '#94A3B8' : '#64748B'
+            }]}>
               {searchQuery
                 ? `No results match "${searchQuery}". Please try another keyword.`
-                : 'Tap the bookmark icon on any news feed cards or local events to save stories here.'}
+                : 'Tap the bookmark icon on any news or posts to save them here.'}
             </Text>
           </View>
         )}
       </ScrollView>
-
-
-
     </View>
   );
 }
 
+// Styles remain the same...
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     height: 64,
     flexDirection: 'row',
@@ -331,32 +426,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIconButton: {
-    padding: 8,
-    borderRadius: 9999,
-  },
-  scrollContent: {
-    paddingTop: 12,
-  },
-  searchSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIconButton: { padding: 8, borderRadius: 9999 },
+  scrollContent: { paddingTop: 12 },
+  searchSection: { paddingHorizontal: 20, marginBottom: 20 },
   searchInputContainer: {
     height: 52,
     flexDirection: 'row',
@@ -369,34 +444,13 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Poppins_500Medium',
-  },
-  filtersWrapper: {
-    marginBottom: 24,
-  },
-  filtersScrollContent: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  chipButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 9999,
-  },
-  chipText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-  },
-  bookmarksList: {
-    paddingHorizontal: 20,
-    gap: 24,
-  },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, fontSize: 16, fontFamily: 'Poppins_500Medium' },
+  filtersWrapper: { marginBottom: 24 },
+  filtersScrollContent: { paddingHorizontal: 20, gap: 10 },
+  chipButton: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 9999 },
+  chipText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  bookmarksList: { paddingHorizontal: 20, gap: 24 },
   articleCard: {
     borderRadius: 16,
     borderWidth: 1,
@@ -407,37 +461,31 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 4,
   },
-  cardImageContainer: {
-    height: 196.88,
-    width: '100%',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cardInfoContainer: {
-    padding: 24,
-  },
+  cardImageContainer: { height: 196.88, width: '100%' },
+  cardImage: { width: '100%', height: '100%' },
+  cardInfoContainer: { padding: 24 },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  contentTypeBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  categoryBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   categoryBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
     letterSpacing: 0.8,
   },
-  bookmarkIconButton: {
-    padding: 4,
-  },
+  bookmarkIconButton: { padding: 4 },
   articleTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -451,20 +499,9 @@ const styles = StyleSheet.create({
     lineHeight: 22.75,
     marginBottom: 16,
   },
-  cardMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaItemText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_500Medium',
-  },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaItemText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   emptyStateContainer: {
     paddingHorizontal: 32,
     paddingVertical: 80,
@@ -480,11 +517,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
-  },
+  emptyTitle: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   emptySubtitle: {
     fontSize: 14,
     fontFamily: 'Poppins_500Medium',
