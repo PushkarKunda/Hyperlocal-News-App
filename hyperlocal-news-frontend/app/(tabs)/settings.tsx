@@ -65,15 +65,7 @@ export default function SettingsScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.headerLeftButton}
-          // onPress={() => {
-          //   if (from === 'articles') {
-          //     router.push('/(tabs)/articles');
-          //   } else if (from === 'events') {
-          //     router.push('/(tabs)/events');
-          //   } else {
-          //     router.back();
-          //   }
-          // }}
+          onPress={() => router.push('/(tabs)/more')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />

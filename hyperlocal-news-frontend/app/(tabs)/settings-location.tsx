@@ -375,7 +375,7 @@ export default function SettingsLocationScreen() {
       selectedCityId !== initialCityId;
 
     if (!hasChanges) {
-      router.back();
+      router.push('/(tabs)/settings');
       return;
     }
 
@@ -408,7 +408,7 @@ export default function SettingsLocationScreen() {
       });
 
       Alert.alert('Success', 'Location updated successfully!', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.push('/(tabs)/settings') },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update location');
@@ -527,7 +527,7 @@ export default function SettingsLocationScreen() {
             styles.headerLeftButton,
             { backgroundColor: 'rgba(70, 72, 212, 0.05)' },
           ]}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(tabs)/settings')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />

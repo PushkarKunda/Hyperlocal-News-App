@@ -560,10 +560,10 @@ export default function ProfileScreen() {
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.headerIconButton}
-          onPress={() => setIsMenuVisible(true)}
+          onPress={() => router.push('/(tabs)/more')}
           activeOpacity={0.7}
         >
-          <Ionicons name="menu" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>

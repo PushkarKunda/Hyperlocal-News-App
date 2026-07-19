@@ -165,7 +165,7 @@ export default function MenuBookmarksScreen() {
       <View style={[styles.header, { borderBottomColor: isDark ? '#374151' : '#E2E8F0' }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push('/(tabs)/more')}
             activeOpacity={0.7}
             style={{ marginRight: 4 }}
           >

@@ -185,7 +185,7 @@ export default function NotificationsScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(tabs)/more')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={20} color={colors.text} />

@@ -248,7 +248,7 @@ export default function SettingsInterestsScreen() {
             JSON.stringify([...initialCategories].sort((a, b) => a - b));
 
         if (!hasChanges) {
-            router.back();
+            router.push('/(tabs)/settings');
             return;
         }
 
@@ -280,7 +280,7 @@ export default function SettingsInterestsScreen() {
             updateCachedPreferences({ category_ids: selectedCategories });
 
             Alert.alert('Success', 'Your interests have been updated!', [
-                { text: 'OK', onPress: () => router.back() },
+                { text: 'OK', onPress: () => router.push('/(tabs)/settings') },
             ]);
         } catch (error: any) {
             Alert.alert(
@@ -354,7 +354,7 @@ export default function SettingsInterestsScreen() {
                         styles.headerLeftButton,
                         { backgroundColor: 'rgba(70, 72, 212, 0.05)' },
                     ]}
-                    onPress={() => router.back()}
+                    onPress={() => router.push('/(tabs)/settings')}
                     activeOpacity={0.7}
                 >
                     <Ionicons name="arrow-back" size={22} color={colors.text} />

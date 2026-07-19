@@ -28,22 +28,43 @@ export default function TabLayout() {
 
   useEffect(() => {
     const onBackPress = () => {
-      // Intercept the physical back button press on Android when the user is on the main tabs screens
-      // to exit the app instead of popping the stack back into onboarding screens in history.
       const cleanPath = pathname.replace(/^\/\(tabs\)/, '') || '/';
+
+      // Sub-pages of Settings
+      if (
+        cleanPath === '/settings-language' ||
+        cleanPath === '/settings-location' ||
+        cleanPath === '/settings-interests'
+      ) {
+        router.push('/(tabs)/settings');
+        return true;
+      }
+
+      // Sub-pages of More
+      if (
+        cleanPath === '/settings' ||
+        cleanPath === '/menu-bookmarks' ||
+        cleanPath === '/help' ||
+        cleanPath === '/notifications' ||
+        cleanPath === '/profile'
+      ) {
+        router.push('/(tabs)/more');
+        return true;
+      }
+
+      // Main top-level tabs
       if (
         cleanPath === '/' ||
         cleanPath === '/shorts' ||
         cleanPath === '/local' ||
         cleanPath === '/discover' ||
-        cleanPath === '/profile' ||
-        cleanPath === '/more' ||
-        cleanPath === '/menu-bookmarks'
+        cleanPath === '/more'
       ) {
         BackHandler.exitApp();
         return true; // Prevent default pop behavior
       }
-      return false; // Allow standard backward pop for nested screens
+
+      return false; // Allow standard backward pop for any other nested screens
     };
 
     BackHandler.addEventListener('hardwareBackPress', onBackPress);

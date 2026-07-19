@@ -142,7 +142,7 @@ export default function HelpSupportScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.headerLeftButton}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(tabs)/more')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />

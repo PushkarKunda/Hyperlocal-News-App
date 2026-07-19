@@ -199,7 +199,7 @@ export default function SettingsLanguageScreen() {
 
   const handleSave = async () => {
     if (selectedLanguageId === initialLanguageId) {
-      router.back();
+      router.push('/(tabs)/settings');
       return;
     }
 
@@ -228,7 +228,7 @@ export default function SettingsLanguageScreen() {
       updateCachedPreferences({ language_id: selectedLanguageId });
 
       Alert.alert('Success', 'Language updated successfully!', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.push('/(tabs)/settings') },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update language');
@@ -299,7 +299,7 @@ export default function SettingsLanguageScreen() {
             styles.headerLeftButton,
             { backgroundColor: 'rgba(70, 72, 212, 0.05)' },
           ]}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(tabs)/settings')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />
