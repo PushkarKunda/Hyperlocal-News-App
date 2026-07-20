@@ -57,8 +57,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             ]}
         >
             {state.routes.map((route, index) => {
-                // Only render the 5 primary tabs in the bottom bar
-                const allowedTabs = ['index', 'shorts', 'local', 'discover', 'more'];
+                // Only render the primary tabs in the bottom bar
+                const allowedTabs = ['index', 'posts', 'shorts', 'local', 'discover', 'more'];
                 if (!allowedTabs.includes(route.name)) {
                     return null;
                 }
@@ -97,6 +97,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 // Determine icon name
                 let iconName: any = 'home';
                 if (route.name === 'index') iconName = 'home';
+                else if (route.name === 'posts') iconName = 'dynamic-feed';
                 else if (route.name === 'shorts') iconName = 'play-circle-outline';
                 else if (route.name === 'local') iconName = 'near-me';
                 else if (route.name === 'discover') iconName = 'explore';
