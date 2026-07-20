@@ -206,14 +206,24 @@ export const postsApi = {
    * Get comments for a post
    */
   getComments: async (postUid: string, limit = 20, offset = 0): Promise<PostComment[]> => {
-    return await request<PostComment[]>({
-      url: API_ROUTES.posts.comments(postUid),
-      method: 'GET',
-      params: {
-        limit,
-        offset,
-      },
-    });
+    try {
+      const res = await request<any>({
+        url: API_ROUTES.posts.comments(postUid),
+        method: 'GET',
+        params: {
+          limit,
+          offset,
+        },
+      });
+      if (Array.isArray(res)) return res;
+      if (res && Array.isArray(res.comments)) return res.comments;
+      if (res && Array.isArray(res.items)) return res.items;
+      if (res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch (err) {
+      console.warn('Error fetching post comments:', err);
+      return [];
+    }
   },
 
   /**
@@ -248,7 +258,7 @@ export const postsApi = {
    * GET /posts/hashtags/suggestions
    * Get hashtag suggestions
    */
-  getHashtagSuggestions: async (query: string, limit = 10): Promise<HashtagSuggestionsResponse> => {
+  getHashtagSuggestions: async (query?: string, limit = 10): Promise<HashtagSuggestionsResponse> => {
     return await request<HashtagSuggestionsResponse>({
       url: API_ROUTES.posts.hashtagSuggestions,
       method: 'GET',

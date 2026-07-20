@@ -176,12 +176,14 @@ const isAlreadyLinkedError = (error: any): boolean => {
 };
 
 const handleAuthError = (error: any): AuthError => {
-  if (
-    error.message?.toLowerCase().includes('network') ||
-    error.code === 'auth/network-request-failed'
-  ) {
+  const serverDetail = error?.response?.data?.detail || error?.response?.data?.message;
+  if (serverDetail) {
+    return new AuthError(serverDetail, error?.response?.data?.code || 'SERVER_ERROR');
+  }
+
+  if (error.code === 'auth/network-request-failed') {
     return new AuthError(
-      'Network connection failed. Please check your internet.',
+      'Firebase network error. Please check internet connection on your device/emulator.',
       'NETWORK_ERROR'
     );
   }
@@ -219,12 +221,13 @@ const handleAuthError = (error: any): AuthError => {
 };
 
 const checkNetwork = async (): Promise<void> => {
-  const state = await NetInfo.fetch();
-  if (!state.isConnected) {
-    throw new AuthError(
-      'No internet connection. Please check your network.',
-      'NO_NETWORK'
-    );
+  try {
+    const state = await NetInfo.fetch();
+    if (state.isConnected === false) {
+      console.warn('[NetInfo] Warning: NetInfo reports disconnected, proceeding with request...');
+    }
+  } catch (e) {
+    // Ignore NetInfo check errors on hotspot/emulator
   }
 };
 
@@ -325,8 +328,11 @@ export const useAuthStore = create<AuthState>()(
             );
           }
 
+          console.log('[authStore] Verifying OTP with Firebase...');
           const firebaseToken = await firebaseVerifyOTP(session, otp);
+          console.log('[authStore] Firebase token retrieved. Authenticating with backend...');
           const response = await authApi.loginWithFirebase(firebaseToken);
+          console.log('[authStore] Backend authentication success!');
 
           set({
             user: sanitizeUser(response.user),
@@ -341,6 +347,7 @@ export const useAuthStore = create<AuthState>()(
 
           return response;
         } catch (error: any) {
+          console.error('[authStore] verifyPhoneOTP error:', error?.code, error?.message, error);
           const authError = handleAuthError(error);
           set({ isLoading: false, error: authError.message });
           throw authError;

@@ -103,7 +103,9 @@ export default function VerifyOTPScreen() {
         }
       }
     } catch (error: any) {
-      let errorMsg = 'Invalid OTP. Please try again.';
+      console.error('❌ OTP Verification Failed Details:', error);
+
+      let errorMsg = error.message || 'Invalid OTP. Please try again.';
 
       if (error.message?.includes('already been linked') || error.code === 'auth/provider-already-linked') {
         // Fallback UI safety if the firebase.ts fix didn't catch it smoothly
@@ -124,9 +126,9 @@ export default function VerifyOTPScreen() {
       }
 
       if (error.code === 'auth/invalid-verification-code') {
-        errorMsg = 'The code you entered is incorrect.';
+        errorMsg = 'The OTP code you entered is incorrect. Please check and try again.';
       } else if (error.code === 'auth/code-expired') {
-        errorMsg = 'The code has expired. Please request a new one.';
+        errorMsg = 'The OTP code has expired. Please tap "Resend Code".';
       }
 
       Alert.alert('Verification Failed', errorMsg);

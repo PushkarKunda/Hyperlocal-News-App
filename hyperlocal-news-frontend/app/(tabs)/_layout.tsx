@@ -55,6 +55,7 @@ export default function TabLayout() {
       // Main top-level tabs
       if (
         cleanPath === '/' ||
+        cleanPath === '/posts' ||
         cleanPath === '/shorts' ||
         cleanPath === '/local' ||
         cleanPath === '/discover' ||
@@ -103,6 +104,15 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="posts"
+        options={{
+          title: 'Posts',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="dynamic-feed" size={24} color={color} />
           ),
         }}
       />

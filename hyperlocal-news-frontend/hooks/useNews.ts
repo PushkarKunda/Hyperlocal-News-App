@@ -118,12 +118,12 @@ export function usePopularNews() {
 }
 
 /**
- * GET /news/v1/news-shorts
+ * GET /shorts/shorts/feed
  */
-export function useNewsShorts() {
+export function useNewsShorts(language: string = 'te') {
   return useQuery({
-    queryKey: newsKeys.shorts,
-    queryFn: () => newsApi.getShorts(),
+    queryKey: [...newsKeys.shorts, language],
+    queryFn: () => newsApi.getShorts({ language, limit: 20 }),
     staleTime: 1000 * 60 * 2,
   });
 }

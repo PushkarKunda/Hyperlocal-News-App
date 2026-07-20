@@ -18,10 +18,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const activeDescriptor = descriptors[activeRoute.key];
     const activeOptions = activeDescriptor?.options;
 
-    // The tab bar should only hide/show on the home page (index).
-    // On all other primary tabs, it must remain visible!
-    const isHome = activeRoute?.name === 'index';
-    const isTabBarVisible = isHome ? visible : true;
+    // Tab bar pop-up / hide is controlled dynamically on index, posts, and shorts feeds.
+    const routeName = activeRoute?.name;
+    const isFullscreenFeed = ['index', 'posts', 'shorts'].includes(routeName);
+    const isTabBarVisible = isFullscreenFeed ? visible : true;
 
     useEffect(() => {
         Animated.spring(translateY, {
@@ -57,8 +57,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             ]}
         >
             {state.routes.map((route, index) => {
-                // Only render the 5 primary tabs in the bottom bar
-                const allowedTabs = ['index', 'shorts', 'local', 'discover', 'more'];
+                // Only render the primary tabs in the bottom bar
+                const allowedTabs = ['index', 'posts', 'shorts', 'local', 'discover', 'more'];
                 if (!allowedTabs.includes(route.name)) {
                     return null;
                 }
@@ -97,6 +97,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 // Determine icon name
                 let iconName: any = 'home';
                 if (route.name === 'index') iconName = 'home';
+                else if (route.name === 'posts') iconName = 'dynamic-feed';
                 else if (route.name === 'shorts') iconName = 'play-circle-outline';
                 else if (route.name === 'local') iconName = 'near-me';
                 else if (route.name === 'discover') iconName = 'explore';
