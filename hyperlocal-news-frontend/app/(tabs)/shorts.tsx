@@ -52,11 +52,21 @@ const ShortAdCard = React.memo(({ item, itemHeight }: { item: { type: 'ad'; data
 // The /shorts/ page plays natively in WebView without embedding restrictions.
 const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, onToggleFooter }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number; onToggleFooter?: () => void }) => {
   const insets = useSafeAreaInsets();
+  const [progress, setProgress] = useState(0);
 
   const channelTitle = item.channel_title || item.source_name || item.source || 'Telugu Shorts';
   const avatarLetter = channelTitle.charAt(0).toUpperCase();
 
   const shortsUrl = `https://www.youtube.com/shorts/${item.video_id}`;
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'progress' && typeof data.progress === 'number') {
+        setProgress(Math.min(100, Math.max(0, data.progress)));
+      }
+    } catch (e) {}
+  };
 
   return (
     <View style={[styles.itemContainer, { height: itemHeight }]}>
@@ -71,6 +81,7 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
           allowsInlineMediaPlayback={true}
           scrollEnabled={false}
           setSupportMultipleWindows={false}
+          onMessage={handleMessage}
           userAgent="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
           injectedJavaScript={`
             // Hide YouTube UI elements to make it look native
@@ -93,6 +104,18 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
               body { background: #000 !important; overflow: hidden !important; }
             \`;
             document.head.appendChild(style);
+
+            // Periodically report video progress back to React Native
+            setInterval(() => {
+              try {
+                const v = document.querySelector('video');
+                if (v && v.duration > 0) {
+                  const pct = (v.currentTime / v.duration) * 100;
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'progress', progress: pct }));
+                }
+              } catch(e) {}
+            }, 200);
+
             true;
           `}
           onShouldStartLoadWithRequest={(request) => {
@@ -168,10 +191,10 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
           </Text>
         </View>
 
-        {/* Progress Bar */}
+        {/* Dynamic Progress Bar */}
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: '45%' }]} />
+            <View style={[styles.progressBarFill, { width: `${progress.toFixed(1)}%` as any }]} />
           </View>
         </View>
       </LinearGradient>
@@ -189,6 +212,7 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
 // ─── Native Video Short Card (for non-YouTube content) ──────────────────────
 const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, onToggleFooter }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number; onToggleFooter?: () => void }) => {
   const insets = useSafeAreaInsets();
+  const [progress, setProgress] = useState(0);
 
   const player = useVideoPlayer(shouldLoad && (item.video_url || item.image_url) ? { uri: item.video_url || item.image_url } : null, player => {
     player.loop = true;
@@ -202,6 +226,22 @@ const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, on
         player.pause();
       }
     }
+  }, [isActive, shouldLoad, player]);
+
+  React.useEffect(() => {
+    if (!isActive || !shouldLoad || !player) {
+      setProgress(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      try {
+        if (player.duration > 0) {
+          const pct = (player.currentTime / player.duration) * 100;
+          setProgress(Math.min(100, Math.max(0, pct)));
+        }
+      } catch (e) {}
+    }, 200);
+    return () => clearInterval(interval);
   }, [isActive, shouldLoad, player]);
 
   const channelTitle = item.channel_title || item.source_name || item.source || 'Telugu Shorts';
@@ -272,10 +312,10 @@ const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, on
           </Text>
         </View>
 
-        {/* Progress Bar */}
+        {/* Dynamic Progress Bar */}
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: '45%' }]} />
+            <View style={[styles.progressBarFill, { width: `${progress.toFixed(1)}%` as any }]} />
           </View>
         </View>
       </LinearGradient>
