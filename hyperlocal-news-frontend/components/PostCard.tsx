@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Share,
   useWindowDimensions,
 } from 'react-native';
@@ -23,6 +24,7 @@ interface PostCardProps {
   onOpenComments: (postUid: string) => void;
   isBookmarked?: boolean;
   containerHeight?: number;
+  onToggleHeaderFooter?: () => void;
 }
 
 const GRADIENT_PRESETS = [
@@ -38,6 +40,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onOpenComments,
   isBookmarked: initialBookmarked = false,
   containerHeight,
+  onToggleHeaderFooter,
 }) => {
   const insets = useSafeAreaInsets();
   const colorScheme = useAppColorScheme();
@@ -118,6 +121,13 @@ export const PostCard: React.FC<PostCardProps> = ({
         />
       )}
 
+      {/* Background Tap Handler to toggle header/footer (only when tapping background) */}
+      {onToggleHeaderFooter && (
+        <TouchableWithoutFeedback onPress={onToggleHeaderFooter}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
+      )}
+
       {/* Top Gradient Overlay */}
       <LinearGradient
         colors={['rgba(0,0,0,0.92)', 'rgba(0,0,0,0.5)', 'transparent']}
@@ -133,9 +143,9 @@ export const PostCard: React.FC<PostCardProps> = ({
       />
 
       {/* Content Container (Overlay over the image) */}
-      <View style={[styles.overlayContent, { paddingTop: Math.max(insets.top, 16) + 12 }]}>
+      <View style={[styles.overlayContent, { paddingTop: Math.max(insets.top, 16) + 12 }]} pointerEvents="box-none">
         {/* Header (User Info) */}
-        <View style={styles.headerRow}>
+        <View style={styles.headerRow} pointerEvents="box-none">
           <Image
             source={{
               uri:
@@ -176,7 +186,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         </View>
 
         {/* Middle/Lower Section: Post Details */}
-        <View style={styles.detailsContainer}>
+        <View style={styles.detailsContainer} pointerEvents="box-none">
           {post.content ? (
             <Text style={styles.postText} numberOfLines={6}>
               {post.content}
@@ -215,7 +225,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             {/* Comment */}
             <TouchableOpacity
               style={styles.actionPill}
-              onPress={() => onOpenComments(post.post_uid)}
+              onPress={() => onOpenComments(post.post_uid || (post as any).uid || String(post.id))}
               activeOpacity={0.7}
             >
               <Ionicons name="chatbubble-outline" size={19} color="#FFFFFF" />

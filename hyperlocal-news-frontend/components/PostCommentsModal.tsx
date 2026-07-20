@@ -34,8 +34,12 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
 
   const [commentText, setCommentText] = useState('');
 
-  const { data: comments = [], isLoading } = usePostComments(postUid);
+  const { data: rawComments, isLoading } = usePostComments(postUid);
   const { mutate: addComment, isPending: isAdding } = useAddPostComment();
+
+  const comments = Array.isArray(rawComments)
+    ? rawComments
+    : (rawComments as any)?.comments || (rawComments as any)?.items || (rawComments as any)?.data || [];
 
   const handlePostComment = () => {
     if (!postUid || !commentText.trim()) return;
@@ -54,26 +58,31 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
 
   const renderComment = ({ item }: { item: any }) => {
     const isOwner = user?.user_uid === item.user_uid;
+    const avatarUri = item.user_avatar || item.user_profile_picture || item.avatar || 'https://placehold.co/100x100/E2E8F0/1E293B?text=User';
+    const authorName = item.user_display_name || item.user_name || item.username || item.author_name || 'Community Member';
+    const timeText = item.time_ago || (item.created_at ? formatTimeAgo(item.created_at) : '');
+    const contentText = item.comment_text || item.content || item.text || '';
+
     return (
       <View style={[styles.commentContainer, { borderBottomColor: colors.border }]}>
         <Image
-          source={{ uri: item.user_avatar || item.user_profile_picture || 'https://via.placeholder.com/40' }}
+          source={{ uri: avatarUri }}
           style={styles.avatar}
           contentFit="cover"
         />
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
             <Text style={[styles.userName, { color: colors.text }]}>
-              {item.user_name || item.user_display_name || 'User'}
+              {authorName}
             </Text>
-            {item.created_at && (
+            {Boolean(timeText) && (
               <Text style={[styles.timeText, { color: colors.textTertiary }]}>
-                {formatTimeAgo(item.created_at)}
+                {timeText}
               </Text>
             )}
           </View>
           <Text style={[styles.commentText, { color: colors.textSecondary }]}>
-            {item.comment_text || item.content}
+            {contentText}
           </Text>
         </View>
       </View>

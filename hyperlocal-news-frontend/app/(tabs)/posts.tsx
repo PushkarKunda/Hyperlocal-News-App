@@ -165,9 +165,10 @@ export default function PostsScreen() {
         onOpenComments={handleOpenComments}
         isBookmarked={bookmarkedPostUids.has(item.post_uid)}
         containerHeight={scrollHeight}
+        onToggleHeaderFooter={toggleHeader}
       />
     ),
-    [handleOpenComments, bookmarkedPostUids, scrollHeight]
+    [handleOpenComments, bookmarkedPostUids, scrollHeight, toggleHeader]
   );
 
   const getItemLayout = useCallback(
@@ -190,11 +191,7 @@ export default function PostsScreen() {
   });
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: '#0F172A' }]}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
+    <View style={[styles.container, { backgroundColor: '#0F172A' }]}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
 
       {/* Animated Header Overlay */}

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   FlatList,
   ViewToken,
   useWindowDimensions,
@@ -49,7 +50,7 @@ const ShortAdCard = React.memo(({ item, itemHeight }: { item: { type: 'ad'; data
 // ─── YouTube Short Card ─────────────────────────────────────────────────────
 // Loads the actual YouTube Shorts page (not /embed/) inside a WebView.
 // The /shorts/ page plays natively in WebView without embedding restrictions.
-const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
+const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, onToggleFooter }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number; onToggleFooter?: () => void }) => {
   const insets = useSafeAreaInsets();
 
   const channelTitle = item.channel_title || item.source_name || item.source || 'Telugu Shorts';
@@ -111,8 +112,15 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight }:
         />
       )}
 
+      {/* Background Tap Handler to toggle footer (only when tapping background) */}
+      {onToggleFooter && (
+        <TouchableWithoutFeedback onPress={onToggleFooter}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
+      )}
+
       {/* Right Interaction Stack */}
-      <View style={styles.rightStack}>
+      <View style={styles.rightStack} pointerEvents="box-none">
         <View style={styles.actionItem}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -179,7 +187,7 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight }:
 });
 
 // ─── Native Video Short Card (for non-YouTube content) ──────────────────────
-const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
+const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, onToggleFooter }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number; onToggleFooter?: () => void }) => {
   const insets = useSafeAreaInsets();
 
   const player = useVideoPlayer(shouldLoad && (item.video_url || item.image_url) ? { uri: item.video_url || item.image_url } : null, player => {
@@ -208,8 +216,15 @@ const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: 
         nativeControls={false}
       />
 
+      {/* Background Touch Layer to toggle footer */}
+      {onToggleFooter && (
+        <TouchableWithoutFeedback onPress={onToggleFooter}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
+      )}
+
       {/* Right Interaction Stack */}
-      <View style={styles.rightStack}>
+      <View style={styles.rightStack} pointerEvents="box-none">
         <View style={styles.actionItem}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -292,21 +307,6 @@ export default function ShortsScreen() {
     setTabBarVisible(!isVisible);
   }, [setTabBarVisible]);
 
-  const onTouchStart = (e: any) => {
-    const { pageX, pageY } = e.nativeEvent;
-    touchStartRef.current = { x: pageX, y: pageY, time: Date.now() };
-  };
-
-  const onTouchEnd = (e: any) => {
-    const { pageX, pageY } = e.nativeEvent;
-    const dx = Math.abs(pageX - touchStartRef.current.x);
-    const dy = Math.abs(pageY - touchStartRef.current.y);
-    const dt = Date.now() - touchStartRef.current.time;
-    if (dx < 10 && dy < 10 && dt < 300) {
-      toggleFooter();
-    }
-  };
-
   // ─── Data ──────────────────────────────────────────────────────────────
   const { data: rawShorts = [], isLoading: isLoadingShorts } = useNewsShorts('te');
   const { data: ads = [], isLoading: isLoadingAds } = useQuery({
@@ -346,6 +346,7 @@ export default function ShortsScreen() {
           isActive={index === activeIndex}
           shouldLoad={shouldLoad}
           itemHeight={listHeight}
+          onToggleFooter={toggleFooter}
         />
       );
     }
@@ -357,9 +358,10 @@ export default function ShortsScreen() {
         isActive={index === activeIndex}
         shouldLoad={shouldLoad}
         itemHeight={listHeight}
+        onToggleFooter={toggleFooter}
       />
     );
-  }, [activeIndex, listHeight]);
+  }, [activeIndex, listHeight, toggleFooter]);
 
   const keyExtractor = useCallback((item: ShortFeedItem, index: number) => {
     if (isAdvertisement(item)) return `ad-${item.data.ad_id}-${index}`;
@@ -378,8 +380,6 @@ export default function ShortsScreen() {
     <View
       style={styles.container}
       onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
     >
       <FlatList
         data={shortsFeed}
