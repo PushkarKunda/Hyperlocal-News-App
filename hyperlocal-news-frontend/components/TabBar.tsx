@@ -18,10 +18,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const activeDescriptor = descriptors[activeRoute.key];
     const activeOptions = activeDescriptor?.options;
 
-    // The tab bar should only hide/show on the home page (index).
-    // On all other primary tabs, it must remain visible!
-    const isHome = activeRoute?.name === 'index';
-    const isTabBarVisible = isHome ? visible : true;
+    // Tab bar pop-up / hide is controlled dynamically on index, posts, and shorts feeds.
+    const routeName = activeRoute?.name;
+    const isFullscreenFeed = ['index', 'posts', 'shorts'].includes(routeName);
+    const isTabBarVisible = isFullscreenFeed ? visible : true;
 
     useEffect(() => {
         Animated.spring(translateY, {

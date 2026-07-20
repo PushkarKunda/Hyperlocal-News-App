@@ -1,6 +1,17 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ViewToken, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ViewToken,
+  useWindowDimensions,
+  Linking,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from 'expo-router';
+import { WebView } from 'react-native-webview';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -10,11 +21,11 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useNewsShorts } from '@/hooks/useNews';
 import { useQuery } from '@tanstack/react-query';
 import { contentApi, Advertisement } from '@/services/api/content';
-import { NewsArticle } from '@/services/api/news';
 import { injectAdsIntoFeed, isAdvertisement } from '@/hooks/feedInjection';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useTabBarStore } from '@/store/tabBarStore';
 
-type ShortFeedItem = NewsArticle | { type: 'ad'; data: Advertisement; position: number };
+type ShortFeedItem = any;
 
 const ShortAdCard = React.memo(({ item, itemHeight }: { item: { type: 'ad'; data: Advertisement }; itemHeight: number }) => {
   return (
@@ -35,46 +46,77 @@ const ShortAdCard = React.memo(({ item, itemHeight }: { item: { type: 'ad'; data
   );
 });
 
-const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: NewsArticle; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
+// ─── YouTube Short Card ─────────────────────────────────────────────────────
+// Loads the actual YouTube Shorts page (not /embed/) inside a WebView.
+// The /shorts/ page plays natively in WebView without embedding restrictions.
+const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
   const insets = useSafeAreaInsets();
-  const player = useVideoPlayer(shouldLoad && item.image_url ? { uri: item.image_url } : null, player => {
-    player.loop = true;
-  });
 
-  React.useEffect(() => {
-    if (isActive && shouldLoad) {
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [isActive, shouldLoad, player]);
+  const channelTitle = item.channel_title || item.source_name || item.source || 'Telugu Shorts';
+  const avatarLetter = channelTitle.charAt(0).toUpperCase();
 
-  const handlePress = () => {
-    if (player.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
-  };
+  const shortsUrl = `https://www.youtube.com/shorts/${item.video_id}`;
 
   return (
     <View style={[styles.itemContainer, { height: itemHeight }]}>
-      <VideoView
-        player={player}
-        style={styles.backgroundImage}
-        contentFit="cover"
-        nativeControls={false}
-      />
-      <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={StyleSheet.absoluteFillObject} />
-      </TouchableWithoutFeedback>
+      {isActive && shouldLoad ? (
+        <WebView
+          source={{ uri: shortsUrl }}
+          style={styles.backgroundImage}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          mediaPlaybackRequiresUserAction={false}
+          allowsInlineMediaPlayback={true}
+          scrollEnabled={false}
+          setSupportMultipleWindows={false}
+          userAgent="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+          injectedJavaScript={`
+            // Hide YouTube UI elements to make it look native
+            const style = document.createElement('style');
+            style.textContent = \`
+              ytm-mobile-topbar-renderer,
+              .mobile-topbar-header,
+              ytm-pivot-bar-renderer,
+              .page-container > :not(ytm-shorts),
+              header, .header,
+              .ytm-autonav-bar,
+              #guide-button,
+              ytm-comments-entry-point-header-renderer,
+              .reel-player-overlay-actions,
+              .player-controls-top,
+              ytm-shorts-player-controls,
+              .navigation-container,
+              .slim-owner,
+              .bottom-bar { display: none !important; }
+              body { background: #000 !important; overflow: hidden !important; }
+            \`;
+            document.head.appendChild(style);
+            true;
+          `}
+          onShouldStartLoadWithRequest={(request) => {
+            // Prevent navigation away from the shorts page
+            if (request.url.includes('/shorts/') || request.url.includes('youtube.com')) {
+              return true;
+            }
+            return false;
+          }}
+        />
+      ) : (
+        <Image
+          source={{ uri: item.thumbnail_url || `https://img.youtube.com/vi/${item.video_id}/maxresdefault.jpg` }}
+          style={styles.backgroundImage}
+          contentFit="cover"
+          transition={200}
+        />
+      )}
 
       {/* Right Interaction Stack */}
       <View style={styles.rightStack}>
         <View style={styles.actionItem}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.source ? item.source.charAt(0) : 'U'}</Text>
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
             </View>
             <View style={styles.plusIconContainer}>
               <MaterialIcons name="add" size={12} color="white" />
@@ -84,12 +126,12 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
 
         <TouchableOpacity style={styles.actionItem}>
           <Ionicons name="heart" size={32} color="white" style={styles.iconShadow} />
-          <Text style={styles.actionText}>{item.likes}</Text>
+          <Text style={styles.actionText}>{item.likes || 0}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionItem}>
-          <Ionicons name="chatbubble" size={30} color="white" style={styles.iconShadow} />
-          <Text style={styles.actionText}>{item.comments}</Text>
+          <Ionicons name="eye-outline" size={28} color="white" style={styles.iconShadow} />
+          <Text style={styles.actionText}>{item.views || 0}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionItem}>
@@ -98,48 +140,33 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionItem}>
-          <MaterialIcons name="more-horiz" size={32} color="white" style={styles.iconShadow} />
+          <Ionicons name="bookmark-outline" size={28} color="white" style={styles.iconShadow} />
+          <Text style={styles.actionText}>Save</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Info Overlay */}
+      {/* Bottom Info Gradient Overlay */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
-        locations={[0, 0.5, 1]}
-        style={[styles.bottomGradient, { paddingBottom: 40 }]}
+        colors={['transparent', 'rgba(0,0,0,0.88)']}
+        style={[styles.bottomGradient, { paddingBottom: insets.bottom + Spacing.xl }]}
+        pointerEvents="box-none"
       >
         <View style={styles.infoContainer}>
-          {/* User Info */}
-          <View style={styles.userInfoRow}>
-            <Text style={styles.username}>@{item.source || 'unknown'}</Text>
-            {item.is_breaking && (
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveText}>LIVE</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Title & Description */}
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.description} numberOfLines={2}>
-            {item.summary}
+          <Text style={styles.channelTitle} numberOfLines={1}>
+            {channelTitle}
           </Text>
+          <Text style={styles.title} numberOfLines={3}>
+            {item.title}
+          </Text>
+        </View>
 
-          {/* Hashtags */}
-          <View style={styles.hashtagsRow}>
-            {(item.category_names || []).map((tag, index) => (
-              <Text key={index} style={styles.hashtag}>#{tag}</Text>
-            ))}
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: '45%' }]} />
           </View>
         </View>
       </LinearGradient>
-
-      {/* Progress Bar Placeholder */}
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBarFill, { width: '33.34%' }]} />
-        </View>
-      </View>
     </View>
   );
 }, (prevProps, nextProps) => {
@@ -147,18 +174,141 @@ const ShortVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: {
     prevProps.isActive === nextProps.isActive &&
     prevProps.shouldLoad === nextProps.shouldLoad &&
     prevProps.itemHeight === nextProps.itemHeight &&
-    prevProps.item.news_uid === nextProps.item.news_uid
+    (prevProps.item.video_id || prevProps.item.news_uid) === (nextProps.item.video_id || nextProps.item.news_uid)
+  );
+});
+
+// ─── Native Video Short Card (for non-YouTube content) ──────────────────────
+const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight }: { item: any; isActive: boolean; shouldLoad: boolean; itemHeight: number }) => {
+  const insets = useSafeAreaInsets();
+
+  const player = useVideoPlayer(shouldLoad && (item.video_url || item.image_url) ? { uri: item.video_url || item.image_url } : null, player => {
+    player.loop = true;
+  });
+
+  React.useEffect(() => {
+    if (player) {
+      if (isActive && shouldLoad) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    }
+  }, [isActive, shouldLoad, player]);
+
+  const channelTitle = item.channel_title || item.source_name || item.source || 'Telugu Shorts';
+  const avatarLetter = channelTitle.charAt(0).toUpperCase();
+
+  return (
+    <View style={[styles.itemContainer, { height: itemHeight }]}>
+      <VideoView
+        player={player}
+        style={styles.backgroundImage}
+        contentFit="cover"
+        nativeControls={false}
+      />
+
+      {/* Right Interaction Stack */}
+      <View style={styles.rightStack}>
+        <View style={styles.actionItem}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
+            </View>
+            <View style={styles.plusIconContainer}>
+              <MaterialIcons name="add" size={12} color="white" />
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.actionItem}>
+          <Ionicons name="heart" size={32} color="white" style={styles.iconShadow} />
+          <Text style={styles.actionText}>{item.likes || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionItem}>
+          <Ionicons name="eye-outline" size={28} color="white" style={styles.iconShadow} />
+          <Text style={styles.actionText}>{item.views || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionItem}>
+          <MaterialIcons name="reply" size={32} color="white" style={[styles.iconShadow, { transform: [{ scaleX: -1 }] }]} />
+          <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionItem}>
+          <Ionicons name="bookmark-outline" size={28} color="white" style={styles.iconShadow} />
+          <Text style={styles.actionText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom Info Gradient Overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.88)']}
+        style={[styles.bottomGradient, { paddingBottom: insets.bottom + Spacing.xl }]}
+        pointerEvents="box-none"
+      >
+        <View style={styles.infoContainer}>
+          <Text style={styles.channelTitle} numberOfLines={1}>
+            {channelTitle}
+          </Text>
+          <Text style={styles.title} numberOfLines={3}>
+            {item.title}
+          </Text>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: '45%' }]} />
+          </View>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.isActive === nextProps.isActive &&
+    prevProps.shouldLoad === nextProps.shouldLoad &&
+    prevProps.itemHeight === nextProps.itemHeight &&
+    (prevProps.item.video_id || prevProps.item.news_uid) === (nextProps.item.video_id || nextProps.item.news_uid)
   );
 });
 
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
   const [listHeight, setListHeight] = useState(height);
+  const setTabBarVisible = useTabBarStore((s) => s.setVisible);
 
-  const { data: rawShorts = [], isLoading: isLoadingShorts } = useNewsShorts();
+  // ─── Animation & Touch ──────────────────────────────────────────────────
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+
+  const toggleFooter = useCallback(() => {
+    const isVisible = useTabBarStore.getState().visible;
+    setTabBarVisible(!isVisible);
+  }, [setTabBarVisible]);
+
+  const onTouchStart = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    touchStartRef.current = { x: pageX, y: pageY, time: Date.now() };
+  };
+
+  const onTouchEnd = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    const dx = Math.abs(pageX - touchStartRef.current.x);
+    const dy = Math.abs(pageY - touchStartRef.current.y);
+    const dt = Date.now() - touchStartRef.current.time;
+    if (dx < 10 && dy < 10 && dt < 300) {
+      toggleFooter();
+    }
+  };
+
+  // ─── Data ──────────────────────────────────────────────────────────────
+  const { data: rawShorts = [], isLoading: isLoadingShorts } = useNewsShorts('te');
   const { data: ads = [], isLoading: isLoadingAds } = useQuery({
     queryKey: ['active-ads', 'shorts'],
     queryFn: () => contentApi.getActiveAdvertisements(),
@@ -187,8 +337,22 @@ export default function ShortsScreen() {
       return <ShortAdCard item={item} itemHeight={listHeight} />;
     }
 
+    // YouTube content → plays in-app via WebView
+    const isYouTube = Boolean(item.video_id || item.source === 'youtube');
+    if (isYouTube) {
+      return (
+        <YouTubeShortCard
+          item={item}
+          isActive={index === activeIndex}
+          shouldLoad={shouldLoad}
+          itemHeight={listHeight}
+        />
+      );
+    }
+
+    // Native video content
     return (
-      <ShortVideoItem
+      <NativeVideoItem
         item={item}
         isActive={index === activeIndex}
         shouldLoad={shouldLoad}
@@ -199,7 +363,7 @@ export default function ShortsScreen() {
 
   const keyExtractor = useCallback((item: ShortFeedItem, index: number) => {
     if (isAdvertisement(item)) return `ad-${item.data.ad_id}-${index}`;
-    return item.news_uid;
+    return item.video_id ? `yt-${item.video_id}` : item.news_uid || String(item.id || index);
   }, []);
 
   if (isLoading) {
@@ -211,7 +375,12 @@ export default function ShortsScreen() {
   }
 
   return (
-    <View style={styles.container} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
+    <View
+      style={styles.container}
+      onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <FlatList
         data={shortsFeed}
         keyExtractor={keyExtractor}
@@ -230,12 +399,21 @@ export default function ShortsScreen() {
         windowSize={3}
       />
 
-      {/* Top Bar Overlay (Static across list) */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.5)', 'transparent']}
-        style={[styles.topGradient, { paddingTop: insets.top + Spacing.sm }]}
+      {/* Top Bar Static Overlay */}
+      <View
+        style={[
+          styles.topGradient,
+          {
+            paddingTop: insets.top + Spacing.sm,
+          },
+        ]}
         pointerEvents="box-none"
       >
+        <LinearGradient
+          colors={['rgba(0,0,0,0.75)', 'transparent']}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
         <View style={styles.topBar}>
           <View style={styles.tabsContainer}>
             <TouchableOpacity onPress={() => setActiveTab('Following')} style={styles.tabItem}>
@@ -249,7 +427,7 @@ export default function ShortsScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -268,6 +446,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  playButtonContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 8,
+  },
+  playButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   topGradient: {
     position: 'absolute',
     top: 0,
@@ -284,11 +481,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     paddingTop: Spacing.sm,
     height: 48,
-  },
-  menuLeftButton: {
-    position: 'absolute',
-    left: 0,
-    paddingTop: Spacing.sm,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -316,7 +508,7 @@ const styles = StyleSheet.create({
   rightStack: {
     position: 'absolute',
     right: Spacing.md,
-    bottom: 120,
+    bottom: 40,
     alignItems: 'center',
     gap: Spacing.xl,
     zIndex: 10,
@@ -348,87 +540,52 @@ const styles = StyleSheet.create({
     backgroundColor: '#4648D4',
     borderWidth: 2,
     borderColor: '#FFF',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: {
     color: '#FFF',
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.lg,
     fontFamily: Typography.fonts.bold,
   },
   plusIconContainer: {
     position: 'absolute',
-    bottom: -8,
+    bottom: -4,
     alignSelf: 'center',
-    backgroundColor: '#4648D4',
-    width: 20,
-    height: 20,
+    backgroundColor: '#EF4444',
     borderRadius: 10,
-    alignItems: 'center',
+    width: 16,
+    height: 16,
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
+    alignItems: 'center',
   },
   bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 300,
-    justifyContent: 'flex-end',
     paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing['2xl'] * 2,
+    justifyContent: 'flex-end',
+    zIndex: 5,
   },
   infoContainer: {
-    width: '80%',
+    marginBottom: Spacing.md,
+    maxWidth: '80%',
   },
-  userInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  username: {
-    color: '#FFF',
-    fontSize: Typography.sizes.lg,
+  channelTitle: {
+    color: '#38BDF8',
+    fontSize: Typography.sizes.sm,
     fontFamily: Typography.fonts.bold,
-    marginRight: Spacing.sm,
-  },
-  liveBadge: {
-    backgroundColor: 'rgba(70, 72, 212, 0.2)',
-    borderColor: 'rgba(70, 72, 212, 0.3)',
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-  },
-  liveText: {
-    color: '#4648D4',
-    fontSize: 10,
-    fontFamily: Typography.fonts.bold,
+    marginBottom: 4,
     letterSpacing: 0.5,
   },
   title: {
     color: '#FFF',
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.lg,
     fontFamily: Typography.fonts.bold,
-    lineHeight: 25,
+    lineHeight: 24,
     marginBottom: Spacing.xs,
-  },
-  description: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: Typography.sizes.sm,
-    fontFamily: Typography.fonts.regular,
-    lineHeight: 20,
-    marginBottom: Spacing.sm,
-  },
-  hashtagsRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  hashtag: {
-    color: '#4648D4',
-    fontSize: Typography.sizes.sm,
-    fontFamily: Typography.fonts.semiBold,
   },
   progressBarContainer: {
     position: 'absolute',

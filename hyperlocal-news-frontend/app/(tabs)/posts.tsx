@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -24,20 +27,89 @@ import { PostCard } from '@/components/PostCard';
 import { PostCommentsModal } from '@/components/PostCommentsModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
+import { useTabBarStore } from '@/store/tabBarStore';
 
 export default function PostsScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { height: screenHeight } = useWindowDimensions();
+  const setTabBarVisible = useTabBarStore((s) => s.setVisible);
 
-  // ─── State ─────────────────────────────────────────────────────────────
+  // ─── State & Animation ─────────────────────────────────────────────────
+  const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [selectedPostUid, setSelectedPostUid] = useState<string | null>(null);
   const [isCommentsVisible, setIsCommentsVisible] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
+
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const isHeaderVisible = useRef(false);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showHeader = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    isHeaderVisible.current = true;
+    setTabBarVisible(true);
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+    hideTimerRef.current = setTimeout(() => hideHeader(), 4000);
+  }, [setTabBarVisible, headerAnim]);
+
+  const hideHeader = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    isHeaderVisible.current = false;
+    setTabBarVisible(false);
+    Animated.timing(headerAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [setTabBarVisible, headerAnim]);
+
+  const toggleHeader = useCallback(() => {
+    if (isHeaderVisible.current) {
+      hideHeader();
+    } else {
+      showHeader();
+    }
+  }, [hideHeader, showHeader]);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', () => {
+      hideHeader();
+    });
+    return unsub;
+  }, [navigation, hideHeader]);
+
+  const onTouchStart = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    touchStartRef.current = { x: pageX, y: pageY, time: Date.now() };
+  };
+
+  const onTouchEnd = (e: any) => {
+    const { pageX, pageY } = e.nativeEvent;
+    const dx = Math.abs(pageX - touchStartRef.current.x);
+    const dy = Math.abs(pageY - touchStartRef.current.y);
+    const dt = Date.now() - touchStartRef.current.time;
+    if (dx < 10 && dy < 10 && dt < 300) {
+      toggleHeader();
+    }
+  };
 
   // ─── Data ──────────────────────────────────────────────────────────────
   const { data: feedData, isLoading, isRefetching, refetch } = usePublicPostsFeed(20);
@@ -86,25 +158,55 @@ export default function PostsScreen() {
     );
   };
 
-  const renderPostItem = ({ item }: { item: any }) => (
-    <PostCard
-      post={item}
-      onOpenComments={handleOpenComments}
-      isBookmarked={bookmarkedPostUids.has(item.post_uid)}
-    />
+  const renderPostItem = useCallback(
+    ({ item }: { item: any }) => (
+      <PostCard
+        post={item}
+        onOpenComments={handleOpenComments}
+        isBookmarked={bookmarkedPostUids.has(item.post_uid)}
+        containerHeight={scrollHeight}
+      />
+    ),
+    [handleOpenComments, bookmarkedPostUids, scrollHeight]
   );
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: scrollHeight,
+      offset: scrollHeight * index,
+      index,
+    }),
+    [scrollHeight]
+  );
 
-      {/* Header */}
-      <View
+  const headerTranslateY = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-120, 0],
+  });
+
+  const headerOpacity = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  return (
+    <View
+      style={[styles.container, { backgroundColor: '#0F172A' }]}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+
+      {/* Animated Header Overlay */}
+      <Animated.View
         style={[
-          styles.header,
+          styles.animatedHeader,
           {
+            transform: [{ translateY: headerTranslateY }],
+            opacity: headerOpacity,
             backgroundColor: colors.surface,
             borderBottomColor: colors.border,
+            paddingTop: insets.top + 8,
           },
         ]}
       >
@@ -114,53 +216,60 @@ export default function PostsScreen() {
             Share updates and engage with local discussions
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.createHeaderBtn, { backgroundColor: colors.primary }]}
-          onPress={() => setIsCreateModalOpen(true)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-          <Text style={styles.createHeaderBtnText}>Post</Text>
-        </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Main Posts Feed */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner fullScreen text="Loading community posts..." colorScheme={colorScheme ?? 'light'} />
-        </View>
-      ) : posts.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="documents-outline" size={56} color={colors.textTertiary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Posts Yet</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Be the first to share something with your community!
-          </Text>
-          <TouchableOpacity
-            style={[styles.emptyActionBtn, { backgroundColor: colors.primary }]}
-            onPress={() => setIsCreateModalOpen(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.emptyActionBtnText}>Create a Post</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={(item) => item.post_uid || String(item.id)}
-          renderItem={renderPostItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
-        />
-      )}
+      <View
+        style={styles.feedWrapper}
+        onLayout={(e) => setScrollHeight(e.nativeEvent.layout.height)}
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <LoadingSpinner fullScreen text="Loading community posts..." colorScheme={colorScheme ?? 'light'} />
+          </View>
+        ) : posts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="documents-outline" size={56} color={colors.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Posts Yet</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Be the first to share something with your community!
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyActionBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setIsCreateModalOpen(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.emptyActionBtnText}>Create a Post</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={posts}
+            keyExtractor={(item) => item.post_uid || String(item.id)}
+            renderItem={renderPostItem}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            snapToInterval={scrollHeight}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            disableIntervalMomentum
+            bounces={false}
+            getItemLayout={getItemLayout}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={5}
+            removeClippedSubviews={true}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={refetch}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+          />
+        )}
+      </View>
 
       {/* Floating Action Button (FAB) */}
       <TouchableOpacity
@@ -264,13 +373,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  animatedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    elevation: 5,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: 14,
     borderBottomWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   headerTitleContainer: {
     flex: 1,
@@ -283,19 +399,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  createHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  createHeaderBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 4,
+  feedWrapper: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -328,13 +433,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  listContent: {
-    paddingVertical: 12,
-    paddingBottom: 90,
-  },
   fab: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 30,
     right: 20,
     width: 56,
     height: 56,
@@ -346,6 +447,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
+    zIndex: 10,
   },
   modalOverlay: {
     flex: 1,

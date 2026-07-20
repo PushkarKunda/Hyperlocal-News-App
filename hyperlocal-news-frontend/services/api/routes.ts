@@ -38,6 +38,7 @@ export const API_ROUTES = {
 
     // News Shorts
     shorts: '/news/v1/news-shorts',                             // GET - News shorts
+    shortsFeed: '/shorts/shorts/feed',                          // GET - YouTube shorts feed
 
     // Engagement
     engagement: (uid: string) => `/news/v1/news/${uid}/engagement`, // GET - News engagement stats

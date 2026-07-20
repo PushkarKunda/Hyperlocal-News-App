@@ -2467,4 +2467,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 18,
   },
+  createHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+  },
+  createHeaderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'Poppins_600SemiBold',
+    marginLeft: 4,
+  },
 });

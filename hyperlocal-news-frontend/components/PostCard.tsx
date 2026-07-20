@@ -5,9 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Post } from '@/services/api/posts';
 import { Colors } from '@/constants/Colors';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -19,16 +22,29 @@ interface PostCardProps {
   post: Post;
   onOpenComments: (postUid: string) => void;
   isBookmarked?: boolean;
+  containerHeight?: number;
 }
+
+const GRADIENT_PRESETS = [
+  ['#0F172A', '#1E1B4B', '#312E81'],
+  ['#0284C7', '#1E293B', '#0F172A'],
+  ['#3B0764', '#1E1B4B', '#0F172A'],
+  ['#1E293B', '#111827', '#0F172A'],
+  ['#065F46', '#064E3B', '#0F172A'],
+];
 
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   onOpenComments,
   isBookmarked: initialBookmarked = false,
+  containerHeight,
 }) => {
+  const insets = useSafeAreaInsets();
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const isDark = colorScheme === 'dark';
+  const { height: windowHeight } = useWindowDimensions();
+
+  const cardHeight = containerHeight || windowHeight;
 
   const [liked, setLiked] = useState(post.is_liked || false);
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
@@ -47,7 +63,6 @@ export const PostCard: React.FC<PostCardProps> = ({
 
     toggleLike(post.post_uid, {
       onError: () => {
-        // Revert on error
         setLiked(!newLiked);
         setLikeCount((prev) => (!newLiked ? prev + 1 : Math.max(0, prev - 1)));
       },
@@ -60,7 +75,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       sharePostMutation({ postUid: post.post_uid, platform: 'native' });
 
       await Share.share({
-        message: `${post.content}\n\nCheck out this post on HyperLocal News!`,
+        message: `${post.content || ''}\n\nCheck out this post on HyperLocal News!`,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -82,157 +97,201 @@ export const PostCard: React.FC<PostCardProps> = ({
   const userHandle = post.user_name ? `@${post.user_name}` : '';
   const formattedTime = post.created_at ? formatTimeAgo(post.created_at) : (post.time_ago || '');
 
+  const bgGradient = GRADIENT_PRESETS[Math.abs(post.id || 0) % GRADIENT_PRESETS.length];
+
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        },
-      ]}
-    >
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.cardContainer, { height: cardHeight }]}>
+      {/* Background Layer (Image or Vibrant Gradient fallback) */}
+      {post.image_url ? (
         <Image
-          source={{
-            uri:
-              post.user_profile_picture ||
-              'https://placehold.co/100x100/E2E8F0/1E293B?text=User',
-          }}
-          style={styles.avatar}
+          source={{ uri: post.image_url }}
+          style={StyleSheet.absoluteFillObject}
           contentFit="cover"
+          transition={400}
         />
-        <View style={styles.headerInfo}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
-              {userDisplayName}
-            </Text>
-            {formattedTime ? (
-              <Text style={[styles.timeAgo, { color: colors.textTertiary }]}>
-                • {formattedTime}
+      ) : (
+        <LinearGradient
+          colors={bgGradient as [string, string, ...string[]]}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      )}
+
+      {/* Top Gradient Overlay */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.92)', 'rgba(0,0,0,0.5)', 'transparent']}
+        style={[styles.topGradient, { height: 160 + insets.top }]}
+        pointerEvents="none"
+      />
+
+      {/* Bottom Gradient Overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
+        style={styles.bottomGradient}
+        pointerEvents="none"
+      />
+
+      {/* Content Container (Overlay over the image) */}
+      <View style={[styles.overlayContent, { paddingTop: Math.max(insets.top, 16) + 12 }]}>
+        {/* Header (User Info) */}
+        <View style={styles.headerRow}>
+          <Image
+            source={{
+              uri:
+                post.user_profile_picture ||
+                'https://placehold.co/100x100/E2E8F0/1E293B?text=User',
+            }}
+            style={styles.avatar}
+            contentFit="cover"
+          />
+          <View style={styles.headerInfo}>
+            <View style={styles.nameRow}>
+              <Text style={styles.displayName} numberOfLines={1}>
+                {userDisplayName}
+              </Text>
+              {formattedTime ? (
+                <Text style={styles.timeAgo}> • {formattedTime}</Text>
+              ) : null}
+            </View>
+            {userHandle ? (
+              <Text style={styles.handle} numberOfLines={1}>
+                {userHandle}
               </Text>
             ) : null}
           </View>
-          {userHandle ? (
-            <Text style={[styles.handle, { color: colors.textSecondary }]}>
-              {userHandle}
+
+          {/* Top Bookmark Action */}
+          <TouchableOpacity
+            style={styles.topBookmarkBtn}
+            onPress={handleBookmarkToggle}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={20}
+              color={bookmarked ? '#38BDF8' : '#FFFFFF'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Middle/Lower Section: Post Details */}
+        <View style={styles.detailsContainer}>
+          {post.content ? (
+            <Text style={styles.postText} numberOfLines={6}>
+              {post.content}
             </Text>
           ) : null}
-        </View>
-      </View>
 
-      {/* Content text */}
-      {post.content ? (
-        <Text style={[styles.content, { color: colors.text }]}>{post.content}</Text>
-      ) : null}
-
-      {/* Hashtags */}
-      {post.hashtags && post.hashtags.length > 0 && (
-        <View style={styles.hashtagContainer}>
-          {post.hashtags.map((tag, idx) => (
-            <View
-              key={idx}
-              style={[styles.hashtagBadge, { backgroundColor: colors.primaryLight }]}
-            >
-              <Text style={[styles.hashtagText, { color: colors.primary }]}>
-                #{tag.replace(/^#/, '')}
-              </Text>
+          {/* Hashtags */}
+          {post.hashtags && post.hashtags.length > 0 && (
+            <View style={styles.hashtagContainer}>
+              {post.hashtags.map((tag, idx) => (
+                <View key={idx} style={styles.hashtagBadge}>
+                  <Text style={styles.hashtagText}>#{tag.replace(/^#/, '')}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+          )}
+
+          {/* Bottom Action Footer */}
+          <View style={styles.footerRow}>
+            {/* Like */}
+            <TouchableOpacity
+              style={styles.actionPill}
+              onPress={handleLike}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={liked ? 'heart' : 'heart-outline'}
+                size={20}
+                color={liked ? '#EF4444' : '#FFFFFF'}
+              />
+              <Text style={[styles.actionText, liked && { color: '#EF4444' }]}>
+                {likeCount}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Comment */}
+            <TouchableOpacity
+              style={styles.actionPill}
+              onPress={() => onOpenComments(post.post_uid)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble-outline" size={19} color="#FFFFFF" />
+              <Text style={styles.actionText}>{post.comment_count || 0}</Text>
+            </TouchableOpacity>
+
+            {/* Share */}
+            <TouchableOpacity
+              style={styles.actionPill}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="share-social-outline" size={19} color="#FFFFFF" />
+              <Text style={styles.actionText}>{shareCount}</Text>
+            </TouchableOpacity>
+
+            {/* Bookmark */}
+            <TouchableOpacity
+              style={[styles.actionPill, { marginLeft: 'auto' }]}
+              onPress={handleBookmarkToggle}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+                size={20}
+                color={bookmarked ? '#38BDF8' : '#FFFFFF'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
-
-      {/* Post Image */}
-      {post.image_url ? (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: post.image_url }}
-            style={styles.postImage}
-            contentFit="cover"
-            transition={300}
-          />
-        </View>
-      ) : null}
-
-      {/* Action Footer Bar */}
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
-        {/* Like */}
-        <TouchableOpacity style={styles.actionBtn} onPress={handleLike} activeOpacity={0.7}>
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={20}
-            color={liked ? '#EF4444' : colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.actionText,
-              { color: liked ? '#EF4444' : colors.textSecondary },
-            ]}
-          >
-            {likeCount}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Comment */}
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => onOpenComments(post.post_uid)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chatbubble-outline" size={19} color={colors.textSecondary} />
-          <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-            {post.comment_count || 0}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Share */}
-        <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.7}>
-          <Ionicons name="share-social-outline" size={19} color={colors.textSecondary} />
-          <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-            {shareCount}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Bookmark */}
-        <TouchableOpacity
-          style={styles.actionBtnRight}
-          onPress={handleBookmarkToggle}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-            size={20}
-            color={bookmarked ? colors.primary : colors.textSecondary}
-          />
-        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+  cardContainer: {
+    width: '100%',
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#0F172A',
   },
-  header: {
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    zIndex: 1,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    zIndex: 1,
+  },
+  overlayContent: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
     marginRight: 12,
   },
   headerInfo: {
@@ -244,67 +303,85 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   displayName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
     maxWidth: '70%',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   timeAgo: {
     fontSize: 12,
-    marginLeft: 6,
+    color: 'rgba(255,255,255,0.75)',
+    marginLeft: 4,
   },
   handle: {
     fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
-  content: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
+  topBookmarkBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  detailsContainer: {
+    justifyContent: 'flex-end',
+  },
+  postText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    marginBottom: 14,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   hashtagContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 16,
   },
   hashtagBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   hashtagText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  imageContainer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  postImage: {
-    width: '100%',
-    height: '100%',
-  },
-  footer: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
+    gap: 12,
   },
-  actionBtn: {
+  actionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 24,
-  },
-  actionBtnRight: {
-    marginLeft: 'auto',
-    padding: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   actionText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#FFFFFF',
     marginLeft: 6,
   },
 });

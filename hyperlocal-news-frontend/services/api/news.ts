@@ -277,13 +277,52 @@ export const newsApi = {
   },
 
   /**
-   * GET /news/v1/news-shorts
+   * GET /shorts/shorts/feed
    */
-  getShorts: async (): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
-      url: API_ROUTES.news.shorts,
-      method: 'GET',
-    });
+  getShorts: async (params?: { language?: string; limit?: number }): Promise<any[]> => {
+    try {
+      const res = await request<any>({
+        url: API_ROUTES.news.shortsFeed,
+        method: 'GET',
+        params: {
+          language: params?.language || 'te',
+          limit: params?.limit || 20,
+        },
+      });
+      const itemsList = Array.isArray(res)
+        ? res
+        : res && Array.isArray(res.items)
+          ? res.items
+          : [];
+      return itemsList.map((item: any) => ({
+        ...item,
+        news_uid: item.video_id || String(item.id),
+      }));
+    } catch (err) {
+      console.warn('[newsApi] getShorts API failed, trying legacy route:', err);
+      try {
+        const legacy = await request<any[]>({
+          url: API_ROUTES.news.shorts,
+          method: 'GET',
+        });
+        if (Array.isArray(legacy)) {
+          return legacy.map((a: any) => ({
+            id: a.id || Date.now(),
+            video_id: a.news_uid || String(a.id),
+            title: a.title || '',
+            thumbnail_url: a.image_url || '',
+            channel_title: a.source || 'News',
+            video_url: a.image_url || '',
+            views: a.views || 0,
+            likes: a.likes || 0,
+            published_at: a.published_at || new Date().toISOString(),
+            source: 'app',
+            news_uid: a.news_uid || String(a.id),
+          }));
+        }
+      } catch (_) {}
+      return [];
+    }
   },
 
   /**
