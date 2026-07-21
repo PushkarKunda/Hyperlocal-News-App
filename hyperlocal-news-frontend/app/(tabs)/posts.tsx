@@ -387,14 +387,18 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
   },
   feedWrapper: {
     flex: 1,
