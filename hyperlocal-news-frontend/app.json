@@ -66,14 +66,15 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "9292b114-029a-4b11-b115-2e81734aa98e"
-      },
       "googleOAuth": {
         "webClientId": "849371654758-oc0ne88p18ikcdamc7ns62ve8caa7n6e.apps.googleusercontent.com",
         "iosClientId": "849371654758-jb831p3e0mv4n8bupaep4cu691ifbpr5.apps.googleusercontent.com",
         "androidClientId": "849371654758-tk9um9rv6a81l11nl65qq2qsekq83372.apps.googleusercontent.com"
+      },
+      "eas": {
+        "projectId": "b9f1a822-16f8-4054-8964-d83ab44f8d3c"
       }
-    }
+    },
+    "owner": "pushkar7727"
   }
 }
