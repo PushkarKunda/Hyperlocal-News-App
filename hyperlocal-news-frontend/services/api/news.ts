@@ -194,10 +194,14 @@ export const newsApi = {
    * Get single article
    */
   getById: async (uid: string): Promise<NewsArticle> => {
-    return await request<NewsArticle>({
+    const res = await request<any>({
       url: API_ROUTES.news.byId(uid),
       method: 'GET',
     });
+    if (res && res.news) return res.news;
+    if (res && res.article) return res.article;
+    if (res && res.data && (res.data.title || res.data.news_uid)) return res.data;
+    return res;
   },
 
   /**

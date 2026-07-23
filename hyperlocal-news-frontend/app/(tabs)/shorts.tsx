@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -84,7 +85,24 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
           onMessage={handleMessage}
           userAgent="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
           injectedJavaScript={`
-            // Hide YouTube UI elements to make it look native
+            // Auto-unmute YouTube video & programmatically click any unmute controls
+            setInterval(() => {
+              try {
+                const v = document.querySelector('video');
+                if (v) {
+                  v.muted = false;
+                  v.volume = 1.0;
+                }
+                const unmuteBtns = document.querySelectorAll(
+                  '.ytp-unmute, .player-controls-middle, [aria-label*="unmute" i], [aria-label*="Unmute" i], .reel-player-overlay-mute-button, .sound-icon, .ytp-mute-button'
+                );
+                unmuteBtns.forEach(btn => {
+                  try { btn.click(); } catch(e) {}
+                });
+              } catch(e) {}
+            }, 250);
+
+            // Hide YouTube UI elements & unmute overlay button completely
             const style = document.createElement('style');
             style.textContent = \`
               ytm-mobile-topbar-renderer,
@@ -97,10 +115,19 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
               ytm-comments-entry-point-header-renderer,
               .reel-player-overlay-actions,
               .player-controls-top,
+              .player-controls-middle,
+              .player-controls-bottom,
               ytm-shorts-player-controls,
+              .ytp-unmute,
+              .ytp-mute-button,
+              .reel-player-overlay-mute-button,
+              .sound-icon,
+              .volume-icon,
+              [aria-label*="unmute" i],
+              [aria-label*="Unmute" i],
               .navigation-container,
               .slim-owner,
-              .bottom-bar { display: none !important; }
+              .bottom-bar { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
               body { background: #000 !important; overflow: hidden !important; }
             \`;
             document.head.appendChild(style);
@@ -109,9 +136,12 @@ const YouTubeShortCard = React.memo(({ item, isActive, shouldLoad, itemHeight, o
             setInterval(() => {
               try {
                 const v = document.querySelector('video');
-                if (v && v.duration > 0) {
-                  const pct = (v.currentTime / v.duration) * 100;
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'progress', progress: pct }));
+                if (v) {
+                  v.muted = false;
+                  if (v.duration > 0) {
+                    const pct = (v.currentTime / v.duration) * 100;
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'progress', progress: pct }));
+                  }
                 }
               } catch(e) {}
             }, 200);
@@ -216,10 +246,12 @@ const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, on
 
   const player = useVideoPlayer(shouldLoad && (item.video_url || item.image_url) ? { uri: item.video_url || item.image_url } : null, player => {
     player.loop = true;
+    player.muted = false;
   });
 
   React.useEffect(() => {
     if (player) {
+      player.muted = false;
       if (isActive && shouldLoad) {
         player.play();
       } else {
@@ -333,6 +365,7 @@ const NativeVideoItem = React.memo(({ item, isActive, shouldLoad, itemHeight, on
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const { height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<'Following' | 'For You'>('Following');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -371,7 +404,8 @@ export default function ShortsScreen() {
   };
 
   const renderVideoItem = useCallback(({ item, index }: { item: ShortFeedItem; index: number }) => {
-    const shouldLoad = Math.abs(index - activeIndex) <= 1;
+    const isCardActive = isFocused && index === activeIndex;
+    const shouldLoad = isFocused && Math.abs(index - activeIndex) <= 1;
 
     if (isAdvertisement(item)) {
       return <ShortAdCard item={item} itemHeight={listHeight} />;
@@ -383,7 +417,7 @@ export default function ShortsScreen() {
       return (
         <YouTubeShortCard
           item={item}
-          isActive={index === activeIndex}
+          isActive={isCardActive}
           shouldLoad={shouldLoad}
           itemHeight={listHeight}
           onToggleFooter={toggleFooter}
@@ -395,13 +429,13 @@ export default function ShortsScreen() {
     return (
       <NativeVideoItem
         item={item}
-        isActive={index === activeIndex}
+        isActive={isCardActive}
         shouldLoad={shouldLoad}
         itemHeight={listHeight}
         onToggleFooter={toggleFooter}
       />
     );
-  }, [activeIndex, listHeight, toggleFooter]);
+  }, [activeIndex, isFocused, listHeight, toggleFooter]);
 
   const keyExtractor = useCallback((item: ShortFeedItem, index: number) => {
     if (isAdvertisement(item)) return `ad-${item.data.ad_id}-${index}`;

@@ -46,6 +46,7 @@ export default function PostsScreen() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
+  const [newPostHashtags, setNewPostHashtags] = useState('');
 
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -139,15 +140,28 @@ export default function PostsScreen() {
       return;
     }
 
+    const inputTags = newPostHashtags
+      .split(/[\s,]+/)
+      .map((tag) => tag.replace(/^#/, '').trim())
+      .filter(Boolean);
+
+    const contentTags = (newPostContent.match(/#[a-zA-Z0-9_]+/g) || []).map((tag) =>
+      tag.replace(/^#/, '').trim()
+    );
+
+    const mergedHashtags = Array.from(new Set([...inputTags, ...contentTags]));
+
     createPost(
       {
         content: newPostContent.trim() || null,
         image_url: newPostImageUrl.trim() || null,
+        hashtags: mergedHashtags.length > 0 ? mergedHashtags : undefined,
       },
       {
         onSuccess: () => {
           setNewPostContent('');
           setNewPostImageUrl('');
+          setNewPostHashtags('');
           setIsCreateModalOpen(false);
           Alert.alert('Success', 'Your post has been published!');
         },
@@ -209,9 +223,6 @@ export default function PostsScreen() {
       >
         <View style={styles.headerTitleContainer}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Community Posts</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            Share updates and engage with local discussions
-          </Text>
         </View>
       </Animated.View>
 
@@ -254,7 +265,8 @@ export default function PostsScreen() {
             getItemLayout={getItemLayout}
             initialNumToRender={2}
             maxToRenderPerBatch={2}
-            windowSize={5}
+            windowSize={3}
+            updateCellsBatchingPeriod={50}
             removeClippedSubviews={true}
             refreshControl={
               <RefreshControl
@@ -332,6 +344,17 @@ export default function PostsScreen() {
                 placeholderTextColor={colors.textTertiary}
                 value={newPostImageUrl}
                 onChangeText={setNewPostImageUrl}
+              />
+
+              <TextInput
+                style={[
+                  styles.imageInput,
+                  { color: colors.text, backgroundColor: colors.background, borderColor: colors.border, marginTop: 10 },
+                ]}
+                placeholder="Hashtags (e.g. #news #local #events)"
+                placeholderTextColor={colors.textTertiary}
+                value={newPostHashtags}
+                onChangeText={setNewPostHashtags}
               />
             </View>
 

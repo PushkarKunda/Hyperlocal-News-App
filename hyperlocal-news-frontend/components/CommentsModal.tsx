@@ -71,7 +71,7 @@ export const CommentsModal = ({ visible, onClose, newsUid }: CommentsModalProps)
     return (
       <View style={[styles.commentContainer, { borderBottomColor: colors.border }]}>
         <Image
-          source={{ uri: item.user_avatar || 'https://via.placeholder.com/40' }}
+          source={{ uri: item.user_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.user_name || 'User')}&background=6063EE&color=fff` }}
           style={styles.avatar}
           contentFit="cover"
         />
@@ -120,6 +120,10 @@ export const CommentsModal = ({ visible, onClose, newsUid }: CommentsModalProps)
               keyExtractor={(item) => String(item.id)}
               renderItem={renderComment}
               contentContainerStyle={styles.listContent}
+              initialNumToRender={8}
+              maxToRenderPerBatch={5}
+              windowSize={5}
+              removeClippedSubviews={true}
               ListEmptyComponent={
                 <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
                   No comments yet. Be the first to comment!
@@ -131,7 +135,7 @@ export const CommentsModal = ({ visible, onClose, newsUid }: CommentsModalProps)
           {/* Input Area */}
           <View style={[styles.inputContainer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
             <Image
-              source={{ uri: user?.profile_picture || 'https://via.placeholder.com/40' }}
+              source={{ uri: user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_name || user?.name || 'User')}&background=6063EE&color=fff` }}
               style={styles.inputAvatar}
               contentFit="cover"
             />

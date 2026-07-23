@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
@@ -48,7 +49,13 @@ function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
             <Text style={[styles.infoText, { color: colors.textSecondary }, scaledFontSize(12)]}>{item.views}</Text>
           </View>
         </View>
-        <Image source={{ uri: item.imageUrl }} style={styles.horizontalImage} />
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.horizontalImage}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="disk"
+        />
       </TouchableOpacity>
     );
   }
@@ -60,7 +67,13 @@ function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
       activeOpacity={0.8}
     >
       <View style={styles.verticalImageContainer}>
-        <Image source={{ uri: item.imageUrl }} style={styles.verticalImage} />
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.verticalImage}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="disk"
+        />
         <View style={[styles.distanceBadgeSolid, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="near-me" size={10} color="#FFF" />
           <Text style={[styles.distanceTextSolid, scaledFontSize(10)]}>{item.distance}</Text>

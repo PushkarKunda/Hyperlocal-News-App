@@ -57,9 +57,8 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
   };
 
   const renderComment = ({ item }: { item: any }) => {
-    const isOwner = user?.user_uid === item.user_uid;
-    const avatarUri = item.user_avatar || item.user_profile_picture || item.avatar || 'https://placehold.co/100x100/E2E8F0/1E293B?text=User';
     const authorName = item.user_display_name || item.user_name || item.username || item.author_name || 'Community Member';
+    const avatarUri = item.user_avatar || item.user_profile_picture || item.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=6063EE&color=fff`;
     const timeText = item.time_ago || (item.created_at ? formatTimeAgo(item.created_at) : '');
     const contentText = item.comment_text || item.content || item.text || '';
 
@@ -125,6 +124,10 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
               keyExtractor={(item, index) => item.id?.toString() || index.toString()}
               renderItem={renderComment}
               contentContainerStyle={styles.listContainer}
+              initialNumToRender={8}
+              maxToRenderPerBatch={5}
+              windowSize={5}
+              removeClippedSubviews={true}
             />
           )}
 

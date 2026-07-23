@@ -22,7 +22,8 @@ export function usePublicPostsFeed(limit = 20, cursor: string | null = null) {
   return useQuery({
     queryKey: postKeys.feed(cursor),
     queryFn: () => postsApi.getPublicFeed(limit, cursor),
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 }
 
@@ -99,8 +100,12 @@ export function useCreatePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { content: string | null; image_url?: string | null; video_url?: string | null }) =>
-      postsApi.createPost(data),
+    mutationFn: (data: {
+      content: string | null;
+      image_url?: string | null;
+      video_url?: string | null;
+      hashtags?: string[];
+    }) => postsApi.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.all });
     },
