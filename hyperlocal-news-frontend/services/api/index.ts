@@ -15,6 +15,7 @@ export * from './engagement';
 export * from './posts';
 export * from './follow';
 export * from './content';
+export * from './discovery';
 
 // Re-export APIs for convenience
 export { categoriesApi } from './categories';
@@ -25,4 +26,4 @@ export { notificationsApi } from './notifications';
 export { postsApi } from './posts';
 export { followApi } from './follow';
 export { contentApi } from './content';
-
+export { discoveryApi } from './discovery';

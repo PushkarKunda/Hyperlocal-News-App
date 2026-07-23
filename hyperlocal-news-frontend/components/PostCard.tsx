@@ -35,7 +35,7 @@ const GRADIENT_PRESETS = [
   ['#065F46', '#064E3B', '#0F172A'],
 ];
 
-export const PostCard: React.FC<PostCardProps> = ({
+const PostCardInner: React.FC<PostCardProps> = ({
   post,
   onOpenComments,
   isBookmarked: initialBookmarked = false,
@@ -78,6 +78,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       sharePostMutation({ postUid: post.post_uid, platform: 'native' });
 
       await Share.share({
+
         message: `${post.content || ''}\n\nCheck out this post on HyperLocal News!`,
       });
     } catch (error) {
@@ -143,7 +144,16 @@ export const PostCard: React.FC<PostCardProps> = ({
       />
 
       {/* Content Container (Overlay over the image) */}
-      <View style={[styles.overlayContent, { paddingTop: Math.max(insets.top, 16) + 12 }]} pointerEvents="box-none">
+      <View 
+        style={[
+          styles.overlayContent, 
+          { 
+            paddingTop: Math.max(insets.top, 16) + 12,
+            paddingBottom: Math.max(insets.bottom, 20) + 75 // Push content up to avoid FAB on bottom right
+          }
+        ]} 
+        pointerEvents="box-none"
+      >
         {/* Header (User Info) */}
         <View style={styles.headerRow} pointerEvents="box-none">
           <Image
@@ -188,19 +198,32 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Middle/Lower Section: Post Details */}
         <View style={styles.detailsContainer} pointerEvents="box-none">
           {post.content ? (
-            <Text style={styles.postText} numberOfLines={6}>
+            <Text 
+              style={styles.postText} 
+              numberOfLines={windowHeight < 700 ? 3 : 6}
+            >
               {post.content}
             </Text>
           ) : null}
 
           {/* Hashtags */}
-          {post.hashtags && post.hashtags.length > 0 && (
+          {Array.isArray(post.hashtags) && post.hashtags.length > 0 && (
             <View style={styles.hashtagContainer}>
-              {post.hashtags.map((tag, idx) => (
-                <View key={idx} style={styles.hashtagBadge}>
-                  <Text style={styles.hashtagText}>#{tag.replace(/^#/, '')}</Text>
-                </View>
-              ))}
+              {post.hashtags.slice(0, windowHeight < 700 ? 4 : 8).map((tag, idx) => {
+                const tagStr = typeof tag === 'string'
+                  ? tag
+                  : (tag && typeof tag === 'object' 
+                      ? (tag as any).name || (tag as any).tag || (tag as any).hashtag_name || String(tag) 
+                      : String(tag || ''));
+                
+                if (!tagStr || tagStr === '[object Object]') return null;
+
+                return (
+                  <View key={idx} style={styles.hashtagBadge}>
+                    <Text style={styles.hashtagText}>#{tagStr.replace(/^#/, '')}</Text>
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -260,6 +283,17 @@ export const PostCard: React.FC<PostCardProps> = ({
     </View>
   );
 };
+
+export const PostCard = React.memo(PostCardInner, (prev, next) => {
+  return (
+    prev.post.post_uid === next.post.post_uid &&
+    prev.post.like_count === next.post.like_count &&
+    prev.post.comment_count === next.post.comment_count &&
+    prev.post.share_count === next.post.share_count &&
+    prev.isBookmarked === next.isBookmarked &&
+    prev.containerHeight === next.containerHeight
+  );
+});
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -343,6 +377,7 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     justifyContent: 'flex-end',
+    flexShrink: 1,
   },
   postText: {
     fontSize: 16,

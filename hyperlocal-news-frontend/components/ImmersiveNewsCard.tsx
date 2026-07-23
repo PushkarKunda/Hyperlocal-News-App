@@ -221,7 +221,7 @@ const NewsCard = React.memo(
   }) => {
     const router = useRouter();
     const { user } = useAuthStore();
-    
+
     const contentUid = item.news_uid || (item as any).post_uid || (item as any).id;
 
     const { mutate: like } = useLike();
@@ -330,196 +330,196 @@ const NewsCard = React.memo(
 
     return (
       <>
-      <View
-        style={[
-          styles.cardContainer,
-          { height: containerHeight, backgroundColor: colors.background },
-        ]}
-      >
-        {/* Top 45% Image — plain View, NOT tappable to avoid unintended navigation */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{
-              uri:
-                item.image_url ||
-                'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800',
-            }}
-            style={styles.image}
-            contentFit="cover"
-            transition={400}
-          />
-
-          {/* Category tag */}
-          <View style={[styles.categoryTag, { backgroundColor: colors.primary }]}>
-            <Text style={styles.categoryText}>{categoryName}</Text>
-          </View>
-
-          {/* Breaking badge */}
-          {item.is_breaking && (
-            <View style={styles.breakingBadge}>
-              <View style={styles.breakingDot} />
-              <Text style={styles.breakingText}>BREAKING</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Bottom 55% Content */}
         <View
           style={[
-            styles.contentContainer,
-            { backgroundColor: colors.background },
+            styles.cardContainer,
+            { height: containerHeight, backgroundColor: colors.background },
           ]}
         >
-          {/* Headline + summary — plain View to prevent accidental navigation */}
-          <View style={styles.textWrapper}>
-            <Text
-              style={[styles.headline, { color: colors.text }]}
-              numberOfLines={3}
-            >
-              {item.title}
-            </Text>
-            <Text
-              style={[styles.summaryText, { color: colors.textSecondary }]}
-              numberOfLines={4}
-            >
-              {item.summary}
-            </Text>
-          </View>
-
-          {/* Footer — no navigation, only source link + action buttons */}
-          <View style={styles.footerWrapper}>
-
-            {/* Source link — always visible if article has a source */}
-            {hasSource && (
-              <TouchableOpacity
-                style={[
-                  styles.sourceLink,
-                  {
-                    backgroundColor: isDark ? '#1E1E2E' : '#F1F5F9',
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={handleOpenSource}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="link-outline" size={13} color={colors.primary} />
-                <Text
-                  style={[styles.sourceLinkText, { color: colors.primary }]}
-                  numberOfLines={1}
-                >
-                  {item.source_name || item.source || item.source_url}
-                </Text>
-                <Ionicons
-                  name="open-outline"
-                  size={13}
-                  color={colors.primary}
-                />
-              </TouchableOpacity>
-            )}
-
-            <View
-              style={[styles.divider, { backgroundColor: colors.divider }]}
+          {/* Top 45% Image — plain View, NOT tappable to avoid unintended navigation */}
+          <View style={styles.imageContainer}>
+            <Image
+              source={{
+                uri:
+                  item.image_url ||
+                  'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800',
+              }}
+              style={styles.image}
+              contentFit="cover"
+              transition={400}
             />
 
-            <View style={styles.footerRow}>
-              {/* Source & time */}
-              <View style={styles.metaContainer}>
-                <Ionicons
-                  name="globe-outline"
-                  size={14}
-                  color={colors.textTertiary}
-                />
-                <Text
-                  style={[styles.sourceText, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {item.source_name || item.source || 'HyperLocal'}
-                </Text>
-                <Text style={[styles.dotSep, { color: colors.textTertiary }]}>
-                  ·
-                </Text>
-                <Text
-                  style={[styles.timeText, { color: colors.textTertiary }]}
-                >
-                  {formatTimeAgo(item.created_at)}
-                </Text>
-              </View>
+            {/* Category tag */}
+            <View style={[styles.categoryTag, { backgroundColor: colors.primary }]}>
+              <Text style={styles.categoryText}>{categoryName}</Text>
+            </View>
 
-              {/* Actions */}
-              <View style={styles.actionsRow}>
-                {/* Views */}
-                <View style={styles.actionBtnWrapper}>
-                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                    <Ionicons name="eye-outline" size={16} color={actionIconColor} />
-                  </View>
-                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
-                    {item.engagement?.total_views ?? item.views ?? 0}
+            {/* Breaking badge */}
+            {item.is_breaking && (
+              <View style={styles.breakingBadge}>
+                <View style={styles.breakingDot} />
+                <Text style={styles.breakingText}>BREAKING</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom 55% Content */}
+          <View
+            style={[
+              styles.contentContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            {/* Headline + summary — plain View to prevent accidental navigation */}
+            <View style={styles.textWrapper}>
+              <Text
+                style={[styles.headline, { color: colors.text }]}
+                numberOfLines={3}
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[styles.summaryText, { color: colors.textSecondary }]}
+                numberOfLines={4}
+              >
+                {item.summary}
+              </Text>
+            </View>
+
+            {/* Footer — no navigation, only source link + action buttons */}
+            <View style={styles.footerWrapper}>
+
+              {/* Source link — always visible if article has a source */}
+              {hasSource && (
+                <TouchableOpacity
+                  style={[
+                    styles.sourceLink,
+                    {
+                      backgroundColor: isDark ? '#1E1E2E' : '#F1F5F9',
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={handleOpenSource}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="link-outline" size={13} color={colors.primary} />
+                  <Text
+                    style={[styles.sourceLinkText, { color: colors.primary }]}
+                    numberOfLines={1}
+                  >
+                    {item.source_name || item.source || item.source_url}
+                  </Text>
+                  <Ionicons
+                    name="open-outline"
+                    size={13}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
+
+              <View
+                style={[styles.divider, { backgroundColor: colors.divider }]}
+              />
+
+              <View style={styles.footerRow}>
+                {/* Source & time */}
+                <View style={styles.metaContainer}>
+                  <Ionicons
+                    name="globe-outline"
+                    size={14}
+                    color={colors.textTertiary}
+                  />
+                  <Text
+                    style={[styles.sourceText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {item.source_name || item.source || 'HyperLocal'}
+                  </Text>
+                  <Text style={[styles.dotSep, { color: colors.textTertiary }]}>
+                    ·
+                  </Text>
+                  <Text
+                    style={[styles.timeText, { color: colors.textTertiary }]}
+                  >
+                    {formatTimeAgo(item.created_at)}
                   </Text>
                 </View>
 
-                {/* Comment */}
-                <TouchableOpacity
-                  style={styles.actionBtnWrapper}
-                  onPress={() => contentUid && onOpenComments?.(contentUid)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                    <Ionicons name="chatbubble-outline" size={16} color={actionIconColor} />
+                {/* Actions */}
+                <View style={styles.actionsRow}>
+                  {/* Views */}
+                  <View style={styles.actionBtnWrapper}>
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                      <Ionicons name="eye-outline" size={16} color={actionIconColor} />
+                    </View>
+                    <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
+                      {item.engagement?.total_views ?? item.views ?? 0}
+                    </Text>
                   </View>
-                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
-                    {item.engagement?.total_comments ?? item.comments ?? 0}
-                  </Text>
-                </TouchableOpacity>
 
-                {/* Like */}
-                <TouchableOpacity
-                  style={styles.actionBtnWrapper}
-                  onPress={handleToggleLike}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                    <Ionicons
-                      name={liked ? 'heart' : 'heart-outline'}
-                      size={16}
-                      color={liked ? '#EF4444' : actionIconColor}
-                    />
-                  </View>
-                </TouchableOpacity>
+                  {/* Comment */}
+                  <TouchableOpacity
+                    style={styles.actionBtnWrapper}
+                    onPress={() => contentUid && onOpenComments?.(contentUid)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                      <Ionicons name="chatbubble-outline" size={16} color={actionIconColor} />
+                    </View>
+                    <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
+                      {item.engagement?.total_comments ?? item.comments ?? 0}
+                    </Text>
+                  </TouchableOpacity>
 
-                {/* Share */}
-                <TouchableOpacity
-                  style={styles.actionBtnWrapper}
-                  onPress={handleShare}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                    <Ionicons
-                      name="share-social-outline"
-                      size={16}
-                      color={actionIconColor}
-                    />
-                  </View>
-                </TouchableOpacity>
+                  {/* Like */}
+                  <TouchableOpacity
+                    style={styles.actionBtnWrapper}
+                    onPress={handleToggleLike}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                      <Ionicons
+                        name={liked ? 'heart' : 'heart-outline'}
+                        size={16}
+                        color={liked ? '#EF4444' : actionIconColor}
+                      />
+                    </View>
+                  </TouchableOpacity>
 
-                {/* Bookmark */}
-                <TouchableOpacity
-                  style={styles.actionBtnWrapper}
-                  onPress={handleToggleBookmark}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                    <Ionicons
-                      name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                      size={16}
-                      color={isBookmarked ? '#FFAC33' : actionIconColor}
-                    />
-                  </View>
-                </TouchableOpacity>
+                  {/* Share */}
+                  <TouchableOpacity
+                    style={styles.actionBtnWrapper}
+                    onPress={handleShare}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                      <Ionicons
+                        name="share-social-outline"
+                        size={16}
+                        color={actionIconColor}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Bookmark */}
+                  <TouchableOpacity
+                    style={styles.actionBtnWrapper}
+                    onPress={handleToggleBookmark}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                      <Ionicons
+                        name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                        size={16}
+                        color={isBookmarked ? '#FFAC33' : actionIconColor}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
       </>
     );
   },
@@ -574,7 +574,12 @@ export const ImmersiveFeedCard = React.memo(
         onOpenComments={onOpenComments}
       />
     );
-  }
+  },
+  (prev, next) =>
+    prev.containerHeight === next.containerHeight &&
+    prev.item.position === next.item.position &&
+    prev.item.type === next.item.type &&
+    prev.bookmarkedNewsUids === next.bookmarkedNewsUids
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

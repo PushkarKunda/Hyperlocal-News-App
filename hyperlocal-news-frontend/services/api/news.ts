@@ -166,6 +166,14 @@ export interface NewsComment {
   is_liked?: boolean;
 }
 
+export interface CommentsPage {
+  comments: NewsComment[];
+  page: number;
+  limit: number;
+  total: number;
+  has_more: boolean;
+}
+
 export interface CreateCommentPayload {
   comment_text: string;
 }
@@ -419,23 +427,54 @@ export const newsApi = {
   // ─── COMMENTS ──────────────────────────────────────────────────────────
 
   /**
-   * GET /news/v1/news/:uid/comments
+   * GET /news/v1/news/:uid/comments?page=1&limit=20
+   * Returns paginated comments with has_more flag.
    */
-  getComments: async (uid: string): Promise<NewsComment[]> => {
-    return await request<NewsComment[]>({
-      url: API_ROUTES.news.comments(uid),
-      method: 'GET',
-    });
+  getComments: async (uid: string, page = 1, limit = 20): Promise<CommentsPage> => {
+    try {
+      const res = await request<any>({
+        url: API_ROUTES.news.comments(uid),
+        method: 'GET',
+        params: { page, limit },
+      });
+
+      // Normalise to CommentsPage regardless of server response shape
+      let items: NewsComment[] = [];
+      let total = 0;
+
+      if (Array.isArray(res)) {
+        items = res;
+        total = res.length;
+      } else if (res && Array.isArray(res.comments)) {
+        items = res.comments;
+        total = res.total ?? res.total_count ?? res.count ?? items.length;
+      } else if (res && Array.isArray(res.items)) {
+        items = res.items;
+        total = res.total ?? items.length;
+      } else if (res && Array.isArray(res.data)) {
+        items = res.data;
+        total = res.total ?? items.length;
+      }
+
+      const has_more = items.length === limit;
+
+      return { comments: items, page, limit, total, has_more };
+    } catch (err) {
+      console.warn('[newsApi] getComments failed:', err);
+      return { comments: [], page, limit, total: 0, has_more: false };
+    }
   },
 
   /**
    * POST /news/v1/user/news/:uid/comment
+   * Body: { comment_text: string }
+   * Returns: string (success message)
    */
   addComment: async (
     uid: string,
     payload: CreateCommentPayload
-  ): Promise<NewsComment> => {
-    return await request<NewsComment>({
+  ): Promise<string> => {
+    return await request<string>({
       url: API_ROUTES.news.comment(uid),
       method: 'POST',
       data: payload,

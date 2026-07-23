@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -116,8 +116,9 @@ export default function PostsScreen() {
   const { data: postBookmarks = [] } = useBookmarks('post');
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
 
-  const bookmarkedPostUids = new Set(
-    postBookmarks.map((b: any) => b.content_uid || b.post_uid)
+  const bookmarkedPostUids = useMemo(
+    () => new Set(postBookmarks.map((b: any) => b.content_uid || b.post_uid)),
+    [postBookmarks]
   );
 
   const posts = feedData?.posts || [];
@@ -254,8 +255,9 @@ export default function PostsScreen() {
             getItemLayout={getItemLayout}
             initialNumToRender={2}
             maxToRenderPerBatch={2}
-            windowSize={5}
-            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
+            windowSize={3}
+            removeClippedSubviews={false}
             refreshControl={
               <RefreshControl
                 refreshing={isRefetching}

@@ -9,6 +9,7 @@ import { Typography } from '@/constants/Typography';
 
 import { useCategoriesAll, useDistrictsList } from '@/hooks/useApi';
 import { useTrendingNews, usePopularNews } from '@/hooks/useNews';
+import { useDiscoverySearch, useTrendingHashtags, useHashtagSuggestions } from '@/hooks/useDiscovery';
 import { useAuthStore } from '@/store/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useRouter } from 'expo-router';
@@ -50,11 +51,16 @@ export default function DiscoverScreen() {
 
   // Fetch Server Data
   const { data: trendingNews = [], isLoading: isLoadingTrending } = useTrendingNews();
+  const { data: trendingHashtags = [], isLoading: isLoadingTrendingHashtags } = useTrendingHashtags();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesAll();
   const { data: popularNews = [], isLoading: isLoadingPopular } = usePopularNews();
   const { data: districts = [], isLoading: isLoadingDistricts } = useDistrictsList(user?.state ?? null);
 
-  const isLoading = isLoadingTrending || isLoadingCategories || isLoadingPopular || isLoadingDistricts;
+  // Search Hooks
+  const { data: searchResults = [], isLoading: isSearching } = useDiscoverySearch(searchQuery);
+  const { data: hashtagSuggestions = [] } = useHashtagSuggestions(searchQuery);
+
+  const isLoading = isLoadingTrending || isLoadingCategories || isLoadingPopular || isLoadingDistricts || isLoadingTrendingHashtags;
 
   // Extract unique sources dynamically from Popular News
   const sources = React.useMemo(() => {
@@ -114,15 +120,85 @@ export default function DiscoverScreen() {
           <MaterialIcons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search news, topics, or locations..."
+            placeholder="Search news, topics, or hashtags..."
             placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            autoCapitalize="none"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* If searching, show search results and suggestions */}
+        {searchQuery.trim().length > 0 ? (
+          <View>
+            {isSearching ? (
+              <LoadingSpinner text="Searching..." colorScheme={colorScheme ?? 'light'} />
+            ) : (
+              <>
+                {/* Hashtag Suggestions */}
+                {hashtagSuggestions.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>HASHTAGS</Text>
+                    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                      {hashtagSuggestions.map((tag: any, index: number) => (
+                        <React.Fragment key={tag.name}>
+                          <TouchableOpacity
+                            style={styles.listItem}
+                            onPress={() => router.push(`/(tabs)?hashtag=${encodeURIComponent(tag.name)}`)}
+                          >
+                            <View style={styles.listItemContent}>
+                              <Text style={[styles.itemTitle, { color: colors.primary }]}>#{tag.name}</Text>
+                              {tag.count && <Text style={[styles.itemSubtitle, { color: colors.textTertiary }]}>{tag.count} posts</Text>}
+                            </View>
+                          </TouchableOpacity>
+                          {index < hashtagSuggestions.length - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
+                        </React.Fragment>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* News/Posts Results */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>RESULTS</Text>
+                  {searchResults.length === 0 ? (
+                    <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: Spacing.xl }}>No results found</Text>
+                  ) : (
+                    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                      {searchResults.map((item: any, index: number) => (
+                        <React.Fragment key={item.news_uid || item.post_uid || index}>
+                          <TouchableOpacity
+                            style={styles.listItem}
+                            onPress={() => item.news_uid ? router.push(`/news/${item.news_uid}`) : router.push(`/posts/${item.post_uid}` as any)}
+                          >
+                            <View style={styles.listItemContent}>
+                              <Text style={[styles.itemTitle, { color: colors.text }]}>{item.title || item.content?.substring(0, 50)}</Text>
+                              <Text style={[styles.itemSubtitle, { color: colors.textTertiary }]}>
+                                {item.news_uid ? 'News' : 'Post'}
+                              </Text>
+                            </View>
+                            <MaterialIcons name="chevron-right" size={20} color={colors.textTertiary} />
+                          </TouchableOpacity>
+                          {index < searchResults.length - 1 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
+                        </React.Fragment>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+          </View>
+        ) : (
+          /* Default Discovery Feed */
+          <>
+
 
         {/* Trending Now */}
         {trendingNews.length > 0 && (
@@ -151,6 +227,27 @@ export default function DiscoverScreen() {
                 </React.Fragment>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Trending Hashtags */}
+        {trendingHashtags.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}># TRENDING HASHTAGS</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+              {trendingHashtags.map((tag: any) => (
+                <TouchableOpacity 
+                  key={tag.name} 
+                  style={[styles.hashtagChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => router.push(`/(tabs)?hashtag=${encodeURIComponent(tag.name)}`)}
+                >
+                  <Text style={[styles.hashtagText, { color: colors.primary }]}>#{tag.name}</Text>
+                  {tag.count && <Text style={[styles.hashtagCount, { color: colors.textTertiary }]}>{tag.count}</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -224,7 +321,8 @@ export default function DiscoverScreen() {
             </View>
           </View>
         )}
-
+        </>
+        )}
       </ScrollView>
     </View>
   );
@@ -403,5 +501,23 @@ const styles = StyleSheet.create({
   localitySubtitle: {
     fontSize: Typography.sizes.xs,
     fontFamily: Typography.fonts.medium,
+  },
+  hashtagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    marginRight: Spacing.sm,
+  },
+  hashtagText: {
+    fontSize: Typography.sizes.sm,
+    fontFamily: Typography.fonts.semiBold,
+    marginRight: Spacing.xs,
+  },
+  hashtagCount: {
+    fontSize: Typography.sizes.xs,
+    fontFamily: Typography.fonts.regular,
   },
 });
