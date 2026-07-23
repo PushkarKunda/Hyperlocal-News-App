@@ -244,6 +244,18 @@ export const API_ROUTES = {
     deviceLimit: '/user-activity/user-activity/device-limit',          // GET - Device limit
   },
 
+  // ─── Discovery ──────────────────────────────────────────────────────────────
+  discovery: {
+    home: '/discovery/home',                                     // GET - Get Home Feed
+    search: '/discovery/search',                                 // GET - Discovery Search
+    category: (id: number) => `/discovery/category/${id}`,       // GET - Category Explore
+    related: '/discovery/related',                               // GET - Related Content
+    trending: '/discovery/trending',                             // GET - Trending
+    trendingHashtags: '/posts/hashtags/trending',                // GET - Trending Hashtags
+    hashtagSuggestions: '/posts/hashtags/suggestions',           // GET - Hashtag Suggestions
+    byHashtag: (name: string) => `/posts/hashtag/${name}/posts`, // GET - Posts By Hashtag
+  },
+
   // ─── In-App Notifications ───────────────────────────────────────────────────
   inAppNotifications: {
     list: '/notifications/in-app',                               // GET - Get in-app notifications

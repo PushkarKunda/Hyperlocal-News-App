@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,38 @@ interface PostCommentsModalProps {
   postUid: string | null;
 }
 
+const PostCommentItem = React.memo(({ item, colors }: any) => {
+  const avatarUri = item.user_avatar || item.user_profile_picture || item.avatar || 'https://placehold.co/100x100/E2E8F0/1E293B?text=User';
+  const authorName = item.user_display_name || item.user_name || item.username || item.author_name || 'Community Member';
+  const timeText = item.time_ago || (item.created_at ? formatTimeAgo(item.created_at) : '');
+  const contentText = item.comment_text || item.content || item.text || '';
+
+  return (
+    <View style={[styles.commentContainer, { borderBottomColor: colors.border }]}>
+      <Image
+        source={{ uri: avatarUri }}
+        style={styles.avatar}
+        contentFit="cover"
+      />
+      <View style={styles.commentContent}>
+        <View style={styles.commentHeader}>
+          <Text style={[styles.userName, { color: colors.text }]}>
+            {authorName}
+          </Text>
+          {Boolean(timeText) && (
+            <Text style={[styles.timeText, { color: colors.textTertiary }]}>
+              {timeText}
+            </Text>
+          )}
+        </View>
+        <Text style={[styles.commentText, { color: colors.textSecondary }]}>
+          {contentText}
+        </Text>
+      </View>
+    </View>
+  );
+});
+
 export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsModalProps) => {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -34,12 +66,15 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
 
   const [commentText, setCommentText] = useState('');
 
-  const { data: rawComments, isLoading } = usePostComments(postUid);
+  const { data: comments = [], isLoading, refetch } = usePostComments(postUid);
   const { mutate: addComment, isPending: isAdding } = useAddPostComment();
 
-  const comments = Array.isArray(rawComments)
-    ? rawComments
-    : (rawComments as any)?.comments || (rawComments as any)?.items || (rawComments as any)?.data || [];
+  // Refetch comments every time the modal opens so newly posted comments are visible.
+  useEffect(() => {
+    if (visible && postUid) {
+      refetch();
+    }
+  }, [visible, postUid, refetch]);
 
   const handlePostComment = () => {
     if (!postUid || !commentText.trim()) return;
@@ -56,37 +91,9 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
     );
   };
 
-  const renderComment = ({ item }: { item: any }) => {
-    const authorName = item.user_display_name || item.user_name || item.username || item.author_name || 'Community Member';
-    const avatarUri = item.user_avatar || item.user_profile_picture || item.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=6063EE&color=fff`;
-    const timeText = item.time_ago || (item.created_at ? formatTimeAgo(item.created_at) : '');
-    const contentText = item.comment_text || item.content || item.text || '';
-
-    return (
-      <View style={[styles.commentContainer, { borderBottomColor: colors.border }]}>
-        <Image
-          source={{ uri: avatarUri }}
-          style={styles.avatar}
-          contentFit="cover"
-        />
-        <View style={styles.commentContent}>
-          <View style={styles.commentHeader}>
-            <Text style={[styles.userName, { color: colors.text }]}>
-              {authorName}
-            </Text>
-            {Boolean(timeText) && (
-              <Text style={[styles.timeText, { color: colors.textTertiary }]}>
-                {timeText}
-              </Text>
-            )}
-          </View>
-          <Text style={[styles.commentText, { color: colors.textSecondary }]}>
-            {contentText}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  const renderComment = useCallback(({ item }: { item: any }) => {
+    return <PostCommentItem item={item} colors={colors} />;
+  }, [colors]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -111,23 +118,20 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : comments.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No comments yet. Be the first to comment!
-              </Text>
-            </View>
           ) : (
             <FlatList
               data={comments}
-              keyExtractor={(item, index) => item.id?.toString() || index.toString()}
+              keyExtractor={(item, index) => String(item.id ?? index)}
               renderItem={renderComment}
               contentContainerStyle={styles.listContainer}
-              initialNumToRender={8}
-              maxToRenderPerBatch={5}
-              windowSize={5}
-              removeClippedSubviews={true}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    No comments yet. Be the first to comment!
+                  </Text>
+                </View>
+              }
             />
           )}
 

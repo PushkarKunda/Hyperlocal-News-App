@@ -1,11 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { newsApi } from '@/services/api/news';
 import type {
   NewsFilters,
   LocationNewsParams,
   CreateNewsPayload,
   UpdateNewsPayload,
+  CommentsPage,
 } from '@/services/api/news';
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
@@ -156,15 +158,21 @@ export function useNewsEngagement(uid: string | null) {
 }
 
 /**
- * GET /news/v1/news/:uid/comments
+ * GET /news/v1/news/:uid/comments  — infinite / paginated
+ *
+ * Returns pages of CommentsPage. The UI flattens pages into a single list
+ * and calls fetchNextPage() via FlatList onEndReached.
  */
 export function useNewsComments(uid: string | null) {
-  return useQuery({
+  return useInfiniteQuery<CommentsPage, Error>({
     queryKey: newsKeys.comments(uid!),
-    queryFn: () => newsApi.getComments(uid!),
+    queryFn: ({ pageParam }) =>
+      newsApi.getComments(uid!, pageParam as number, 20),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.has_more ? lastPage.page + 1 : undefined,
     enabled: Boolean(uid),
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 45,
+    staleTime: 1000 * 30, // 30 s
   });
 }
 
@@ -293,13 +301,58 @@ export function useAddComment() {
     }: {
       uid: string;
       comment_text: string;
+      userName?: string;
+      userAvatar?: string;
     }) => newsApi.addComment(uid, { comment_text }),
-    onSuccess: (_, { uid }) => {
+
+    // Optimistic update — works with InfiniteData<CommentsPage>
+    onMutate: async ({ uid, comment_text }) => {
+      await queryClient.cancelQueries({ queryKey: newsKeys.comments(uid) });
+
+      // Snapshot the whole infinite data object for rollback.
+      const previousData = queryClient.getQueryData(newsKeys.comments(uid));
+
+      const optimisticComment = {
+        id: Date.now(),           // temporary; replaced after server refetch
+        news_uid: uid,
+        user_uid: '__optimistic__',
+        user_name: 'You',
+        comment_text,
+        created_at: new Date().toISOString(),
+        likes_count: 0,
+      };
+
+      // Prepend to the first page so it appears at the top of the list.
+      queryClient.setQueryData<{ pages: CommentsPage[]; pageParams: any[] }>(
+        newsKeys.comments(uid),
+        (old) => {
+          if (!old || !old.pages || old.pages.length === 0) return old;
+          const pages = old.pages.map((p, i) =>
+            i === 0
+              ? { ...p, comments: [optimisticComment, ...p.comments] }
+              : p
+          );
+          return { ...old, pages };
+        }
+      );
+
+      return { previousData, uid };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previousData !== undefined) {
+        queryClient.setQueryData(newsKeys.comments(context.uid), context.previousData);
+      }
+    },
+
+    // Always refetch to replace the optimistic comment with the real one.
+    onSettled: (_data, _err, { uid }) => {
       queryClient.invalidateQueries({ queryKey: newsKeys.comments(uid) });
       queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
     },
   });
 }
+
 
 /**
  * DELETE /news/v1/user/news/:uid/comment/:id

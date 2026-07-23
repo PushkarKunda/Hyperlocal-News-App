@@ -191,12 +191,49 @@ export function useAddPostComment() {
   return useMutation({
     mutationFn: ({ postUid, commentText }: { postUid: string; commentText: string }) =>
       postsApi.addComment(postUid, commentText),
-    onSuccess: (_, { postUid }) => {
+
+    // Optimistic update: inject the new comment immediately so the user
+    // sees it without waiting for the server round-trip.
+    onMutate: async ({ postUid, commentText }) => {
+      // Cancel any in-flight refetches so they don't overwrite our optimistic data.
+      await queryClient.cancelQueries({ queryKey: postKeys.comments(postUid) });
+
+      // Snapshot the previous value for rollback on error.
+      const previousComments = queryClient.getQueryData<any[]>(postKeys.comments(postUid));
+
+      // Build an optimistic comment object that matches PostComment shape.
+      const optimisticComment = {
+        id: Date.now(), // temporary unique id
+        post_uid: postUid,
+        user_uid: '__optimistic__',
+        user_name: 'You',
+        comment_text: commentText,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<any[]>(postKeys.comments(postUid), (old) => [
+        optimisticComment,
+        ...(old ?? []),
+      ]);
+
+      return { previousComments, postUid };
+    },
+
+    // On error, roll back to the snapshot.
+    onError: (_err, _vars, context) => {
+      if (context?.previousComments !== undefined) {
+        queryClient.setQueryData(postKeys.comments(context.postUid), context.previousComments);
+      }
+    },
+
+    // Always refetch after success or error to sync with the server.
+    onSettled: (_data, _err, { postUid }) => {
       queryClient.invalidateQueries({ queryKey: postKeys.comments(postUid) });
       queryClient.invalidateQueries({ queryKey: postKeys.all });
     },
   });
 }
+
 
 /**
  * POST /posts/{post_uid}/share
