@@ -272,20 +272,32 @@ export const newsApi = {
    * GET /news/v1/news/analytics/trending
    */
   getTrending: async (): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
+    const res = await request<any>({
       url: API_ROUTES.news.trending,
       method: 'GET',
     });
+    if (res && Array.isArray(res)) return res;
+    if (res && Array.isArray(res.news)) return res.news;
+    if (res && Array.isArray(res.articles)) return res.articles;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
   },
 
   /**
    * GET /news/v1/news/popular
    */
   getPopular: async (): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
+    const res = await request<any>({
       url: API_ROUTES.news.popular,
       method: 'GET',
     });
+    if (res && Array.isArray(res)) return res;
+    if (res && Array.isArray(res.news)) return res.news;
+    if (res && Array.isArray(res.articles)) return res.articles;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
   },
 
   /**

@@ -240,47 +240,4 @@ export const postsApi = {
       },
     });
   },
-
-  /**
-   * GET /posts/hashtags/trending
-   * Get trending hashtags
-   */
-  getTrendingHashtags: async (limit = 10): Promise<TrendingHashtagsResponse> => {
-    return await request<TrendingHashtagsResponse>({
-      url: API_ROUTES.posts.trendingHashtags,
-      method: 'GET',
-      params: {
-        limit,
-      },
-    });
-  },
-
-  /**
-   * GET /posts/hashtags/suggestions
-   * Get hashtag suggestions
-   */
-  getHashtagSuggestions: async (query?: string, limit = 10): Promise<HashtagSuggestionsResponse> => {
-    return await request<HashtagSuggestionsResponse>({
-      url: API_ROUTES.posts.hashtagSuggestions,
-      method: 'GET',
-      params: {
-        query,
-        limit,
-      },
-    });
-  },
-
-  /**
-   * GET /posts/hashtag/{hashtag_name}/posts
-   * Get posts by hashtag
-   */
-  getByHashtag: async (hashtagName: string, limit = 20): Promise<any> => {
-    return await request<any>({
-      url: API_ROUTES.posts.byHashtag(hashtagName),
-      method: 'GET',
-      params: {
-        limit,
-      },
-    });
-  },
 };

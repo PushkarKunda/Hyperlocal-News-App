@@ -36,12 +36,19 @@ export const discoveryApi = {
    * GET /discovery/search
    * Unified Discovery Search
    */
-  search: async (query: string, limit: number = 20): Promise<any> => {
-    return await request<any>({
+  search: async (query: string, limit: number = 20): Promise<any[]> => {
+    const res = await request<any>({
       url: API_ROUTES.discovery.search,
       method: 'GET',
       params: { query, limit },
     });
+    if (res && Array.isArray(res)) return res;
+    if (res && Array.isArray(res.results)) return res.results;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (res && (Array.isArray(res.news) || Array.isArray(res.posts))) {
+      return [...(res.news || []), ...(res.posts || [])];
+    }
+    return [];
   },
 
   /**
@@ -73,11 +80,17 @@ export const discoveryApi = {
    * Quick trending refresh (news/discovery)
    */
   getTrending: async (limit: number = 10): Promise<NewsArticle[]> => {
-    return await request<NewsArticle[]>({
+    const res = await request<any>({
       url: API_ROUTES.discovery.trending,
       method: 'GET',
       params: { limit },
     });
+    if (res && Array.isArray(res)) return res;
+    if (res && Array.isArray(res.news)) return res.news;
+    if (res && Array.isArray(res.articles)) return res.articles;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
   },
 
   /**
@@ -85,11 +98,12 @@ export const discoveryApi = {
    * Get trending hashtags
    */
   getTrendingHashtags: async (limit: number = 10): Promise<Hashtag[]> => {
-    return await request<Hashtag[]>({
+    const res = await request<any>({
       url: API_ROUTES.discovery.trendingHashtags,
       method: 'GET',
       params: { limit },
     });
+    return res?.hashtags || [];
   },
 
   /**
@@ -97,11 +111,12 @@ export const discoveryApi = {
    * Get hashtag suggestions while typing
    */
   getHashtagSuggestions: async (query: string, limit: number = 10): Promise<Hashtag[]> => {
-    return await request<Hashtag[]>({
+    const res = await request<any>({
       url: API_ROUTES.discovery.hashtagSuggestions,
       method: 'GET',
       params: { query, limit },
     });
+    return res?.hashtags || [];
   },
 
   /**
