@@ -73,7 +73,7 @@ export default function HomeScreen() {
 
   // "For You" = full mixed feed (news + ads + sponsored) as API returns
   const { data: forYouFeed, isLoading: isLoadingFeed } = useNewsFeed({
-    limit: 20,
+    limit: 50,
   });
 
   // Category tab news (pure news only, no ads)
@@ -110,15 +110,37 @@ export default function HomeScreen() {
   // Feed items to render in the vertical snap list
   const feedItems = useMemo((): FeedItem[] => {
     if (activeCategory === FOR_YOU_ID) {
-      // Full mixed feed: news + ads + sponsored exactly as API returns
-      return forYouFeed?.items ?? [];
+      if (!forYouFeed) return [];
+      let rawItems: any[] = [];
+      if (Array.isArray(forYouFeed)) {
+        rawItems = forYouFeed;
+      } else if (Array.isArray((forYouFeed as any).items)) {
+        rawItems = (forYouFeed as any).items;
+      } else if (Array.isArray((forYouFeed as any).data)) {
+        rawItems = (forYouFeed as any).data;
+      } else if (Array.isArray((forYouFeed as any).news)) {
+        rawItems = (forYouFeed as any).news;
+      }
+
+      return rawItems.map((item: any, idx: number): FeedItem => {
+        if (item && item.type && item.data) {
+          return item as FeedItem;
+        }
+        return {
+          type: 'news',
+          data: item,
+          position: idx,
+        };
+      });
     }
     // Category tabs: wrap news articles into FeedItem shape
     const categoryArticles = Array.isArray(categoryNewsData)
       ? categoryNewsData
       : (categoryNewsData as any)?.news && Array.isArray((categoryNewsData as any).news)
         ? (categoryNewsData as any).news
-        : [];
+        : (categoryNewsData as any)?.data && Array.isArray((categoryNewsData as any).data)
+          ? (categoryNewsData as any).data
+          : [];
 
     return categoryArticles.map(
       (article: any, i: number): FeedItem => ({
@@ -441,9 +463,10 @@ export default function HomeScreen() {
             disableIntervalMomentum
             bounces={false}
             getItemLayout={getItemLayout}
-            initialNumToRender={2}
-            maxToRenderPerBatch={2}
+            initialNumToRender={5}
+            maxToRenderPerBatch={5}
             windowSize={5}
+            updateCellsBatchingPeriod={50}
             removeClippedSubviews={true}
           />
         )}

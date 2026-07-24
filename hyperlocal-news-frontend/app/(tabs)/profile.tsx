@@ -15,6 +15,7 @@ import {
   Share,
   KeyboardAvoidingView,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { CreateArticleModal } from '@/components/CreateArticleModal';
 import { useCreateNews, useDeleteNews } from '@/hooks/useNews';
+import { useDeletePost } from '@/hooks/usePosts';
 import { useBookmarks } from '@/hooks/useEngagement';
 import { usersApi, postsApi, type DashboardResponse } from '@/services/api';
 import type { Post } from '@/services/api/posts';
@@ -53,6 +55,33 @@ export default function ProfileScreen() {
   // ─── API Mutations ───────────────────────────────────────────────────────
   const { mutate: createArticleMutate } = useCreateNews();
   const { mutate: deleteArticleMutate } = useDeleteNews();
+  const { mutate: deletePostMutate } = useDeletePost();
+
+  const handleDeleteUserPost = (postUid: string) => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deletePostMutate(postUid, {
+              onSuccess: () => {
+                setPosts((prev) => prev.filter((p) => p.post_uid !== postUid));
+                setSelectedPost(null);
+                Alert.alert('Success', 'Post deleted successfully.');
+              },
+              onError: (err: any) => {
+                Alert.alert('Error', err?.message || 'Failed to delete post.');
+              },
+            });
+          },
+        },
+      ]
+    );
+  };
 
   // ✅ API hooks - Fetch BOTH content types
   const { data: newsBookmarks = [] } = useBookmarks('news');
@@ -497,10 +526,15 @@ export default function ProfileScreen() {
         throw new Error('Failed to obtain post image URL.');
       }
 
+      const captionTags = (postCaption.match(/#[a-zA-Z0-9_]+/g) || []).map((t) =>
+        t.replace(/^#/, '').trim()
+      );
+
       // 2. Call backend Post creation API
       const response = await postsApi.createPost({
         content: postCaption.trim(),
         image_url: serverUrl,
+        hashtags: captionTags.length > 0 ? captionTags : undefined,
       });
 
       // 3. Prepend newly created post
@@ -521,7 +555,7 @@ export default function ProfileScreen() {
         edited_at: null,
         created_at: response.post.created_at,
         time_ago: 'Just now',
-        hashtags: response.post.hashtags || [],
+        hashtags: response.post.hashtags || captionTags || [],
         is_liked: false,
       };
 
@@ -978,10 +1012,23 @@ export default function ProfileScreen() {
                     activeOpacity={0.9}
                     onPress={() => setSelectedPost(post)}
                   >
-                    <Image
+                    <ExpoImage
                       source={{ uri: post.image_url || 'https://placehold.co/200x200/E2E8F0/E2E8F0?text=Post' }}
                       style={styles.postImage}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="disk"
                     />
+                    <TouchableOpacity
+                      style={styles.postDeleteBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteUserPost(post.post_uid);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
                     <View style={[styles.postBadge, { backgroundColor: 'rgba(76, 175, 80, 0.9)' }]}>
                       <Text style={styles.postBadgeText}>Published</Text>
                     </View>
@@ -1485,7 +1532,13 @@ export default function ProfileScreen() {
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Post Details</Text>
-              <View style={{ width: 24 }} />
+              <TouchableOpacity
+                onPress={() => selectedPost && handleDeleteUserPost(selectedPost.post_uid)}
+                style={styles.modalCloseBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              </TouchableOpacity>
             </View>
 
             {selectedPost && (
@@ -2012,6 +2065,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
+  },
+  postDeleteBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
   },
   postOverlay: {
     position: 'absolute',

@@ -103,6 +103,48 @@ const PostCardInner: React.FC<PostCardProps> = ({
 
   const bgGradient = GRADIENT_PRESETS[Math.abs(post.id || 0) % GRADIENT_PRESETS.length];
 
+  // Normalize hashtags from post.hashtags, post.tags, and inline content #hashtags
+  const displayHashtags = (() => {
+    const tagsSet = new Set<string>();
+
+    const rawHashtags: any = post.hashtags || (post as any).tags || (post as any).hashtag_list;
+    if (Array.isArray(rawHashtags)) {
+      rawHashtags.forEach((t) => {
+        if (typeof t === 'string' && t.trim()) {
+          tagsSet.add(t.trim().replace(/^#/, ''));
+        } else if (typeof t === 'object' && t !== null && 'name' in t) {
+          tagsSet.add(String((t as any).name).trim().replace(/^#/, ''));
+        } else if (t != null) {
+          tagsSet.add(String(t).trim().replace(/^#/, ''));
+        }
+      });
+    } else if (typeof rawHashtags === 'string' && rawHashtags.trim()) {
+      try {
+        const parsed = JSON.parse(rawHashtags);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((t) => tagsSet.add(String(t).trim().replace(/^#/, '')));
+        } else {
+          rawHashtags.split(/[\s,]+/).forEach((t) => {
+            if (t.trim()) tagsSet.add(t.trim().replace(/^#/, ''));
+          });
+        }
+      } catch {
+        rawHashtags.split(/[\s,]+/).forEach((t) => {
+          if (t.trim()) tagsSet.add(t.trim().replace(/^#/, ''));
+        });
+      }
+    }
+
+    if (post.content) {
+      const matched = post.content.match(/#[a-zA-Z0-9_]+/g);
+      if (matched) {
+        matched.forEach((t) => tagsSet.add(t.replace(/^#/, '').trim()));
+      }
+    }
+
+    return Array.from(tagsSet).filter(Boolean);
+  })();
+
   return (
     <View style={[styles.cardContainer, { height: cardHeight }]}>
       {/* Background Layer (Image or Vibrant Gradient fallback) */}
@@ -111,7 +153,8 @@ const PostCardInner: React.FC<PostCardProps> = ({
           source={{ uri: post.image_url }}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
-          transition={400}
+          transition={200}
+          cachePolicy="disk"
         />
       ) : (
         <LinearGradient

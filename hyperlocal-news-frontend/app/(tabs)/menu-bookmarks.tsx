@@ -76,7 +76,7 @@ export default function MenuBookmarksScreen() {
 
         return {
           id: bookmark.id,
-          contentUid: bookmark.content_uid,
+          contentUid: bookmark.content_uid || article.news_uid || article.id || String(bookmark.id),
           contentType: 'news' as ContentType,
           category: categoryName,
           title: article.title || 'Untitled',
@@ -95,7 +95,7 @@ export default function MenuBookmarksScreen() {
 
         return {
           id: bookmark.id,
-          contentUid: bookmark.content_uid,
+          contentUid: bookmark.content_uid || post.post_uid || post.id || String(bookmark.id),
           contentType: 'post' as ContentType,
           category: 'Community',
           title: post.title || post.content?.substring(0, 100) || 'Untitled',

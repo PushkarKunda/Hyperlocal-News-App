@@ -86,6 +86,7 @@ export const postsApi = {
     content: string | null;
     image_url?: string | null;
     video_url?: string | null;
+    hashtags?: string[];
   }): Promise<CreatePostResponse> => {
     return await request<CreatePostResponse>({
       url: API_ROUTES.posts.create,

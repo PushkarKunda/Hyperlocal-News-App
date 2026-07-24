@@ -25,6 +25,7 @@ import {
   useAddBookmark,
   useRemoveBookmark,
 } from '@/hooks/useEngagement';
+import { useLikePost, useSharePost } from '@/hooks/usePosts';
 import { useAuthStore } from '@/store/authStore';
 import { formatTimeAgo } from '@/utils/formatters';
 import { useRouter } from 'expo-router';
@@ -77,7 +78,8 @@ const AdCard = React.memo(
           source={{ uri: item.image_url }}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
-          transition={400}
+          transition={200}
+          cachePolicy="disk"
         />
 
         <LinearGradient
@@ -148,7 +150,8 @@ const SponsoredCard = React.memo(
             source={{ uri: item.image_url }}
             style={styles.image}
             contentFit="cover"
-            transition={400}
+            transition={200}
+            cachePolicy="disk"
           />
           <View style={styles.sponsoredBadge}>
             <MaterialIcons name="campaign" size={12} color="#fff" />
@@ -226,6 +229,8 @@ const NewsCard = React.memo(
 
     const { mutate: like } = useLike();
     const { mutate: unlike } = useUnlike();
+    const { mutate: togglePostLike } = useLikePost();
+    const { mutate: sharePostMutation } = useSharePost();
     const { mutate: addBookmark } = useAddBookmark();
     const { mutate: removeBookmark } = useRemoveBookmark();
     const { mutate: recordShare } = useRecordShare();
@@ -237,21 +242,40 @@ const NewsCard = React.memo(
 
     React.useEffect(() => {
       // Record view when card mounts
-      if (contentUid) {
+      if (contentUid && itemType === 'news') {
         recordView(contentUid);
       }
-    }, [contentUid, recordView]);
+    }, [contentUid, itemType, recordView]);
 
     const handleToggleLike = () => {
       if (!contentUid) return;
-      if (liked) {
-        setLiked(false);
-        setLikeCount((c) => Math.max(0, c - 1));
-        unlike(contentUid);
+      const nextLiked = !liked;
+      setLiked(nextLiked);
+      setLikeCount((c) => (nextLiked ? c + 1 : Math.max(0, c - 1)));
+
+      if (itemType === 'post') {
+        togglePostLike(contentUid, {
+          onError: () => {
+            setLiked(!nextLiked);
+            setLikeCount((c) => (!nextLiked ? c + 1 : Math.max(0, c - 1)));
+          },
+        });
       } else {
-        setLiked(true);
-        setLikeCount((c) => c + 1);
-        like(contentUid);
+        if (nextLiked) {
+          like(contentUid, {
+            onError: () => {
+              setLiked(false);
+              setLikeCount((c) => Math.max(0, c - 1));
+            },
+          });
+        } else {
+          unlike(contentUid, {
+            onError: () => {
+              setLiked(true);
+              setLikeCount((c) => c + 1);
+            },
+          });
+        }
       }
     };
 
@@ -267,11 +291,15 @@ const NewsCard = React.memo(
     const handleShare = async () => {
       try {
         if (contentUid) {
-          recordShare({ newsUid: contentUid, platform: 'general' });
+          if (itemType === 'post') {
+            sharePostMutation({ postUid: contentUid, platform: 'native' });
+          } else {
+            recordShare({ newsUid: contentUid, platform: 'general' });
+          }
         }
         await Share.share({
-          message: `${item.title || (item as any).content || ''}\n\n${item.summary || ''}\n\nShared via HyperLocal`,
-          title: item.title || 'HyperLocal Post',
+          message: `${displayTitle}\n\n${displaySummary}\n\nShared via HyperLocal`,
+          title: displayTitle,
         });
       } catch (_) { }
     };
@@ -284,7 +312,12 @@ const NewsCard = React.memo(
       }
     };
 
-    const categoryName = item.category_names?.[0] || 'News';
+    const categoryName = item.category_names?.[0] || (itemType === 'post' ? 'Community' : 'News');
+    const displayTitle = item.title || (item as any).content || 'Community Post';
+    const displaySummary = item.summary || ((item as any).content && (item as any).content !== displayTitle ? (item as any).content : '') || '';
+    const displayImage = item.image_url || (item as any).images?.[0]?.image_url || (item as any).imageUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800';
+    const displaySource = item.source_name || item.source || (item as any).user_display_name || (item as any).user_name || 'HyperLocal';
+
     const hasSourceLink = Boolean(item.source_url);
     const actionIconColor = isDark ? '#94A3B8' : '#464554';
     const actionBg = isDark ? '#262636' : '#E5EEFF';
@@ -298,7 +331,7 @@ const NewsCard = React.memo(
         });
       } else {
         // Fallback: search Google for source + title
-        const query = encodeURIComponent(`${item.source_name || item.source || ''} ${item.title}`);
+        const query = encodeURIComponent(`${item.source_name || item.source || ''} ${displayTitle}`);
         WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${query}`, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
         });
@@ -322,7 +355,7 @@ const NewsCard = React.memo(
         style: 'cancel' as const,
       });
       Alert.alert(
-        item.title || 'Options',
+        displayTitle || 'Options',
         'Choose an action',
         options
       );

@@ -42,7 +42,8 @@ export function useNewsFeed(filters?: NewsFilters) {
   return useQuery({
     queryKey: newsKeys.feed(filters),
     queryFn: () => newsApi.getFeed({ limit: 20, ...filters }),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 }
 
@@ -69,7 +70,8 @@ export function useCategoryNews(categoryId: number | null) {
     queryKey: newsKeys.categoryNews(categoryId!),
     queryFn: () => newsApi.getNewsByCategory(categoryId!),
     enabled: categoryId !== null && categoryId > 0,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 }
 
@@ -81,7 +83,8 @@ export function useLocationNews(params: LocationNewsParams) {
     queryKey: newsKeys.locationNews(params),
     queryFn: () => newsApi.getByLocation(params),
     enabled: Boolean(params.state || params.district || params.city),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 }
 

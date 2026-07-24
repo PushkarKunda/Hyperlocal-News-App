@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -8,6 +8,7 @@ import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, BorderRadius, Shadows } from '@/constants/Spacing';
 import { useNewsArticle, useNewsEngagement, useLikeArticle, useUnlikeArticle, useRecordView, useRecordShare, useNewsComments } from '@/hooks/useNews';
+import { usePostByUid, useLikePost, useSharePost } from '@/hooks/usePosts';
 import { useCheckBookmark, useAddBookmark, useRemoveBookmark } from '@/hooks/useEngagement';
 import { useQuery } from '@tanstack/react-query';
 import { contentApi, Advertisement } from '@/services/api/content';
@@ -17,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import * as WebBrowser from 'expo-web-browser';
+import { Share } from 'react-native';
 
 // Ad Card Component for injecting inside the article
 const AdCard = ({ ad, colors }: { ad: Advertisement; colors: any }) => (
@@ -43,8 +45,35 @@ export default function NewsDetailScreen() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
-  // Load article dynamically
-  const { data: article, isLoading } = useNewsArticle(id as string);
+  const isPostType = contentType === 'post';
+
+  // Load article or post dynamically based on contentType
+  const { data: newsArticleData, isLoading: isLoadingNews } = useNewsArticle(!isPostType ? (id as string) : null);
+  const { data: postData, isLoading: isLoadingPost } = usePostByUid(isPostType ? (id as string) : null);
+
+  const isLoading = isPostType ? isLoadingPost : isLoadingNews;
+
+  const article = useMemo(() => {
+    if (isPostType && postData) {
+      const p = postData as any;
+      return {
+        news_uid: p.post_uid,
+        title: p.title || (p.content ? (p.content.length > 80 ? p.content.substring(0, 80) + '...' : p.content) : 'Community Post'),
+        summary: p.content || '',
+        image_url: p.image_url || p.images?.[0]?.image_url || undefined,
+        created_at: p.created_at,
+        views: p.views || 0,
+        likes: p.like_count || p.likes || 0,
+        comments: p.comment_count || p.comments || 0,
+        shares: p.share_count || p.shares || 0,
+        is_breaking: false,
+        category_names: ['Community'],
+        location: { district: p.location?.district || '' },
+        source: p.user_display_name || p.user_name || 'Community Member',
+      };
+    }
+    return newsArticleData;
+  }, [isPostType, newsArticleData, postData]);
   const { data: engagement } = useNewsEngagement(id as string);
   const { data: bookmarkCheck } = useCheckBookmark(id as string, contentType);
   const { data: comments } = useNewsComments(id as string);
@@ -59,6 +88,8 @@ export default function NewsDetailScreen() {
   const { mutate: recordView } = useRecordView();
   const { mutate: likeArticle } = useLikeArticle();
   const { mutate: unlikeArticle } = useUnlikeArticle();
+  const { mutate: togglePostLike } = useLikePost();
+  const { mutate: sharePostMutation } = useSharePost();
   const { mutate: addBookmark } = useAddBookmark();
   const { mutate: removeBookmark } = useRemoveBookmark();
   const { mutate: recordShare } = useRecordShare();
@@ -67,17 +98,21 @@ export default function NewsDetailScreen() {
 
   // Record view on mount
   useEffect(() => {
-    if (id) {
+    if (id && !isPostType) {
       recordView(id as string);
     }
-  }, [id]);
+  }, [id, isPostType]);
 
   const handleToggleLike = () => {
     if (!id) return;
-    if (isLiked) {
-      unlikeArticle(id as string, { onSettled: () => setIsLiked(false) });
+    if (isPostType) {
+      togglePostLike(id as string, { onSettled: () => setIsLiked(!isLiked) });
     } else {
-      likeArticle(id as string, { onSettled: () => setIsLiked(true) });
+      if (isLiked) {
+        unlikeArticle(id as string, { onSettled: () => setIsLiked(false) });
+      } else {
+        likeArticle(id as string, { onSettled: () => setIsLiked(true) });
+      }
     }
   };
 
@@ -90,10 +125,19 @@ export default function NewsDetailScreen() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!id) return;
-    recordShare({ uid: id as string, platform: 'general' });
-    // Add native share logic here if desired
+    if (isPostType) {
+      sharePostMutation({ postUid: id as string, platform: 'native' });
+    } else {
+      recordShare({ uid: id as string, platform: 'general' });
+    }
+    try {
+      await Share.share({
+        message: `${article?.title || article?.summary || ''}\n\nShared via HyperLocal`,
+        title: article?.title || 'HyperLocal Story',
+      });
+    } catch (_) {}
   };
 
   const handleOpenSource = () => {
