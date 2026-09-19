@@ -11,6 +11,11 @@ obj/
 .gradle/
 .cxx/
 
+**/build/
+**/.gradle/
+**/.cxx/
+
+
 .idea/
 .vscode/
 .git/
