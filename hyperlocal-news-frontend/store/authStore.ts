@@ -258,7 +258,14 @@ export const useAuthStore = create<AuthState>()(
           const prefs = await usersApi.getPreferences();
           set({ cachedPreferences: prefs });
           return prefs;
-        } catch (error) {
+        } catch (error: any) {
+          // If the backend returns 404, it likely means preferences aren't set yet.
+          if (error?.response?.status === 404 || error?.code === '404' || error?.message?.includes('404')) {
+            console.log('[authStore] No preferences found for user, using defaults.');
+            const defaultPrefs = {} as UserPreferences;
+            set({ cachedPreferences: defaultPrefs });
+            return defaultPrefs;
+          }
           console.error('[authStore] fetchPreferences failed:', error);
           throw error;
         }

@@ -15,6 +15,7 @@ export function isContentActive(startDate: string, endDate: string): boolean {
  * Filter advertisements by active status and date range
  */
 export function getActiveAds(ads: Advertisement[]): Advertisement[] {
+    if (!Array.isArray(ads)) return [];
     return ads.filter(ad =>
         ad.is_active && isContentActive(ad.start_date, ad.end_date)
     );
@@ -24,6 +25,7 @@ export function getActiveAds(ads: Advertisement[]): Advertisement[] {
  * Filter sponsored posts by date range
  */
 export function getActiveSponsoredPosts(posts: SponsoredPost[]): SponsoredPost[] {
+    if (!Array.isArray(posts)) return [];
     return posts.filter(post =>
         isContentActive(post.start_date, post.end_date)
     );
@@ -127,6 +129,7 @@ export function isSponsoredPost(item: any): item is { type: 'sponsored'; data: S
  * Filter ads by placement
  */
 export function filterAdsByPlacement(ads: Advertisement[], placement: string): Advertisement[] {
+    if (!Array.isArray(ads)) return [];
     return ads.filter(ad => ad.placement === placement);
 }
 
@@ -141,6 +144,7 @@ export function filterByLocation(
         city_id?: number;
     }
 ): (Advertisement | SponsoredPost)[] {
+    if (!Array.isArray(items)) return [];
     return items.filter(item => {
         // If no location targeting, show to everyone
         if (!item.state_id && !item.district_id && !item.city_id) return true;
@@ -172,6 +176,7 @@ export function filterByTargeting<T extends { targeting: any }>(
         age?: number;
     }
 ): T[] {
+    if (!Array.isArray(items)) return [];
     return items.filter(item => {
         if (!item.targeting) return true;
 
