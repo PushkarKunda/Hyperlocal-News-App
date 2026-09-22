@@ -97,15 +97,15 @@ export default function MoreScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { backgroundColor: colors.surfaceGlass, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>More Options</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* User Card */}
         <TouchableOpacity
-          style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.9}
+          style={[styles.userCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          activeOpacity={0.85}
           onPress={() => router.push('/(tabs)/profile')}
         >
           <Image
@@ -130,7 +130,7 @@ export default function MoreScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               {section.title.toUpperCase()}
             </Text>
-            <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.sectionContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {section.items.map((item, itemIdx) => (
                 <View key={item.id}>
                   <TouchableOpacity
@@ -148,7 +148,7 @@ export default function MoreScreen() {
                     <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                   </TouchableOpacity>
                   {itemIdx < section.items.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <View style={[styles.divider, { backgroundColor: colors.divider }]} />
                   )}
                 </View>
               ))}
@@ -158,7 +158,13 @@ export default function MoreScreen() {
 
         {/* Logout Button */}
         <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFF0F0', borderColor: isDark ? '#4A2A2A' : '#FCA5A5' }]}
+          style={[
+            styles.logoutButton,
+            {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FFF0F0',
+              borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FCA5A5',
+            },
+          ]}
           activeOpacity={0.8}
           onPress={handleLogout}
         >

@@ -527,7 +527,13 @@ export default function SettingsLocationScreen() {
             styles.headerLeftButton,
             { backgroundColor: 'rgba(70, 72, 212, 0.05)' },
           ]}
-          onPress={() => router.push('/(tabs)/settings')}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(tabs)/settings');
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={colors.text} />

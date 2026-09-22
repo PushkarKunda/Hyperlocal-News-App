@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   Animated,
+  ViewToken,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
@@ -46,6 +48,7 @@ export default function HomeScreen() {
   const [scrollHeight, setScrollHeight] = useState(screenHeight);
   const [activeCategory, setActiveCategory] = useState<CategoryId>(FOR_YOU_ID);
   const [activeCommentUid, setActiveCommentUid] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const params = useLocalSearchParams<{ categoryId?: string }>();
 
@@ -57,6 +60,10 @@ export default function HomeScreen() {
       }
     }
   }, [params.categoryId]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [activeCategory]);
 
   // ─── Refs ─────────────────────────────────────────────────────────────
   const categoryTabRef = useRef<FlatList>(null);
@@ -72,15 +79,36 @@ export default function HomeScreen() {
     useCategories();
 
   // "For You" = full mixed feed (news + ads + sponsored) as API returns
-  const { data: forYouFeed, isLoading: isLoadingFeed } = useNewsFeed({
+  const {
+    data: forYouFeed,
+    isLoading: isLoadingFeed,
+    isError: isErrorFeed,
+    refetch: refetchFeed,
+    isRefetching: isRefetchingFeed,
+  } = useNewsFeed({
     limit: 50,
   });
 
   // Category tab news (pure news only, no ads)
-  const { data: categoryNewsData = [], isLoading: isLoadingCategoryNews } =
-    useCategoryNews(
-      typeof activeCategory === 'number' ? activeCategory : null
-    );
+  const {
+    data: categoryNewsData = [],
+    isLoading: isLoadingCategoryNews,
+    isError: isErrorCategoryNews,
+    refetch: refetchCategoryNews,
+    isRefetching: isRefetchingCategoryNews,
+  } = useCategoryNews(
+    typeof activeCategory === 'number' ? activeCategory : null
+  );
+
+  const isRefreshing = isRefetchingFeed || isRefetchingCategoryNews;
+
+  const handleRefresh = useCallback(() => {
+    if (activeCategory === FOR_YOU_ID) {
+      refetchFeed();
+    } else {
+      refetchCategoryNews();
+    }
+  }, [activeCategory, refetchFeed, refetchCategoryNews]);
 
   // Bookmarks - used to show filled/outline bookmark icon
   const { data: rawNewsBookmarks = [] } = useBookmarks('news');
@@ -157,6 +185,11 @@ export default function HomeScreen() {
       ? isLoadingFeed
       : isLoadingCategoryNews);
 
+  const isError =
+    activeCategory === FOR_YOU_ID
+      ? isErrorFeed
+      : isErrorCategoryNews;
+
   // ─── Header animation ─────────────────────────────────────────────────
   const headerHeight = insets.top + 72 + 48;
 
@@ -182,10 +215,7 @@ export default function HomeScreen() {
       duration: 250,
       useNativeDriver: true,
     }).start();
-    if (!isLoading) {
-      hideTimerRef.current = setTimeout(() => hideHeader(), 3000);
-    }
-  }, [isLoading]);
+  }, [setTabBarVisible, headerAnim]);
 
   const hideHeader = useCallback(() => {
     if (isLoading) return;
@@ -200,26 +230,15 @@ export default function HomeScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [isLoading]);
+  }, [isLoading, setTabBarVisible, headerAnim]);
 
-  const onTouchStart = (e: any) => {
-    const { pageX, pageY } = e.nativeEvent;
-    touchStartRef.current = { x: pageX, y: pageY, time: Date.now() };
-  };
-
-  const onTouchEnd = (e: any) => {
-    const { pageX, pageY } = e.nativeEvent;
-    const dx = Math.abs(pageX - touchStartRef.current.x);
-    const dy = Math.abs(pageY - touchStartRef.current.y);
-    const dt = Date.now() - touchStartRef.current.time;
-    if (dx < 10 && dy < 10 && dt < 300) {
-      const threshold = isHeaderVisible.current
-        ? headerHeight
-        : insets.top + 48;
-      if (pageY < threshold || pageY > scrollHeight - 80) return;
-      isHeaderVisible.current ? hideHeader() : showHeader();
+  const handleToggleUI = useCallback(() => {
+    if (isHeaderVisible.current) {
+      hideHeader();
+    } else {
+      showHeader();
     }
-  };
+  }, [hideHeader, showHeader]);
 
   // Reset on screen focus
   useEffect(() => {
@@ -228,18 +247,15 @@ export default function HomeScreen() {
       showHeader();
     });
     return unsub;
-  }, [navigation, showHeader]);
+  }, [navigation, showHeader, setTabBarVisible]);
 
-  // Auto-hide 5s after feed loads
+  // Make sure header and tab bar are visible on initial load
   useEffect(() => {
     if (!isLoading) {
+      setTabBarVisible(true);
       showHeader();
-      hideTimerRef.current = setTimeout(() => hideHeader(), 5000);
     }
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
-  }, [isLoading]);
+  }, [isLoading, showHeader, setTabBarVisible]);
 
   // ─── Render helpers ───────────────────────────────────────────────────
 
@@ -251,17 +267,47 @@ export default function HomeScreen() {
     setActiveCommentUid(null);
   }, []);
 
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
+        setActiveIndex(viewableItems[0].index);
+      }
+    }
+  ).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+    waitForInteraction: false,
+  }).current;
+
   const renderFeedItem = useCallback(
-    ({ item }: { item: FeedItem }) => (
-      <ImmersiveFeedCard
-        item={item}
-        containerHeight={scrollHeight}
-        bookmarkedNewsUids={bookmarkedNewsUids}
-        onOpenComments={handleOpenComments}
-      />
-    ),
-    [scrollHeight, bookmarkedNewsUids, handleOpenComments]
+    ({ item, index }: { item: FeedItem; index: number }) => {
+      const newsUid = (item.data as any)?.news_uid || (item.data as any)?.post_uid;
+      const isBookmarked = newsUid ? bookmarkedNewsUids.has(String(newsUid)) : false;
+      const isActive = index === activeIndex;
+
+      return (
+        <ImmersiveFeedCard
+          item={item}
+          containerHeight={scrollHeight}
+          isBookmarked={isBookmarked}
+          isActive={isActive}
+          onOpenComments={handleOpenComments}
+          onToggleUI={handleToggleUI}
+        />
+      );
+    },
+    [scrollHeight, bookmarkedNewsUids, activeIndex, handleOpenComments, handleToggleUI]
   );
+
+  const keyExtractor = useCallback((item: FeedItem, index: number) => {
+    const uid =
+      (item.data as any)?.news_uid ||
+      (item.data as any)?.post_uid ||
+      (item.data as any)?.id ||
+      (item.data as any)?.ad_id;
+    return uid ? `${item.type}-${uid}` : `${item.type}-${item.position ?? index}`;
+  }, []);
 
   const getItemLayout = useCallback(
     (_: any, index: number) => ({
@@ -277,8 +323,6 @@ export default function HomeScreen() {
   return (
     <View
       style={[styles.container, { backgroundColor: colors.background }]}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
     >
       <StatusBar
         style={isDark ? 'light' : 'dark'}
@@ -436,6 +480,53 @@ export default function HomeScreen() {
               colorScheme={colorScheme ?? 'light'}
             />
           </View>
+        ) : isError ? (
+          <View style={[styles.centered, { paddingTop: headerHeight }]}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={48}
+              color="#EF4444"
+            />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Oops! Something went wrong
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Failed to load the feed. Pull down to retry or explore categories.
+            </Text>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                onPress={handleRefresh}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh" size={16} color="#FFF" />
+                <Text style={styles.actionBtnText}>Try Again</Text>
+              </TouchableOpacity>
+              {categoriesData.length > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.1)'
+                        : '#EEF2FF',
+                    },
+                  ]}
+                  onPress={() => setActiveCategory(categoriesData[0].id)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.actionBtnText,
+                      { color: isDark ? '#FFF' : colors.primary },
+                    ]}
+                  >
+                    Explore {categoriesData[0].name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         ) : feedItems.length === 0 ? (
           <View style={[styles.centered, { paddingTop: headerHeight }]}>
             <Ionicons
@@ -449,11 +540,44 @@ export default function HomeScreen() {
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
               Check back later or explore other categories
             </Text>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                onPress={handleRefresh}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh" size={16} color="#FFF" />
+                <Text style={styles.actionBtnText}>Refresh</Text>
+              </TouchableOpacity>
+              {categoriesData.length > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.1)'
+                        : '#EEF2FF',
+                    },
+                  ]}
+                  onPress={() => setActiveCategory(categoriesData[0].id)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.actionBtnText,
+                      { color: isDark ? '#FFF' : colors.primary },
+                    ]}
+                  >
+                    View {categoriesData[0].name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         ) : (
           <FlatList
             data={feedItems}
-            keyExtractor={(item) => `${item.type}-${item.position}`}
+            keyExtractor={keyExtractor}
             renderItem={renderFeedItem}
             pagingEnabled
             showsVerticalScrollIndicator={false}
@@ -463,11 +587,15 @@ export default function HomeScreen() {
             disableIntervalMomentum
             bounces={false}
             getItemLayout={getItemLayout}
-            initialNumToRender={5}
-            maxToRenderPerBatch={5}
-            windowSize={5}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={3}
             updateCellsBatchingPeriod={50}
-            removeClippedSubviews={true}
+            removeClippedSubviews={false}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
           />
         )}
       </View>
@@ -587,5 +715,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
   },
 });

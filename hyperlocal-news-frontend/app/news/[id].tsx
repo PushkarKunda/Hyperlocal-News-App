@@ -19,22 +19,40 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import * as WebBrowser from 'expo-web-browser';
 import { Share } from 'react-native';
+import {
+  resolveArticleImageUrl,
+  resolveAdImageUrl,
+  getCategoryFallbackImage,
+  CURATED_FALLBACK_IMAGES,
+} from '@/utils/imageResolver';
 
 // Ad Card Component for injecting inside the article
-const AdCard = ({ ad, colors }: { ad: Advertisement; colors: any }) => (
-  <View style={[styles.adCardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-    <Text style={[styles.adDisclaimer, { color: colors.textTertiary }]}>Sponsored</Text>
-    <Image source={{ uri: ad.image_url }} style={styles.adImage} contentFit="cover" />
-    <View style={styles.adContent}>
-      <Text style={[styles.adTitle, { color: colors.text }]} numberOfLines={2}>{ad.title}</Text>
-      {ad.redirect_url ? (
-        <TouchableOpacity style={[styles.adCtaButton, { backgroundColor: colors.primary }]} onPress={() => WebBrowser.openBrowserAsync(ad.redirect_url!)}>
-          <Text style={styles.adCtaText}>Learn More</Text>
-        </TouchableOpacity>
-      ) : null}
+const AdCard = ({ ad, colors }: { ad: Advertisement; colors: any }) => {
+  const [adImg, setAdImg] = useState(() => resolveAdImageUrl(ad.image_url));
+  useEffect(() => {
+    setAdImg(resolveAdImageUrl(ad.image_url));
+  }, [ad.image_url]);
+
+  return (
+    <View style={[styles.adCardContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.adDisclaimer, { color: colors.textTertiary }]}>Sponsored</Text>
+      <Image
+        source={{ uri: adImg }}
+        style={styles.adImage}
+        contentFit="cover"
+        onError={() => setAdImg(CURATED_FALLBACK_IMAGES.ad_fallback)}
+      />
+      <View style={styles.adContent}>
+        <Text style={[styles.adTitle, { color: colors.text }]} numberOfLines={2}>{ad.title}</Text>
+        {ad.redirect_url ? (
+          <TouchableOpacity style={[styles.adCtaButton, { backgroundColor: colors.primary }]} onPress={() => WebBrowser.openBrowserAsync(ad.redirect_url!)}>
+            <Text style={styles.adCtaText}>Learn More</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 export default function NewsDetailScreen() {
   const { id, type } = useLocalSearchParams();
@@ -181,6 +199,22 @@ export default function NewsDetailScreen() {
   const categoryName = article.category_names?.[0] || 'News';
   const adToInject = ads.length > 0 ? ads[0] : null;
 
+  const resolvedHeroImage = useMemo(() => {
+    return resolveArticleImageUrl({
+      imageUrl: article.image_url,
+      categoryNames: article.category_names,
+      categoryName,
+      title: article.title,
+      isBreaking: article.is_breaking,
+      itemType: contentType,
+    });
+  }, [article.image_url, article.category_names, categoryName, article.title, article.is_breaking, contentType]);
+
+  const [heroImageUri, setHeroImageUri] = useState<string>(resolvedHeroImage);
+  useEffect(() => {
+    setHeroImageUri(resolvedHeroImage);
+  }, [resolvedHeroImage]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
@@ -220,10 +254,17 @@ export default function NewsDetailScreen() {
         {/* Immersive Hero Image */}
         <View style={styles.heroContainer}>
           <Image
-            source={{ uri: article.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800' }}
+            source={{ uri: heroImageUri }}
             style={styles.heroImage}
             contentFit="cover"
-            transition={1000}
+            transition={500}
+            cachePolicy="disk"
+            onError={() => {
+              const fallback = getCategoryFallbackImage(categoryName, article.is_breaking);
+              if (heroImageUri !== fallback) {
+                setHeroImageUri(fallback);
+              }
+            }}
           />
           <LinearGradient
             colors={['transparent', colors.surface]}
@@ -273,7 +314,7 @@ export default function NewsDetailScreen() {
           </View>
 
           {/* Source URL Footer */}
-          <TouchableOpacity style={[styles.sourceFooter, { borderColor: colors.border }]} onPress={handleOpenSource}>
+          <TouchableOpacity style={[styles.sourceFooter, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleOpenSource}>
             <Ionicons name="globe-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
             <Text style={[styles.sourceFooterText, { color: colors.primary }]}>
               Read full story at {article.source || 'Source'}
@@ -284,7 +325,7 @@ export default function NewsDetailScreen() {
       </ScrollView>
 
       {/* Floating Bottom Engagement Bar */}
-      <View style={[styles.engagementBar, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: insets.bottom || 12 }]}>
+      <View style={[styles.engagementBar, { backgroundColor: colors.surfaceGlass, borderTopColor: colors.border, paddingBottom: insets.bottom || 12 }]}>
         {/* <TouchableOpacity style={styles.engagementItem} onPress={handleToggleLike}>
           <Ionicons name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "#EF4444" : colors.textSecondary} />
           <Text style={[styles.engagementText, { color: colors.textSecondary }]}>{engagement?.total_likes || article.likes || 0}</Text>

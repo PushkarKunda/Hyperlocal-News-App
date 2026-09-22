@@ -134,7 +134,7 @@ export default function LocalScreen() {
       <View style={styles.headerLocationContainer}>
         <TouchableOpacity
           style={[styles.locationPicker, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/(onboarding)/location')}
+          onPress={() => router.push('/(tabs)/settings-location')}
         >
           <MaterialIcons name="location-on" size={20} color={colors.textSecondary} />
           <Text style={[styles.locationText, { color: colors.text }, scaledFontSize(14)]}>{userLocationStr}</Text>

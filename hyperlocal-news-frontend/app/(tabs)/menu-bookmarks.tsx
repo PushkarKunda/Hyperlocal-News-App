@@ -19,6 +19,7 @@ import { Colors } from '@/constants/Colors';
 import { useBookmarks, useRemoveBookmark } from '@/hooks/useEngagement';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatTimeAgo, formatNumber } from '@/utils/formatters';
+import { resolveArticleImageUrl } from '@/utils/imageResolver';
 import type { ContentType } from '@/services/api/engagement';
 
 interface MenuBookmarkItem {
@@ -28,7 +29,7 @@ interface MenuBookmarkItem {
   category: string;
   title: string;
   description: string;
-  imageUrl: string | null; // Keep as null, not undefined
+  imageUrl: string;
   timeAgo: string;
   reads: string;
 }
@@ -67,7 +68,7 @@ export default function MenuBookmarksScreen() {
 
   // ✅ Fixed: Proper type narrowing with filter
   const bookmarks = useMemo((): MenuBookmarkItem[] => {
-    const mappedNews = newsBookmarks
+    const mappedNews: MenuBookmarkItem[] = newsBookmarks
       .map((bookmark) => {
         const article = (bookmark as any).content;
         if (!article) return null;
@@ -81,14 +82,19 @@ export default function MenuBookmarksScreen() {
           category: categoryName,
           title: article.title || 'Untitled',
           description: article.summary || '',
-          imageUrl: article.image_url || null, // ✅ Explicitly null
+          imageUrl: resolveArticleImageUrl({
+            imageUrl: article.image_url,
+            categoryName,
+            title: article.title,
+            isBreaking: article.is_breaking,
+          }),
           timeAgo: formatTimeAgo(article.created_at || bookmark.created_at),
           reads: `${formatNumber(article.views || 0)} reads`,
         };
       })
       .filter((item): item is MenuBookmarkItem => item !== null); // Type guard
 
-    const mappedPosts = postBookmarks
+    const mappedPosts: MenuBookmarkItem[] = postBookmarks
       .map((bookmark) => {
         const post = (bookmark as any).content;
         if (!post) return null;
@@ -100,7 +106,12 @@ export default function MenuBookmarksScreen() {
           category: 'Community',
           title: post.title || post.content?.substring(0, 100) || 'Untitled',
           description: post.content || '',
-          imageUrl: post.images?.[0]?.image_url || null, // ✅ Explicitly null
+          imageUrl: resolveArticleImageUrl({
+            imageUrl: post.images?.[0]?.image_url || post.image_url,
+            categoryName: 'Community',
+            title: post.title || post.content,
+            itemType: 'post',
+          }),
           timeAgo: formatTimeAgo(post.created_at || bookmark.created_at),
           reads: `${formatNumber(post.views || 0)} views`,
         };

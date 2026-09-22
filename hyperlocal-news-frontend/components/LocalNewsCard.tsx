@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Colors } from '@/constants/Colors';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useAppTextScale } from '@/hooks/useAppTextScale';
+import { resolveArticleImageUrl, getCategoryFallbackImage } from '@/utils/imageResolver';
 
 export interface LocalNewsItem {
   id: string;
@@ -27,10 +28,23 @@ function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
   const scale = useAppTextScale();
   const scaledFontSize = (size: number) => ({ fontSize: size * scale });
 
+  const resolvedImg = useMemo(() => {
+    return resolveArticleImageUrl({
+      imageUrl: item.imageUrl,
+      title: item.title,
+      categoryName: 'Local',
+    });
+  }, [item.imageUrl, item.title]);
+
+  const [imgSrc, setImgSrc] = useState(resolvedImg);
+  useEffect(() => {
+    setImgSrc(resolvedImg);
+  }, [resolvedImg]);
+
   if (item.variant === 'horizontal') {
     return (
       <TouchableOpacity 
-        style={[styles.horizontalCard, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+        style={[styles.horizontalCard, { backgroundColor: colors.card, borderColor: colors.border }]} 
         onPress={onPress}
         activeOpacity={0.8}
       >
@@ -50,11 +64,15 @@ function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
           </View>
         </View>
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: imgSrc }}
           style={styles.horizontalImage}
           contentFit="cover"
           transition={200}
           cachePolicy="disk"
+          onError={() => {
+            const fb = getCategoryFallbackImage('Local');
+            if (imgSrc !== fb) setImgSrc(fb);
+          }}
         />
       </TouchableOpacity>
     );
@@ -62,17 +80,21 @@ function LocalNewsCardComponent({ item, onPress }: LocalNewsCardProps) {
 
   return (
     <TouchableOpacity 
-      style={[styles.verticalCard, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+      style={[styles.verticalCard, { backgroundColor: colors.card, borderColor: colors.border }]} 
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={styles.verticalImageContainer}>
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: imgSrc }}
           style={styles.verticalImage}
           contentFit="cover"
           transition={200}
           cachePolicy="disk"
+          onError={() => {
+            const fb = getCategoryFallbackImage('Local');
+            if (imgSrc !== fb) setImgSrc(fb);
+          }}
         />
         <View style={[styles.distanceBadgeSolid, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="near-me" size={10} color="#FFF" />

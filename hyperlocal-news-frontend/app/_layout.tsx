@@ -42,6 +42,7 @@ import { useStore } from '@/store/useStore';
 import { setOnUnauthorizedCallback } from '@/services/api/client';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { Colors } from '@/constants/Colors';
+import { useRealtimeReconciliation } from '@/hooks/useRealtimeReconciliation';
 
 // ─── Splash Screen ────────────────────────────────────────────────────────────
 SplashScreen.preventAutoHideAsync();
@@ -109,6 +110,12 @@ if (originalTextRender) {
   };
 }
 
+// ─── Realtime Setup ───────────────────────────────────────────────────────────
+function RealtimeInitializer({ children }: { children: React.ReactNode }) {
+  useRealtimeReconciliation();
+  return <>{children}</>;
+}
+
 // ─── Root Layout ──────────────────────────────────────────────────────────────
 export default function RootLayout() {
   const colorScheme = useAppColorScheme();
@@ -171,6 +178,11 @@ export default function RootLayout() {
       Appearance.setColorScheme(null);
     }
   }, [user?.theme]);
+
+  // ─── Fetch Current User Profile ───────────────────────────────────────────
+  useEffect(() => {
+    void useAuthStore.getState().fetchUser();
+  }, []);
 
   // ─── User Store Sync ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -265,40 +277,42 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar
-            style={isDark ? 'light' : 'dark'}
-            translucent
-            backgroundColor="transparent"
-          />
-
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-              animation: 'fade',
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(tabs)" />
-
-            {/* ✅ FIXED: Use animation prop not animationEnabled */}
-            <Stack.Screen
-              name="news/[id]"
-              options={{
-                animation: 'slide_from_right',
-              }}
+        <RealtimeInitializer>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar
+              style={isDark ? 'light' : 'dark'}
+              translucent
+              backgroundColor="transparent"
             />
-            <Stack.Screen
-              name="(publisher)"
-              options={{
-                animation: 'slide_from_right',
+
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+                animation: 'fade',
               }}
-            />
-          </Stack>
-        </GestureHandlerRootView>
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(tabs)" />
+
+              {/* ✅ FIXED: Use animation prop not animationEnabled */}
+              <Stack.Screen
+                name="news/[id]"
+                options={{
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="(publisher)"
+                options={{
+                  animation: 'slide_from_right',
+                }}
+              />
+            </Stack>
+          </GestureHandlerRootView>
+        </RealtimeInitializer>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

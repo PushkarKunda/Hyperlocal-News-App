@@ -6,6 +6,7 @@ import type {
   CreateNewsPayload,
   UpdateNewsPayload,
   CommentsPage,
+  NewsComment,
 } from '@/services/api/news';
 
 
@@ -306,17 +307,17 @@ export function useAddComment() {
     }) => newsApi.addComment(uid, { comment_text }),
 
     // Optimistic update — works with InfiniteData<CommentsPage>
-    onMutate: async ({ uid, comment_text }) => {
+    onMutate: async ({ uid, comment_text, userName, userAvatar }) => {
       await queryClient.cancelQueries({ queryKey: newsKeys.comments(uid) });
 
       // Snapshot the whole infinite data object for rollback.
       const previousData = queryClient.getQueryData(newsKeys.comments(uid));
 
-      const optimisticComment = {
+      const optimisticComment: NewsComment = {
         id: Date.now(),           // temporary; replaced after server refetch
-        news_uid: uid,
         user_uid: '__optimistic__',
-        user_name: 'You',
+        user_name: userName || 'You',
+        user_avatar: userAvatar,
         comment_text,
         created_at: new Date().toISOString(),
         likes_count: 0,
@@ -326,10 +327,27 @@ export function useAddComment() {
       queryClient.setQueryData<{ pages: CommentsPage[]; pageParams: any[] }>(
         newsKeys.comments(uid),
         (old) => {
-          if (!old || !old.pages || old.pages.length === 0) return old;
+          if (!old || !old.pages || old.pages.length === 0) {
+            return {
+              pages: [
+                {
+                  comments: [optimisticComment],
+                  page: 1,
+                  limit: 20,
+                  total: 1,
+                  has_more: false,
+                },
+              ],
+              pageParams: [1],
+            };
+          }
           const pages = old.pages.map((p, i) =>
             i === 0
-              ? { ...p, comments: [optimisticComment, ...p.comments] }
+              ? {
+                  ...p,
+                  total: (p.total || 0) + 1,
+                  comments: [optimisticComment, ...p.comments],
+                }
               : p
           );
           return { ...old, pages };
@@ -363,7 +381,31 @@ export function useDeleteComment() {
   return useMutation({
     mutationFn: ({ uid, commentId }: { uid: string; commentId: number }) =>
       newsApi.deleteComment(uid, commentId),
-    onSuccess: (_, { uid }) => {
+    onMutate: async ({ uid, commentId }) => {
+      await queryClient.cancelQueries({ queryKey: newsKeys.comments(uid) });
+      const previousData = queryClient.getQueryData(newsKeys.comments(uid));
+
+      queryClient.setQueryData<{ pages: CommentsPage[]; pageParams: any[] }>(
+        newsKeys.comments(uid),
+        (old) => {
+          if (!old || !old.pages) return old;
+          const pages = old.pages.map((page) => ({
+            ...page,
+            total: Math.max(0, (page.total || 1) - 1),
+            comments: page.comments.filter((c) => c.id !== commentId),
+          }));
+          return { ...old, pages };
+        }
+      );
+
+      return { previousData, uid };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData !== undefined) {
+        queryClient.setQueryData(newsKeys.comments(context.uid), context.previousData);
+      }
+    },
+    onSettled: (_data, _err, { uid }) => {
       queryClient.invalidateQueries({ queryKey: newsKeys.comments(uid) });
       queryClient.invalidateQueries({ queryKey: newsKeys.engagement(uid) });
     },

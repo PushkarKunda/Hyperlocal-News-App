@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Share,
   Alert,
+  Animated,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
@@ -30,6 +32,13 @@ import { useAuthStore } from '@/store/authStore';
 import { formatTimeAgo } from '@/utils/formatters';
 import { useRouter } from 'expo-router';
 import { useRecordView } from '@/hooks/useNews';
+import {
+  resolveArticleImageUrl,
+  resolveAdImageUrl,
+  resolveSponsoredImageUrl,
+  getCategoryFallbackImage,
+  CURATED_FALLBACK_IMAGES,
+} from '@/utils/imageResolver';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROPS
@@ -38,10 +47,11 @@ import { useRecordView } from '@/hooks/useNews';
 interface ImmersiveFeedCardProps {
   item: FeedItem;
   containerHeight: number;
-  // Set of bookmarked news_uids - update to content_id set once
-  // numeric ID is confirmed from GET /news/v1/news/:uid
-  bookmarkedNewsUids: Set<string>;
+  bookmarkedNewsUids?: Set<string>;
+  isBookmarked?: boolean;
+  isActive?: boolean;
   onOpenComments?: (uid: string) => void;
+  onToggleUI?: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -68,6 +78,12 @@ const AdCard = React.memo(
       }
     };
 
+    const resolvedAdImg = resolveAdImageUrl(item.image_url);
+    const [adImg, setAdImg] = useState(resolvedAdImg);
+    useEffect(() => {
+      setAdImg(resolvedAdImg);
+    }, [resolvedAdImg]);
+
     return (
       <TouchableOpacity
         style={[styles.cardContainer, { height: containerHeight }]}
@@ -75,11 +91,12 @@ const AdCard = React.memo(
         onPress={handleAdClick}
       >
         <Image
-          source={{ uri: item.image_url }}
+          source={{ uri: adImg }}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
           transition={200}
           cachePolicy="disk"
+          onError={() => setAdImg(CURATED_FALLBACK_IMAGES.ad_fallback)}
         />
 
         <LinearGradient
@@ -124,11 +141,13 @@ const SponsoredCard = React.memo(
     containerHeight,
     colors,
     isDark,
+    onToggleUI,
   }: {
     item: SponsoredPost;
     containerHeight: number;
     colors: any;
     isDark: boolean;
+    onToggleUI?: () => void;
   }) => {
     const handleSponsoredClick = () => {
       if (item.cta_url) {
@@ -138,20 +157,28 @@ const SponsoredCard = React.memo(
       }
     };
 
+    const resolvedSponsoredImg = resolveSponsoredImageUrl(item.image_url);
+    const [sponsoredImg, setSponsoredImg] = useState(resolvedSponsoredImg);
+    useEffect(() => {
+      setSponsoredImg(resolvedSponsoredImg);
+    }, [resolvedSponsoredImg]);
+
     return (
-      <View
-        style={[
-          styles.cardContainer,
-          { height: containerHeight, backgroundColor: colors.background },
-        ]}
-      >
+      <TouchableWithoutFeedback onPress={onToggleUI}>
+        <View
+          style={[
+            styles.cardContainer,
+            { height: containerHeight, backgroundColor: colors.background },
+          ]}
+        >
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: item.image_url }}
+            source={{ uri: sponsoredImg }}
             style={styles.image}
             contentFit="cover"
             transition={200}
             cachePolicy="disk"
+            onError={() => setSponsoredImg(CURATED_FALLBACK_IMAGES.sponsored_fallback)}
           />
           <View style={styles.sponsoredBadge}>
             <MaterialIcons name="campaign" size={12} color="#fff" />
@@ -196,6 +223,7 @@ const SponsoredCard = React.memo(
           </TouchableOpacity>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     );
   }
 );
@@ -210,17 +238,21 @@ const NewsCard = React.memo(
     itemType,
     containerHeight,
     isBookmarked,
+    isActive = false,
     colors,
     isDark,
     onOpenComments,
+    onToggleUI,
   }: {
     item: NewsArticle;
     itemType: 'news' | 'post';
     containerHeight: number;
     isBookmarked: boolean;
+    isActive?: boolean;
     colors: any;
     isDark: boolean;
     onOpenComments?: (uid: string) => void;
+    onToggleUI?: () => void;
   }) => {
     const router = useRouter();
     const { user } = useAuthStore();
@@ -240,18 +272,33 @@ const NewsCard = React.memo(
     const [liked, setLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(item.likes ?? 0);
 
+    // Micro-animation spring values
+    const likeScale = useRef(new Animated.Value(1)).current;
+    const bookmarkScale = useRef(new Animated.Value(1)).current;
+
+    const triggerSpring = (anim: Animated.Value, peak = 1.35) => {
+      Animated.sequence([
+        Animated.spring(anim, { toValue: peak, speed: 50, bounciness: 12, useNativeDriver: true }),
+        Animated.spring(anim, { toValue: 1, speed: 40, bounciness: 8, useNativeDriver: true }),
+      ]).start();
+    };
+
+    const hasRecordedViewRef = React.useRef(false);
+
     React.useEffect(() => {
-      // Record view when card mounts
-      if (contentUid && itemType === 'news') {
+      // Record view only when the card is actively in view (lazy view recording)
+      if (isActive && contentUid && itemType === 'news' && !hasRecordedViewRef.current) {
+        hasRecordedViewRef.current = true;
         recordView(contentUid);
       }
-    }, [contentUid, itemType, recordView]);
+    }, [isActive, contentUid, itemType, recordView]);
 
     const handleToggleLike = () => {
       if (!contentUid) return;
       const nextLiked = !liked;
       setLiked(nextLiked);
       setLikeCount((c) => (nextLiked ? c + 1 : Math.max(0, c - 1)));
+      triggerSpring(likeScale, 1.4);
 
       if (itemType === 'post') {
         togglePostLike(contentUid, {
@@ -281,6 +328,7 @@ const NewsCard = React.memo(
 
     const handleToggleBookmark = () => {
       if (!contentUid) return;
+      triggerSpring(bookmarkScale, 1.35);
       if (isBookmarked) {
         removeBookmark({ contentUid, contentType: itemType });
       } else {
@@ -315,12 +363,30 @@ const NewsCard = React.memo(
     const categoryName = item.category_names?.[0] || (itemType === 'post' ? 'Community' : 'News');
     const displayTitle = item.title || (item as any).content || 'Community Post';
     const displaySummary = item.summary || ((item as any).content && (item as any).content !== displayTitle ? (item as any).content : '') || '';
-    const displayImage = item.image_url || (item as any).images?.[0]?.image_url || (item as any).imageUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800';
+    const rawImage = item.image_url || (item as any).images?.[0]?.image_url || (item as any).imageUrl;
+
+    const resolvedImage = useMemo(() => {
+      return resolveArticleImageUrl({
+        imageUrl: rawImage,
+        categoryNames: item.category_names,
+        categoryName,
+        title: displayTitle,
+        isBreaking: item.is_breaking,
+        itemType,
+      });
+    }, [rawImage, item.category_names, categoryName, displayTitle, item.is_breaking, itemType]);
+
+    const [imgSrc, setImgSrc] = useState(resolvedImage);
+    useEffect(() => {
+      setImgSrc(resolvedImage);
+    }, [resolvedImage]);
+
     const displaySource = item.source_name || item.source || (item as any).user_display_name || (item as any).user_name || 'HyperLocal';
 
     const hasSourceLink = Boolean(item.source_url);
-    const actionIconColor = isDark ? '#94A3B8' : '#464554';
-    const actionBg = isDark ? '#262636' : '#E5EEFF';
+    const actionIconColor = isDark ? '#A5B4FC' : '#464554';
+    const actionBg = isDark ? 'rgba(24, 23, 54, 0.88)' : '#E5EEFF';
+    const actionBorder = isDark ? { borderWidth: 1, borderColor: colors.border } : {};
 
     // Source link: show if there's a source URL or at least a source name (use Google search as fallback)
     const hasSource = Boolean(item.source_url || item.source_name || item.source);
@@ -362,7 +428,7 @@ const NewsCard = React.memo(
     };
 
     return (
-      <>
+      <TouchableWithoutFeedback onPress={onToggleUI}>
         <View
           style={[
             styles.cardContainer,
@@ -372,14 +438,19 @@ const NewsCard = React.memo(
           {/* Top 45% Image — plain View, NOT tappable to avoid unintended navigation */}
           <View style={styles.imageContainer}>
             <Image
-              source={{
-                uri:
-                  item.image_url ||
-                  'https://images.unsplash.com/photo-1504711434969-e33886168d3c?w=800',
-              }}
+              source={{ uri: imgSrc }}
               style={styles.image}
               contentFit="cover"
-              transition={400}
+              transition={150}
+              cachePolicy="disk"
+              recyclingKey={imgSrc}
+              priority={isActive ? 'high' : 'normal'}
+              onError={() => {
+                const fallback = getCategoryFallbackImage(categoryName, item.is_breaking);
+                if (imgSrc !== fallback) {
+                  setImgSrc(fallback);
+                }
+              }}
             />
 
             {/* Category tag */}
@@ -428,8 +499,9 @@ const NewsCard = React.memo(
                   style={[
                     styles.sourceLink,
                     {
-                      backgroundColor: isDark ? '#1E1E2E' : '#F1F5F9',
+                      backgroundColor: isDark ? 'rgba(24, 23, 54, 0.85)' : '#F1F5F9',
                       borderColor: colors.border,
+                      borderWidth: 1,
                     },
                   ]}
                   onPress={handleOpenSource}
@@ -437,7 +509,7 @@ const NewsCard = React.memo(
                 >
                   <Ionicons name="link-outline" size={13} color={colors.primary} />
                   <Text
-                    style={[styles.sourceLinkText, { color: colors.primary }]}
+                    style={[styles.sourceLinkText, { color: isDark ? '#A5B4FC' : colors.primary }]}
                     numberOfLines={1}
                   >
                     {item.source_name || item.source || item.source_url}
@@ -445,7 +517,7 @@ const NewsCard = React.memo(
                   <Ionicons
                     name="open-outline"
                     size={13}
-                    color={colors.primary}
+                    color={isDark ? '#A5B4FC' : colors.primary}
                   />
                 </TouchableOpacity>
               )}
@@ -482,7 +554,7 @@ const NewsCard = React.memo(
                 <View style={styles.actionsRow}>
                   {/* Views */}
                   <View style={styles.actionBtnWrapper}>
-                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }, actionBorder]}>
                       <Ionicons name="eye-outline" size={16} color={actionIconColor} />
                     </View>
                     <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
@@ -496,7 +568,7 @@ const NewsCard = React.memo(
                     onPress={() => contentUid && onOpenComments?.(contentUid)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }, actionBorder]}>
                       <Ionicons name="chatbubble-outline" size={16} color={actionIconColor} />
                     </View>
                     <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
@@ -510,13 +582,15 @@ const NewsCard = React.memo(
                     onPress={handleToggleLike}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                      <Ionicons
-                        name={liked ? 'heart' : 'heart-outline'}
-                        size={16}
-                        color={liked ? '#EF4444' : actionIconColor}
-                      />
-                    </View>
+                    <Animated.View style={[{ transform: [{ scale: likeScale }] }]}>
+                      <View style={[styles.actionBtn, { backgroundColor: actionBg }, actionBorder]}>
+                        <Ionicons
+                          name={liked ? 'heart' : 'heart-outline'}
+                          size={16}
+                          color={liked ? '#EF4444' : actionIconColor}
+                        />
+                      </View>
+                    </Animated.View>
                   </TouchableOpacity>
 
                   {/* Share */}
@@ -525,7 +599,7 @@ const NewsCard = React.memo(
                     onPress={handleShare}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
+                    <View style={[styles.actionBtn, { backgroundColor: actionBg }, actionBorder]}>
                       <Ionicons
                         name="share-social-outline"
                         size={16}
@@ -540,27 +614,32 @@ const NewsCard = React.memo(
                     onPress={handleToggleBookmark}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.actionBtn, { backgroundColor: actionBg }]}>
-                      <Ionicons
-                        name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                        size={16}
-                        color={isBookmarked ? '#FFAC33' : actionIconColor}
-                      />
-                    </View>
+                    <Animated.View style={[{ transform: [{ scale: bookmarkScale }] }]}>
+                      <View style={[styles.actionBtn, { backgroundColor: actionBg }, actionBorder]}>
+                        <Ionicons
+                          name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                          size={16}
+                          color={isBookmarked ? '#FFAC33' : actionIconColor}
+                        />
+                      </View>
+                    </Animated.View>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </View>
         </View>
-      </>
+      </TouchableWithoutFeedback>
     );
   },
   (prev, next) =>
     prev.containerHeight === next.containerHeight &&
-    prev.item.news_uid === next.item.news_uid &&
     prev.isBookmarked === next.isBookmarked &&
-    prev.isDark === next.isDark
+    prev.isActive === next.isActive &&
+    prev.isDark === next.isDark &&
+    prev.onToggleUI === next.onToggleUI &&
+    (prev.item.news_uid || (prev.item as any).post_uid || (prev.item as any).id) ===
+      (next.item.news_uid || (next.item as any).post_uid || (next.item as any).id)
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -568,7 +647,15 @@ const NewsCard = React.memo(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const ImmersiveFeedCard = React.memo(
-  ({ item, containerHeight, bookmarkedNewsUids, onOpenComments }: ImmersiveFeedCardProps) => {
+  ({
+    item,
+    containerHeight,
+    bookmarkedNewsUids,
+    isBookmarked: explicitIsBookmarked,
+    isActive = false,
+    onOpenComments,
+    onToggleUI,
+  }: ImmersiveFeedCardProps) => {
     const colorScheme = useAppColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -591,28 +678,43 @@ export const ImmersiveFeedCard = React.memo(
           containerHeight={containerHeight}
           colors={colors}
           isDark={isDark}
+          onToggleUI={onToggleUI}
         />
       );
     }
 
     const newsItem = item.data as NewsArticle;
+    const itemUid = newsItem.news_uid || (newsItem as any).post_uid || (newsItem as any).id;
+    const isBookmarked =
+      explicitIsBookmarked !== undefined
+        ? explicitIsBookmarked
+        : bookmarkedNewsUids
+          ? bookmarkedNewsUids.has(String(itemUid))
+          : false;
+
     return (
       <NewsCard
         item={newsItem}
         itemType={item.type === 'post' ? 'post' : 'news'}
         containerHeight={containerHeight}
-        isBookmarked={bookmarkedNewsUids.has(newsItem.news_uid || (newsItem as any).post_uid)}
+        isBookmarked={isBookmarked}
+        isActive={isActive}
         colors={colors}
         isDark={isDark}
         onOpenComments={onOpenComments}
+        onToggleUI={onToggleUI}
       />
     );
   },
   (prev, next) =>
     prev.containerHeight === next.containerHeight &&
+    prev.isActive === next.isActive &&
+    prev.isBookmarked === next.isBookmarked &&
+    prev.bookmarkedNewsUids === next.bookmarkedNewsUids &&
     prev.item.position === next.item.position &&
-    prev.item.type === next.item.type &&
-    prev.bookmarkedNewsUids === next.bookmarkedNewsUids
+    prev.onToggleUI === next.onToggleUI &&
+    ((prev.item.data as any)?.news_uid || (prev.item.data as any)?.post_uid || (prev.item.data as any)?.id) ===
+      ((next.item.data as any)?.news_uid || (next.item.data as any)?.post_uid || (next.item.data as any)?.id)
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -627,6 +729,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '45%',
     position: 'relative',
+    backgroundColor: '#0F172A',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',

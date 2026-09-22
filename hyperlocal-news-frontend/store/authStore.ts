@@ -154,6 +154,7 @@ interface AuthState {
   cachedPreferences: UserPreferences | null;
   fetchPreferences: () => Promise<UserPreferences>;
   updateCachedPreferences: (updates: Partial<UserPreferences>) => void;
+  fetchUser: () => Promise<User | null>;
 }
 
 // ─── Error Handler ────────────────────────────────────────────────────────────
@@ -259,9 +260,23 @@ export const useAuthStore = create<AuthState>()(
           set({ cachedPreferences: prefs });
           return prefs;
         } catch (error: any) {
-          // If the backend returns 404, it likely means preferences aren't set yet.
+          // If the backend returns 404, it means preferences aren't set yet.
           if (error?.response?.status === 404 || error?.code === '404' || error?.message?.includes('404')) {
-            console.log('[authStore] No preferences found for user, using defaults.');
+            console.log('[authStore] No preferences found for user on backend. Creating default preferences...');
+            try {
+              const defaultPrefPayload = {
+                language_id: 1, // Telugu
+                state_id: 1, // Andhra Pradesh
+                district_id: 2, // Bapatla
+                city_id: 8, // Bapatla
+                category_ids: [1, 2, 3, 4],
+              };
+              const createdPrefs = await usersApi.savePreferences(defaultPrefPayload);
+              set({ cachedPreferences: createdPrefs });
+              return createdPrefs;
+            } catch (saveErr) {
+              console.warn('[authStore] Failed to save default preferences to backend:', saveErr);
+            }
             const defaultPrefs = {} as UserPreferences;
             set({ cachedPreferences: defaultPrefs });
             return defaultPrefs;
@@ -278,6 +293,25 @@ export const useAuthStore = create<AuthState>()(
             ? { ...state.cachedPreferences, ...updates }
             : null,
         }));
+      },
+
+      fetchUser: async (): Promise<User | null> => {
+        try {
+          const res = await usersApi.me();
+          if (res && res.user_uid) {
+            const sanitized = sanitizeUser(res as any);
+            set({
+              user: sanitized,
+              isAuthenticated: true,
+              isOnboarded: true,
+            });
+            return sanitized;
+          }
+          return null;
+        } catch (err) {
+          console.warn('[authStore] fetchUser failed:', err);
+          return null;
+        }
       },
 
       // ─── Send Phone OTP ────────────────────────────────────────────────────

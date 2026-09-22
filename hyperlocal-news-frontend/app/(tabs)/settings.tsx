@@ -92,7 +92,7 @@ export default function SettingsScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarGradient}
                 >
-                  <View style={[styles.avatarInner, { borderColor: colors.card, justifyContent: 'center', alignItems: 'center', backgroundColor: darkModeEnabled ? '#1C1C2E' : '#EFF4FF' }]}>
+                  <View style={[styles.avatarInner, { borderColor: colors.card, justifyContent: 'center', alignItems: 'center', backgroundColor: darkModeEnabled ? colors.surface : '#EFF4FF' }]}>
                     {user?.avatar ? (
                       <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                     ) : (
@@ -221,8 +221,8 @@ export default function SettingsScreen() {
             {/* Dark Mode Switch */}
             <View style={styles.settingItem}>
               <View style={styles.settingLabelContainer}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(70, 72, 212, 0.08)' }]}>
-                  <Ionicons name="moon-outline" size={20} color="#4648D4" />
+                <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="moon-outline" size={20} color={colors.primary} />
                 </View>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
               </View>

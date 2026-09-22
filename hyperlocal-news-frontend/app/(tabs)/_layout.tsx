@@ -36,7 +36,11 @@ export default function TabLayout() {
         cleanPath === '/settings-location' ||
         cleanPath === '/settings-interests'
       ) {
-        router.push('/(tabs)/settings');
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.push('/(tabs)/settings');
+        }
         return true;
       }
 

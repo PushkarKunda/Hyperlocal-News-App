@@ -98,18 +98,38 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.modalOverlay}
+        style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+        <View
+          style={[
+            styles.modalContainer,
+            {
+              backgroundColor: colors.sheet,
+              borderTopColor: isDark ? colors.borderGlass : colors.border,
+              borderTopWidth: 1.5,
+            },
+          ]}
+        >
+          {/* Subtle drag handle */}
+          <View
+            style={[
+              styles.sheetHandle,
+              { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.4)' : colors.indicator },
+            ]}
+          />
+
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Comments ({comments.length})
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={colors.text} />
+          <View style={[styles.header, { borderBottomColor: colors.divider }]}>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="chatbubbles" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                Comments ({comments.length})
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -139,11 +159,19 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
           <View
             style={[
               styles.inputContainer,
-              { backgroundColor: colors.background, borderTopColor: colors.border },
+              { backgroundColor: colors.sheet, borderTopColor: colors.border },
             ]}
           >
             <TextInput
-              style={[styles.input, { color: colors.text, backgroundColor: colors.surface }]}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  backgroundColor: isDark ? 'rgba(24, 23, 54, 0.9)' : colors.surface,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                },
+              ]}
               placeholder="Add a comment..."
               placeholderTextColor={colors.textTertiary}
               value={commentText}
@@ -158,11 +186,12 @@ export const PostCommentsModal = ({ visible, onClose, postUid }: PostCommentsMod
                 { backgroundColor: colors.primary },
                 (!commentText.trim() || isAdding) && styles.disabledBtn,
               ]}
+              activeOpacity={0.8}
             >
               {isAdding ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons name="send" size={18} color="#FFFFFF" />
+                <Ionicons name="send" size={17} color="#FFFFFF" />
               )}
             </TouchableOpacity>
           </View>
@@ -176,24 +205,35 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   backdrop: {
     flex: 1,
   },
   modalContainer: {
-    height: '70%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    height: '72%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 16,
@@ -211,7 +251,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   emptyText: {
     marginTop: 10,
@@ -251,13 +291,13 @@ const styles = StyleSheet.create({
   },
   commentText: {
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 19,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderTopWidth: 1,
   },
   input: {
@@ -270,13 +310,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
   disabledBtn: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
 });
