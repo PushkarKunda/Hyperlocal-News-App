@@ -154,8 +154,11 @@ export const linkPhoneNumber = async (
 
 export const firebaseSignOut = async (): Promise<void> => {
   try {
-    await firebaseAuth.signOut();
-    console.log('✅ Firebase Sign Out');
+    const currentUser = firebaseAuth.currentUser;
+    if (currentUser) {
+      await firebaseAuth.signOut();
+      console.log('✅ Firebase Sign Out');
+    }
   } catch (error: any) {
     console.error('❌ Sign Out Failed:', error.message);
   }

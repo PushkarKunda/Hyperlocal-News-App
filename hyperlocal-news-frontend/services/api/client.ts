@@ -81,7 +81,12 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthUrl =
+      originalRequest.url?.includes(API_ROUTES.auth.logout) ||
+      originalRequest.url?.includes(API_ROUTES.auth.refreshToken) ||
+      originalRequest.url?.includes(API_ROUTES.auth.firebaseLogin);
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthUrl) {
       if (isRefreshing) {
         // Queue requests while refreshing
         return new Promise((resolve, reject) => {
@@ -132,7 +137,15 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         await clearTokens();
         if (onUnauthorizedCallback) {
-          onUnauthorizedCallback();
+          const cb = onUnauthorizedCallback;
+          onUnauthorizedCallback = null;
+          try {
+            cb();
+          } finally {
+            setTimeout(() => {
+              onUnauthorizedCallback = cb;
+            }, 1000);
+          }
         }
         return Promise.reject(refreshError);
       } finally {

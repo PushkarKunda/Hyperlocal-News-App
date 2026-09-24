@@ -197,7 +197,7 @@ hyperlocal-news-frontend/
    ┌──────────▼──────────────────────────────────────────────────────────┐
    │ EXTERNAL BACKEND MICROSERVICES                                      │
    │ API Gateway: https://hypernews-production.up.railway.app            │
-   │ (POST /user/user/auth/firebase/login -> Issues JWT Access/Refresh)  │
+   │ (POST /user/auth/firebase/login -> Issues JWT Access/Refresh)  │
    └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -240,10 +240,10 @@ User Action ➔ UI Component Event ➔ Custom Hook / Zustand Action ➔ Axios Re
 ### Authentication Architecture & Flow
 1. **Initiation**: User enters phone number or taps Google Sign-In.
 2. **Firebase Auth**: Firebase SDK handles SMS verification / Google OAuth and returns a Firebase ID Token.
-3. **Backend Exchange**: Client calls `POST /user/user/auth/firebase/login` passing `{ firebase_token }`.
+3. **Backend Exchange**: Client calls `POST /user/auth/firebase/login` passing `{ firebase_token }`.
 4. **JWT Issuance**: Backend returns `{ access_token, refresh_token, user }`. Tokens are stored in Expo SecureStore (`auth_token`, `refresh_token`).
 5. **Axios Interceptor**: Subsequent requests automatically inject `Authorization: Bearer <access_token>`.
-6. **Token Refresh**: On HTTP 401 Unauthorized, Axios queues pending requests, fetches a new access token via `POST /user/user/auth/refresh?refresh_token=...`, saves the new token pair, and retries original failed requests seamlessly.
+6. **Token Refresh**: On HTTP 401 Unauthorized, Axios queues pending requests, fetches a new access token via `POST /user/auth/refresh?refresh_token=...`, saves the new token pair, and retries original failed requests seamlessly.
 
 ---
 

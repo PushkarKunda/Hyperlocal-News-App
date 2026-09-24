@@ -101,7 +101,7 @@ sequenceDiagram
     User->>App: Submits OTP Code
     App->>Firebase: verifyPhoneOTP(otp)
     Firebase-->>App: Returns Firebase ID Token
-    App->>API: POST /user/user/auth/firebase/login { firebase_token }
+    App->>API: POST /user/auth/firebase/login { firebase_token }
     API-->>App: Returns { access_token, refresh_token, user }
     App->>SecureStore: saveTokens(access_token, refresh_token)
     App->>AuthStore: set({ user, isAuthenticated: true })

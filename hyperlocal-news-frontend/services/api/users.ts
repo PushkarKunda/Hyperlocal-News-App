@@ -6,11 +6,11 @@ import type { User } from '@/store/authStore';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES FOR /user/user/users/me ENDPOINT
+// TYPES FOR /user/users/me ENDPOINT
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * GET /user/user/users/me response
+ * GET /user/users/me response
  * Pure API response - no mixing with preferences or dashboard
  */
 export interface UserMeResponse {
@@ -35,7 +35,7 @@ export interface UserMeResponse {
 }
 
 /**
- * PATCH /user/user/users/me request payload
+ * PATCH /user/users/me request payload
  * All fields optional - only send what you want to update
  */
 export interface UpdateMePayload {
@@ -53,13 +53,13 @@ export interface UpdateMePayload {
 }
 
 /**
- * PATCH /user/user/users/me response
+ * PATCH /user/users/me response
  * Same structure as GET response
  */
 export type UpdateMeResponse = UserMeResponse;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES FOR /user/user/dashboardnew ENDPOINT
+// TYPES FOR /user/dashboardnew ENDPOINT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface DashboardUser {
@@ -147,7 +147,7 @@ export interface DashboardPublisherCTA {
 }
 
 /**
- * GET /user/user/dashboardnew response
+ * GET /user/dashboardnew response
  * Complete dashboard data structure
  */
 export interface DashboardResponse {
@@ -160,7 +160,7 @@ export interface DashboardResponse {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES FOR /user/user/preferences/me ENDPOINT
+// TYPES FOR /user/preferences/me ENDPOINT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface CategorySummary {
@@ -218,7 +218,7 @@ export interface DashboardEngagement {
 
 export const usersApi = {
   /**
-   * GET /user/user/users/me
+   * GET /user/users/me
    * Get current user profile (works for both regular users and publishers)
    */
   me: async (): Promise<UserMeResponse> => {
@@ -229,7 +229,7 @@ export const usersApi = {
   },
 
   /**
-   * PATCH /user/user/users/me
+   * PATCH /user/users/me
    * Update user profile
    * Only sends non-undefined values
    * Sends null to clear fields
@@ -248,7 +248,7 @@ export const usersApi = {
   },
 
   /**
-   * PATCH /user/user/preferences/me
+   * PATCH /user/preferences/me
    * Update user preferences
    */
   updatePreferences: async (
@@ -266,7 +266,7 @@ export const usersApi = {
   },
 
   /**
-   * POST /user/user/preferences/me
+   * POST /user/preferences/me
    * Create or replace onboarding preferences
    */
   savePreferences: async (
@@ -284,7 +284,7 @@ export const usersApi = {
   },
 
   /**
-   * GET /user/user/preferences/me
+   * GET /user/preferences/me
    * Get user preferences
    */
   getPreferences: async (): Promise<UserPreferences> => {
@@ -295,7 +295,7 @@ export const usersApi = {
   },
 
   /**
-   * GET /user/user/dashboardnew
+   * GET /user/dashboardnew
    * Get user dashboard with stats, posts, and actions
    */
   dashboard: async (params?: {
@@ -317,7 +317,7 @@ export const usersApi = {
   },
 
   /**
-   * GET /user/user/users/me/suspension-status
+   * GET /user/users/me/suspension-status
    * Check if user is suspended
    */
   suspensionStatus: async (): Promise<SuspensionStatus> => {
@@ -328,7 +328,7 @@ export const usersApi = {
   },
 
   /**
-   * GET /user/user/dashboard/engagement
+   * GET /user/dashboard/engagement
    * Get user engagement metrics
    */
   dashboardEngagement: async (): Promise<DashboardEngagement> => {

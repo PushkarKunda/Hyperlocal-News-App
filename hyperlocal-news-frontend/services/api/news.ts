@@ -333,7 +333,7 @@ export const newsApi = {
   },
 
   /**
-   * GET /shorts/shorts/feed
+   * GET /shorts/feed
    */
   getShorts: async (params?: { language?: string; limit?: number }): Promise<any[]> => {
     try {

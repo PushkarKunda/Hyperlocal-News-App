@@ -19,7 +19,7 @@ import {
   usersApi,
 } from '@/services/api';
 import type { UserPreferences } from '@/services/api';
-import { clearTokens } from '@/services/api/token';
+import { clearTokens, getAuthToken } from '@/services/api/token';
 import { compressImage } from '@/services/image';
 import { uploadImageToSupabaseProfile } from '@/services/supabase';
 
@@ -297,6 +297,11 @@ export const useAuthStore = create<AuthState>()(
 
       fetchUser: async (): Promise<User | null> => {
         try {
+          const token = await getAuthToken();
+          if (!token) {
+            set({ user: null, isAuthenticated: false });
+            return null;
+          }
           const res = await usersApi.me();
           if (res && res.user_uid) {
             const sanitized = sanitizeUser(res as any);
@@ -501,9 +506,13 @@ export const useAuthStore = create<AuthState>()(
       // ─── Logout ────────────────────────────────────────────────────────────
 
       logout: async () => {
+        if (get().isLoading) return;
         set({ isLoading: true });
         try {
-          await authApi.logout();
+          const token = await getAuthToken();
+          if (token) {
+            await authApi.logout();
+          }
         } catch {
           // Continue even if API fails
         } finally {

@@ -335,7 +335,7 @@ export default function ProfileScreen() {
         throw new Error('Failed to get upload URL.');
       }
 
-      // ✅ PATCH /user/user/users/me
+      // ✅ PATCH /user/users/me
       await usersApi.updateMe({
         profile_picture: serverUrl,
       });

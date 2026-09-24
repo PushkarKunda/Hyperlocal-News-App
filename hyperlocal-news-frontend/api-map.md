@@ -9,12 +9,12 @@
 
 | Method | Endpoint Route | Purpose | Payload / Parameters | Auth Required |
 | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/user/user/auth/firebase/login` | Exchange Firebase ID token for JWT token pair | `{ firebase_token: string }` | No |
-| `POST` | `/user/user/auth/refresh` | Refresh expired JWT access token | `refresh_token` (query param) | Refresh Token |
-| `POST` | `/user/user/auth/logout` | Invalidate current user session | None | Bearer JWT |
-| `POST` | `/user/user/auth/switch-to-publisher` | Upgrade user role to Publisher (Role 2) | None | Bearer JWT |
-| `POST` | `/user/user/device/token/register` | Register FCM push notification token | `{ fcm_token, device_type, device_name }` | Bearer JWT |
-| `DELETE`| `/user/user/device/token/unregister` | Unregister FCM token | None | Bearer JWT |
+| `POST` | `/user/auth/firebase/login` | Exchange Firebase ID token for JWT token pair | `{ firebase_token: string }` | No |
+| `POST` | `/user/auth/refresh` | Refresh expired JWT access token | `refresh_token` (query param) | Refresh Token |
+| `POST` | `/user/auth/logout` | Invalidate current user session | None | Bearer JWT |
+| `POST` | `/user/auth/switch-to-publisher` | Upgrade user role to Publisher (Role 2) | None | Bearer JWT |
+| `POST` | `/user/device/token/register` | Register FCM push notification token | `{ fcm_token, device_type, device_name }` | Bearer JWT |
+| `DELETE`| `/user/device/token/unregister` | Unregister FCM token | None | Bearer JWT |
 
 ---
 
@@ -22,14 +22,14 @@
 
 | Method | Endpoint Route | Purpose | Payload / Parameters | Auth Required |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/user/user/users/me` | Fetch active user profile | None | Bearer JWT |
-| `PATCH` | `/user/user/users/me` | Update profile information (name, avatar, phone) | `{ name?, profile_picture?, phone? }` | Bearer JWT |
-| `GET` | `/user/user/users/me/publisher-eligibility` | Check if user meets requirements to become reporter | None | Bearer JWT |
-| `GET` | `/user/user/users/me/suspension-status` | Check if user account is suspended | None | Bearer JWT |
-| `GET` | `/user/user/preferences/me` | Get user onboarding preferences | None | Bearer JWT |
-| `POST` | `/user/user/preferences/me` | Batch save user onboarding preferences | `{ language_id, state_id, district_id, city_id, category_ids }` | Bearer JWT |
-| `GET` | `/user/user/dashboardnew` | Fetch main user dashboard summary | None | Bearer JWT |
-| `GET` | `/user/user/dashboard/engagement` | Fetch personal engagement statistics | None | Bearer JWT |
+| `GET` | `/user/users/me` | Fetch active user profile | None | Bearer JWT |
+| `PATCH` | `/user/users/me` | Update profile information (name, avatar, phone) | `{ name?, profile_picture?, phone? }` | Bearer JWT |
+| `GET` | `/user/users/me/publisher-eligibility` | Check if user meets requirements to become reporter | None | Bearer JWT |
+| `GET` | `/user/users/me/suspension-status` | Check if user account is suspended | None | Bearer JWT |
+| `GET` | `/user/preferences/me` | Get user onboarding preferences | None | Bearer JWT |
+| `POST` | `/user/preferences/me` | Batch save user onboarding preferences | `{ language_id, state_id, district_id, city_id, category_ids }` | Bearer JWT |
+| `GET` | `/user/dashboardnew` | Fetch main user dashboard summary | None | Bearer JWT |
+| `GET` | `/user/dashboard/engagement` | Fetch personal engagement statistics | None | Bearer JWT |
 
 ---
 
@@ -47,7 +47,7 @@
 | `GET` | `/news/v1/news/analytics/trending` | Fetch trending news items | None | Bearer JWT |
 | `GET` | `/news/v1/news/location` | Fetch news filtered by specific location | `state_id`, `district_id`, `city_id` | Bearer JWT |
 | `GET` | `/news/v1/news/category/:id` | Fetch news by category ID | `id` (category ID) | Bearer JWT |
-| `GET` | `/news/v1/news-shorts` | Fetch vertical video shorts feed | `page`, `limit` | Bearer JWT |
+| `GET` | `/content/news-shorts` | Fetch vertical video shorts feed | `page`, `limit` | Bearer JWT |
 | `POST` | `/news/v1/user/news/:uid/like` | Like an article | `uid` (news UID) | Bearer JWT |
 | `DELETE`| `/news/v1/user/news/:uid/like` | Unlike an article | `uid` (news UID) | Bearer JWT |
 | `POST` | `/news/v1/user/news/:uid/view` | Record article view count | `uid` (news UID) | Bearer JWT |

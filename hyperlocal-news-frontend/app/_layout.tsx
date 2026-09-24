@@ -207,72 +207,6 @@ export default function RootLayout() {
     return null;
   }
 
-  if (showNetworkError && !isConnected) {
-    return (
-      <SafeAreaProvider>
-        <View
-          style={[
-            styles.centerContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={styles.centerContent}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: colors.primaryLight },
-              ]}
-            >
-              <Ionicons name="cloud-offline" size={56} color={colors.primary} />
-            </View>
-            <Text style={[styles.errorTitle, { color: colors.text }]}>
-              No Internet Connection
-            </Text>
-            <Text
-              style={[styles.errorMessage, { color: colors.textSecondary }]}
-            >
-              Please check your network and try again.
-            </Text>
-            <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                NetInfo.fetch().then((netState) => {
-                  if (netState.isConnected) {
-                    setShowNetworkError(false);
-                  }
-                });
-              }}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="refresh" size={20} color="#FFFFFF" />
-              <Text style={styles.retryText}>Retry Connection</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
-
-  if (!appReady || authLoading) {
-    return (
-      <SafeAreaProvider>
-        <View
-          style={[
-            styles.centerContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={[styles.loadingCard, { backgroundColor: colors.card }]}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading...
-            </Text>
-          </View>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
-
   // ─── Main Navigation ──────────────────────────────────────────────────────
   return (
     <SafeAreaProvider>
@@ -311,6 +245,50 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
+
+            {/* Offline Network Warning Banner */}
+            {showNetworkError && !isConnected && (
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  styles.centerContainer,
+                  { backgroundColor: colors.background },
+                ]}
+              >
+                <View style={styles.centerContent}>
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      { backgroundColor: colors.primaryLight },
+                    ]}
+                  >
+                    <Ionicons name="cloud-offline" size={56} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.errorTitle, { color: colors.text }]}>
+                    No Internet Connection
+                  </Text>
+                  <Text
+                    style={[styles.errorMessage, { color: colors.textSecondary }]}
+                  >
+                    Please check your network and try again.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      NetInfo.fetch().then((netState) => {
+                        if (netState.isConnected) {
+                          setShowNetworkError(false);
+                        }
+                      });
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                    <Text style={styles.retryText}>Retry Connection</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </GestureHandlerRootView>
         </RealtimeInitializer>
       </QueryClientProvider>

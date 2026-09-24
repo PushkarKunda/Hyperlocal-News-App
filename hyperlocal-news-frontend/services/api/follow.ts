@@ -43,7 +43,7 @@ export interface FollowingSuggestion extends UserProfile {
 export const followApi = {
 
     /**
-     * POST /follow/follow/:uid
+     * POST /follow/:uid
      * Follow a user
      */
     followUser: async (userUid: string): Promise<void> => {
@@ -54,7 +54,7 @@ export const followApi = {
     },
 
     /**
-     * DELETE /follow/follow/:uid
+     * DELETE /follow/:uid
      * Unfollow a user
      */
     unfollowUser: async (userUid: string): Promise<void> => {
@@ -65,7 +65,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/followers/:uid
+     * GET /follow/followers/:uid
      * Get user's followers list
      */
     getFollowers: async (userUid: string): Promise<FollowerUser[]> => {
@@ -76,7 +76,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/following/:uid
+     * GET /follow/following/:uid
      * Get users that this user is following
      */
     getFollowing: async (userUid: string): Promise<FollowerUser[]> => {
@@ -87,7 +87,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/suggestions
+     * GET /follow/suggestions
      * Get follow suggestions for current user
      */
     getSuggestions: async (): Promise<FollowingSuggestion[]> => {
@@ -98,7 +98,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/status/:uid
+     * GET /follow/status/:uid
      * Get follow relationship status with a user
      */
     getFollowStatus: async (userUid: string): Promise<FollowStatus> => {
@@ -109,7 +109,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/counts/:uid
+     * GET /follow/counts/:uid
      * Get follower/following counts for a user
      */
     getFollowCounts: async (userUid: string): Promise<FollowCounts> => {
@@ -120,7 +120,7 @@ export const followApi = {
     },
 
     /**
-     * GET /follow/follow/feed/posts
+     * GET /follow/feed/posts
      * Get posts from users you follow (used in postsApi too)
      */
     getFollowingFeed: async (): Promise<any[]> => {

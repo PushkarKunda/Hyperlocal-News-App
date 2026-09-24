@@ -124,7 +124,7 @@ export function usePopularNews() {
 }
 
 /**
- * GET /shorts/shorts/feed
+ * GET /shorts/feed
  */
 export function useNewsShorts(language: string = 'te') {
   return useQuery({

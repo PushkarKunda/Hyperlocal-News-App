@@ -55,7 +55,7 @@ export interface UploadImageResult {
  *
  * Flow:
  * compressImage(uri) → uploadImageToSupabase(compressed.uri) → publicUrl
- * → PATCH /user/user/users/me { profile_picture: publicUrl }
+ * → PATCH /user/users/me { profile_picture: publicUrl }
  */
 function decodeBase64(base64: string): ArrayBuffer {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

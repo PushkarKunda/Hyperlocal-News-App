@@ -2,22 +2,22 @@
 export const API_ROUTES = {
   // ─── Auth ───────────────────────────────────────────────────────────────────
   auth: {
-    firebaseLogin: '/user/user/auth/firebase/login',           // POST - Firebase Login
-    refreshToken: '/user/user/auth/refresh',                   // POST - Refresh token (query param)
-    logout: '/user/user/auth/logout',                          // POST - Logout
-    switchToPublisher: '/user/user/auth/switch-to-publisher',  // POST - Switch to publisher
-    registerDevice: '/user/user/device/token/register',        // POST - Register FCM token
-    unregisterDevice: '/user/user/device/token/unregister',    // DELETE - Unregister device
+    firebaseLogin: '/user/auth/firebase/login',           // POST - Firebase Login
+    refreshToken: '/user/auth/refresh',                   // POST - Refresh token (query param)
+    logout: '/user/auth/logout',                          // POST - Logout
+    switchToPublisher: '/user/auth/switch-to-publisher',  // POST - Switch to publisher
+    registerDevice: '/user/device/token/register',        // POST - Register FCM token
+    unregisterDevice: '/user/device/token/unregister',    // DELETE - Unregister device
   },
 
   // ─── User ───────────────────────────────────────────────────────────────────
   user: {
-    me: '/user/user/users/me',                                      // GET, PATCH - My profile (includes avatar)
-    publisherEligibility: '/user/user/users/me/publisher-eligibility', // GET
-    suspensionStatus: '/user/user/users/me/suspension-status',      // GET
-    preferences: '/user/user/preferences/me',                       // GET, POST, PUT, PATCH, DELETE
-    dashboard: '/user/user/dashboardnew',                           // GET - User dashboard
-    dashboardEngagement: '/user/user/dashboard/engagement',         // GET - Dashboard engagement
+    me: '/user/users/me',                                      // GET, PATCH - My profile (includes avatar)
+    publisherEligibility: '/user/users/me/publisher-eligibility', // GET
+    suspensionStatus: '/user/users/me/suspension-status',      // GET
+    preferences: '/user/preferences/me',                       // GET, POST, PUT, PATCH, DELETE
+    dashboard: '/user/dashboardnew',                           // GET - User dashboard
+    dashboardEngagement: '/user/dashboard/engagement',         // GET - Dashboard engagement
   },
 
   // ─── News ───────────────────────────────────────────────────────────────────
@@ -37,8 +37,8 @@ export const API_ROUTES = {
     search: '/news/v1/search',                                   // GET - Search news
 
     // News Shorts
-    shorts: '/news/v1/news-shorts',                             // GET - News shorts
-    shortsFeed: '/shorts/shorts/feed',                          // GET - YouTube shorts feed
+    shorts: '/content/news-shorts',                             // GET - News shorts
+    shortsFeed: '/shorts/feed',                                 // GET - YouTube shorts feed
 
     // Engagement
     engagement: (uid: string) => `/news/v1/news/${uid}/engagement`, // GET - News engagement stats
@@ -116,7 +116,6 @@ export const API_ROUTES = {
   engagement: {
     // Bookmarks
     bookmarks: '/engagement/bookmarks',                          // GET, POST, DELETE
-    bookmarkById: (id: number) => `/engagement/bookmarks/${id}`, // DELETE - Delete by ID
     checkBookmark: '/engagement/bookmarks/check',                // GET - Check bookmark status
 
     // Notifications
@@ -223,31 +222,31 @@ export const API_ROUTES = {
 
   // ─── Follow ─────────────────────────────────────────────────────────────────
   follow: {
-    followUser: (uid: string) => `/follow/follow/${uid}`,       // POST - Follow
-    unfollowUser: (uid: string) => `/follow/follow/${uid}`,     // DELETE - Unfollow
-    followers: (uid: string) => `/follow/follow/followers/${uid}`, // GET - Followers
-    following: (uid: string) => `/follow/follow/following/${uid}`, // GET - Following
-    suggestions: '/follow/follow/suggestions',                   // GET - Follow suggestions
-    status: (uid: string) => `/follow/follow/status/${uid}`,    // GET - Follow status
-    counts: (uid: string) => `/follow/follow/counts/${uid}`,    // GET - Follow counts
-    feed: '/follow/follow/feed/posts',                           // GET - Following posts
+    followUser: (uid: string) => `/follow/${uid}`,              // POST - Follow
+    unfollowUser: (uid: string) => `/follow/${uid}`,            // DELETE - Unfollow
+    followers: (uid: string) => `/follow/followers/${uid}`,     // GET - Followers
+    following: (uid: string) => `/follow/following/${uid}`,     // GET - Following
+    suggestions: '/follow/suggestions',                         // GET - Follow suggestions
+    status: (uid: string) => `/follow/status/${uid}`,           // GET - Follow status
+    counts: (uid: string) => `/follow/counts/${uid}`,           // GET - Follow counts
+    feed: '/follow/feed/posts',                                 // GET - Following posts
   },
 
   // ─── User Activity ──────────────────────────────────────────────────────────
   userActivity: {
-    sessions: '/user-activity/user-activity/sessions',                 // GET - Get sessions
-    killSession: (hash: string) => `/user-activity/user-activity/sessions/${hash}`, // DELETE
-    killAllSessions: '/user-activity/user-activity/sessions/kill-all', // POST
-    activities: '/user-activity/user-activity/activities/me',          // GET - My activities
-    securityEvents: '/user-activity/user-activity/activities/security-events', // GET
-    stats: '/user-activity/user-activity/stats/me',                    // GET - Session stats
-    deviceLimit: '/user-activity/user-activity/device-limit',          // GET - Device limit
+    sessions: '/user-activity/sessions',                        // GET - Get sessions
+    killSession: (hash: string) => `/user-activity/sessions/${hash}`, // DELETE
+    killAllSessions: '/user-activity/sessions/kill-all',        // POST
+    activities: '/user-activity/activities/me',                 // GET - My activities
+    securityEvents: '/user-activity/activities/security-events',// GET
+    stats: '/user-activity/stats/me',                           // GET - Session stats
+    deviceLimit: '/user-activity/device-limit',                 // GET - Device limit
   },
 
   // ─── Discovery ──────────────────────────────────────────────────────────────
   discovery: {
     home: '/discovery/home',                                     // GET - Get Home Feed
-    search: '/discovery/search',                                 // GET - Discovery Search
+    search: '/content/search',                                   // GET - Discovery Search
     category: (id: number) => `/discovery/category/${id}`,       // GET - Category Explore
     related: '/discovery/related',                               // GET - Related Content
     trending: '/discovery/trending',                             // GET - Trending
@@ -274,6 +273,6 @@ export const API_ROUTES = {
     categories: '/categories/health',                            // GET - Categories health
     insights: '/insights/health',                                // GET - Insights health
     rewards: '/rewards/health',                                  // GET - Rewards health
-    userActivity: '/user-activity/user-activity/health',        // GET - User activity health
+    userActivity: '/user-activity/health',                       // GET - User activity health
   },
 } as const;
